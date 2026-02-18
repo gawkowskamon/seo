@@ -118,7 +118,4 @@ const SEOScorePanel = ({ seoScore, onRescore, scoring }) => {
   );
 };
 
-// Need to import BarChart for empty state
-import { BarChart } from 'lucide-react';
-
 export default SEOScorePanel;
