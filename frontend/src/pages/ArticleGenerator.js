@@ -33,6 +33,7 @@ const STAGES = [
 
 const ArticleGenerator = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [topic, setTopic] = useState('');
   const [primaryKeyword, setPrimaryKeyword] = useState('');
   const [secondaryKeywords, setSecondaryKeywords] = useState([]);
@@ -41,6 +42,15 @@ const ArticleGenerator = () => {
   const [targetLength, setTargetLength] = useState(1500);
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentStage, setCurrentStage] = useState(0);
+
+  // Pre-fill from topic suggestions
+  useEffect(() => {
+    if (location.state) {
+      if (location.state.topic) setTopic(location.state.topic);
+      if (location.state.primaryKeyword) setPrimaryKeyword(location.state.primaryKeyword);
+      if (location.state.secondaryKeywords) setSecondaryKeywords(location.state.secondaryKeywords);
+    }
+  }, [location.state]);
 
   const addKeyword = () => {
     const kw = keywordInput.trim();
