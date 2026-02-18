@@ -162,7 +162,7 @@ const TopicSuggestions = () => {
               <Button 
                 variant="outline" 
                 size="sm" 
-                onClick={() => useTopic(topic)}
+                onClick={() => handleUseTopic(topic)}
                 className="gap-1 w-full"
                 data-testid="topics-use-topic-button"
               >
