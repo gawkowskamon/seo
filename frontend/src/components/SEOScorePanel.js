@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle2, AlertCircle, XCircle, RefreshCw, Loader2 } from 'lucide-react';
+import { CheckCircle2, AlertCircle, XCircle, RefreshCw, Loader2, BarChart } from 'lucide-react';
 import { Button } from './ui/button';
 
 const SEOScorePanel = ({ seoScore, onRescore, scoring }) => {
