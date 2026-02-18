@@ -31,6 +31,7 @@ const ArticleEditor = () => {
 
   useEffect(() => {
     fetchArticle();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [articleId]);
 
   const fetchArticle = async () => {
