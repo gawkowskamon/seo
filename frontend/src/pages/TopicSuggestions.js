@@ -41,7 +41,7 @@ const TopicSuggestions = () => {
     }
   };
 
-  const useTopic = (topic) => {
+  const handleUseTopic = (topic) => {
     // Navigate to generator with pre-filled data
     navigate('/generator', { 
       state: { 
