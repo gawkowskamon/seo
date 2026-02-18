@@ -1,0 +1,30 @@
+[
+  {
+    "content": "Phase 1: Core POC - OpenAI integration + article generation + SEO scoring",
+    "status": "in_progress"
+  },
+  {
+    "content": "Phase 1: Test POC script and fix until working",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 2: Get design guidelines from design agent",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 2: Backend implementation (FastAPI endpoints, models, article generation)",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 2: Frontend implementation (React UI, editor, SEO panel, export)",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 2: All user stories covered in Development and testing",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 2: End to End Testing using Testing Agent",
+    "status": "pending"
+  }
+]
