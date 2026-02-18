@@ -20,7 +20,7 @@ const ExportPanel = ({ articleId }) => {
       const res = await axios.post(`${BACKEND_URL}/api/articles/${articleId}/export`, { format: 'facebook' });
       setFbContent(res.data.content);
     } catch (e) {
-      toast.error('B\u0142\u0105d generowania posta FB');
+      toast.error('Błąd generowania posta FB');
     } finally {
       setLoadingFb(false);
     }
@@ -32,7 +32,7 @@ const ExportPanel = ({ articleId }) => {
       const res = await axios.post(`${BACKEND_URL}/api/articles/${articleId}/export`, { format: 'google_business' });
       setGbContent(res.data.content);
     } catch (e) {
-      toast.error('B\u0142\u0105d generowania posta Google');
+      toast.error('Błąd generowania posta Google');
     } finally {
       setLoadingGb(false);
     }
@@ -56,7 +56,7 @@ const ExportPanel = ({ articleId }) => {
       URL.revokeObjectURL(url);
       toast.success('HTML pobrany');
     } catch (e) {
-      toast.error('B\u0142\u0105d pobierania HTML');
+      toast.error('Błąd pobierania HTML');
     } finally {
       setLoadingHtml(false);
     }
@@ -78,7 +78,7 @@ const ExportPanel = ({ articleId }) => {
       URL.revokeObjectURL(url);
       toast.success('PDF pobrany');
     } catch (e) {
-      toast.error('B\u0142\u0105d pobierania PDF');
+      toast.error('Błąd pobierania PDF');
     } finally {
       setLoadingPdf(false);
     }

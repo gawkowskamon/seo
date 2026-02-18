@@ -30,7 +30,7 @@ const FAQEditor = ({ faq, onChange }) => {
 
         {faq.length === 0 ? (
           <p style={{ fontSize: 13, color: 'hsl(215, 16%, 45%)', textAlign: 'center', padding: '16px 0' }}>
-            Brak pyta\u0144 FAQ. Kliknij "Dodaj" aby utworzy\u0107 nowe.
+            Brak pytań FAQ. Kliknij "Dodaj" aby utworzyć nowe.
           </p>
         ) : (
           faq.map((item, idx) => (
@@ -42,7 +42,7 @@ const FAQEditor = ({ faq, onChange }) => {
                   style={{ width: 28, height: 28 }}
                   onClick={() => removeFAQ(idx)}
                   data-testid="faq-remove-button"
-                  title="Usu\u0144"
+                  title="Usuń"
                 >
                   <Trash2 size={14} />
                 </button>
@@ -56,7 +56,7 @@ const FAQEditor = ({ faq, onChange }) => {
               <textarea
                 value={item.answer}
                 onChange={(e) => updateFAQ(idx, 'answer', e.target.value)}
-                placeholder="Wpisz odpowied\u017a..."
+                placeholder="Wpisz odpowiedź..."
                 data-testid={`faq-answer-${idx}`}
               />
             </div>

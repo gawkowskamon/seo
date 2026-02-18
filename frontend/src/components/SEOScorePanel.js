@@ -7,7 +7,7 @@ const SEOScorePanel = ({ seoScore, onRescore, scoring }) => {
     return (
       <div className="panel-section" style={{ textAlign: 'center', padding: '32px 20px' }}>
         <BarChart size={40} style={{ color: 'hsl(215, 16%, 75%)', margin: '0 auto 12px' }} />
-        <p style={{ fontSize: 14, color: 'hsl(215, 16%, 45%)' }}>Kliknij "Oblicz SEO" aby zobaczy\u0107 wynik</p>
+        <p style={{ fontSize: 14, color: 'hsl(215, 16%, 45%)' }}>Kliknij "Oblicz SEO" aby zobaczyć wynik</p>
         <Button variant="outline" size="sm" onClick={onRescore} disabled={scoring} className="gap-1 mt-2">
           {scoring ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
           Oblicz SEO
@@ -26,7 +26,7 @@ const SEOScorePanel = ({ seoScore, onRescore, scoring }) => {
   const getScoreLabel = (pct) => {
     if (pct >= 80) return 'Dobry';
     if (pct >= 50) return 'OK';
-    return 'S\u0142aby';
+    return 'Słaby';
   };
 
   const getScoreClass = (pct) => {
@@ -65,13 +65,13 @@ const SEOScorePanel = ({ seoScore, onRescore, scoring }) => {
           {getScoreLabel(percentage)}
         </span>
         <p style={{ fontSize: 12, color: 'hsl(215, 16%, 45%)', marginTop: 8 }}>
-          {seoScore.word_count || 0} s\u0142\u00f3w
+          {seoScore.word_count || 0} słów
         </p>
       </div>
 
       {/* Breakdown */}
       <div className="panel-section">
-        <div className="panel-section-title">Szczeg\u00f3\u0142y oceny</div>
+        <div className="panel-section-title">Szczegóły oceny</div>
         {seoScore.breakdown && Object.entries(seoScore.breakdown).map(([key, data]) => (
           <div key={key} style={{ marginBottom: 12 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13 }}>

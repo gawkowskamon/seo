@@ -9,19 +9,19 @@ import axios from 'axios';
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
 const CATEGORIES = [
-  { value: 'og\u00f3lne', label: 'Og\u00f3lne' },
+  { value: 'ogólne', label: 'Ogólne' },
   { value: 'vat', label: 'VAT' },
   { value: 'pit', label: 'PIT' },
   { value: 'cit', label: 'CIT' },
   { value: 'zus', label: 'ZUS' },
-  { value: 'kadry', label: 'Kadry i p\u0142ace' },
-  { value: 'ksi\u0119gowo\u015b\u0107', label: 'Ksi\u0119gowo\u015b\u0107' },
-  { value: 'dzia\u0142alno\u015b\u0107', label: 'Dzia\u0142alno\u015b\u0107 gospodarcza' },
+  { value: 'kadry', label: 'Kadry i płace' },
+  { value: 'księgowość', label: 'Księgowość' },
+  { value: 'działalność', label: 'Działalność gospodarcza' },
 ];
 
 const TopicSuggestions = () => {
   const navigate = useNavigate();
-  const [category, setCategory] = useState('og\u00f3lne');
+  const [category, setCategory] = useState('ogólne');
   const [context, setContext] = useState('');
   const [topics, setTopics] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -35,14 +35,13 @@ const TopicSuggestions = () => {
       });
       setTopics(response.data.topics || []);
     } catch (error) {
-      toast.error('B\u0142\u0105d podczas pobierania sugestii');
+      toast.error('Błąd podczas pobierania sugestii');
     } finally {
       setLoading(false);
     }
   };
 
   const handleUseTopic = (topic) => {
-    // Navigate to generator with pre-filled data
     navigate('/generator', { 
       state: { 
         topic: topic.title, 
@@ -55,15 +54,15 @@ const TopicSuggestions = () => {
   const getVolumeColor = (volume) => {
     switch(volume) {
       case 'wysoki': return 'high';
-      case '\u015bredni': return 'medium';
+      case 'średni': return 'medium';
       default: return 'low';
     }
   };
 
   const getDifficultyColor = (difficulty) => {
     switch(difficulty) {
-      case '\u0142atwa': return 'high';
-      case '\u015brednia': return 'medium';
+      case 'łatwa': return 'high';
+      case 'średnia': return 'medium';
       default: return 'low';
     }
   };
@@ -71,7 +70,7 @@ const TopicSuggestions = () => {
   return (
     <div className="page-container">
       <div className="page-header">
-        <h1>Sugestie temat\u00f3w</h1>
+        <h1>Sugestie tematów</h1>
       </div>
 
       {/* Filters */}
@@ -166,7 +165,7 @@ const TopicSuggestions = () => {
                 className="gap-1 w-full"
                 data-testid="topics-use-topic-button"
               >
-                U\u017cyj w generatorze <ArrowRight size={14} />
+                Użyj w generatorze <ArrowRight size={14} />
               </Button>
             </div>
           ))}
@@ -174,8 +173,8 @@ const TopicSuggestions = () => {
       ) : (
         <div className="empty-state">
           <Lightbulb size={64} className="empty-state-icon" />
-          <h3>Odkryj tematy artyku\u0142\u00f3w</h3>
-          <p>Wybierz kategori\u0119 i kliknij "Generuj sugestie" aby otrzyma\u0107 propozycje temat\u00f3w SEO z zakresu ksi\u0119gowo\u015bci.</p>
+          <h3>Odkryj tematy artykułów</h3>
+          <p>Wybierz kategorię i kliknij "Generuj sugestie" aby otrzymać propozycje tematów SEO z zakresu księgowości.</p>
         </div>
       )}
     </div>

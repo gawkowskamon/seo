@@ -21,8 +21,8 @@ const ArticleEditor = () => {
   const [scoring, setScoring] = useState(false);
   
   // Editor state
-  const [editorTab, setEditorTab] = useState('visual'); // visual, html
-  const [rightTab, setRightTab] = useState('seo'); // seo, export, faq
+  const [editorTab, setEditorTab] = useState('visual');
+  const [rightTab, setRightTab] = useState('seo');
   const [htmlContent, setHtmlContent] = useState('');
   
   // Meta editing
@@ -43,7 +43,7 @@ const ArticleEditor = () => {
       setMetaTitle(response.data.meta_title || '');
       setMetaDescription(response.data.meta_description || '');
     } catch (error) {
-      toast.error('B\u0142\u0105d podczas \u0142adowania artyku\u0142u');
+      toast.error('Błąd podczas ładowania artykułu');
       navigate('/');
     } finally {
       setLoading(false);
@@ -95,9 +95,9 @@ const ArticleEditor = () => {
       
       const response = await axios.put(`${BACKEND_URL}/api/articles/${articleId}`, updateData);
       setArticle(response.data);
-      toast.success('Artyku\u0142 zapisany');
+      toast.success('Artykuł zapisany');
     } catch (error) {
-      toast.error('B\u0142\u0105d podczas zapisywania');
+      toast.error('Błąd podczas zapisywania');
     } finally {
       setSaving(false);
     }
@@ -114,7 +114,7 @@ const ArticleEditor = () => {
       setArticle(prev => ({ ...prev, seo_score: response.data }));
       toast.success('Wynik SEO zaktualizowany');
     } catch (error) {
-      toast.error('B\u0142\u0105d podczas obliczania wyniku');
+      toast.error('Błąd podczas obliczania wyniku');
     } finally {
       setScoring(false);
     }
@@ -122,11 +122,6 @@ const ArticleEditor = () => {
 
   const updateFAQ = (newFaq) => {
     setArticle(prev => ({ ...prev, faq: newFaq }));
-  };
-
-  const updateSections = (newSections) => {
-    setArticle(prev => ({ ...prev, sections: newSections }));
-    setHtmlContent(buildHtmlFromArticle({ ...article, sections: newSections }));
   };
 
   if (loading) {
@@ -146,7 +141,7 @@ const ArticleEditor = () => {
       {/* Left Panel - TOC */}
       <div className="editor-left-panel" data-testid="article-toc-panel">
         <div className="panel-section">
-          <div className="panel-section-title">Spis tre\u015bci</div>
+          <div className="panel-section-title">Spis treści</div>
           <TOCPanel 
             sections={article.sections || []} 
             toc={article.toc || []}
@@ -154,7 +149,7 @@ const ArticleEditor = () => {
         </div>
         
         <div className="panel-section">
-          <div className="panel-section-title">Linkowanie wewn\u0119trzne</div>
+          <div className="panel-section-title">Linkowanie wewnętrzne</div>
           {(article.internal_link_suggestions || []).map((link, idx) => (
             <div key={idx} style={{ padding: '6px 0', fontSize: 13, borderBottom: '1px solid hsl(214, 18%, 93%)' }}>
               <div style={{ fontWeight: 500, color: 'hsl(209, 88%, 36%)' }}>{link.anchor_text}</div>
@@ -164,7 +159,7 @@ const ArticleEditor = () => {
         </div>
 
         <div className="panel-section">
-          <div className="panel-section-title">Źr\u00f3d\u0142a</div>
+          <div className="panel-section-title">Źródła</div>
           {(article.sources || []).map((src, idx) => (
             <div key={idx} style={{ padding: '6px 0', fontSize: 12, borderBottom: '1px solid hsl(214, 18%, 93%)' }}>
               <a href={src.url} target="_blank" rel="noopener noreferrer" style={{ color: 'hsl(209, 88%, 36%)', textDecoration: 'none' }}>
@@ -181,7 +176,7 @@ const ArticleEditor = () => {
         {/* Toolbar */}
         <div className="editor-toolbar">
           <div className="editor-toolbar-group">
-            <button className="btn-icon" onClick={() => navigate('/')} title="Powr\u00f3t">
+            <button className="btn-icon" onClick={() => navigate('/')} title="Powrót">
               <ChevronLeft size={18} />
             </button>
             <h2>{article.title}</h2>
@@ -214,11 +209,11 @@ const ArticleEditor = () => {
         <div style={{ padding: '12px 20px', background: 'white', borderBottom: '1px solid hsl(214, 18%, 88%)' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: 'hsl(215, 16%, 45%)', display: 'block', marginBottom: 4 }}>Meta tytu\u0142 <span style={{ color: 'hsl(215, 16%, 65%)' }}>({metaTitle.length}/60)</span></label>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'hsl(215, 16%, 45%)', display: 'block', marginBottom: 4 }}>Meta tytuł <span style={{ color: 'hsl(215, 16%, 65%)' }}>({metaTitle.length}/60)</span></label>
               <Input
                 value={metaTitle}
                 onChange={(e) => setMetaTitle(e.target.value)}
-                placeholder="Meta tytu\u0142 SEO"
+                placeholder="Meta tytuł SEO"
                 data-testid="meta-title-input"
                 style={{ fontSize: 13 }}
               />
