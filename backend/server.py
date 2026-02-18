@@ -1,4 +1,5 @@
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI, APIRouter, HTTPException
+from fastapi.responses import Response
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -6,10 +7,19 @@ import os
 import logging
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
-from typing import List
+from typing import List, Optional, Dict, Any
 import uuid
 from datetime import datetime, timezone
+import json
 
+from article_generator import generate_article, suggest_topics
+from seo_scorer import compute_seo_score
+from export_service import (
+    generate_facebook_post,
+    generate_google_business_post,
+    generate_full_html,
+    generate_pdf_bytes
+)
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -17,54 +27,272 @@ load_dotenv(ROOT_DIR / '.env')
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+db = client[os.environ.get('DB_NAME', 'seo_article_writer')]
 
-# Create the main app without a prefix
+# Create the main app
 app = FastAPI()
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
 
-# Define Models
-class StatusCheck(BaseModel):
-    model_config = ConfigDict(extra="ignore")  # Ignore MongoDB's _id field
-    
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    client_name: str
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+# ============ Pydantic Models ============
 
-class StatusCheckCreate(BaseModel):
-    client_name: str
+class ArticleGenerateRequest(BaseModel):
+    topic: str
+    primary_keyword: str
+    secondary_keywords: List[str] = []
+    target_length: int = 1500
+    tone: str = "profesjonalny"
 
-# Add your routes to the router instead of directly to app
+class ArticleUpdateRequest(BaseModel):
+    title: Optional[str] = None
+    slug: Optional[str] = None
+    meta_title: Optional[str] = None
+    meta_description: Optional[str] = None
+    sections: Optional[List[Dict[str, Any]]] = None
+    faq: Optional[List[Dict[str, str]]] = None
+    toc: Optional[List[Dict[str, str]]] = None
+    internal_link_suggestions: Optional[List[Dict[str, str]]] = None
+    sources: Optional[List[Dict[str, str]]] = None
+    html_content: Optional[str] = None
+
+class ScoreRequest(BaseModel):
+    primary_keyword: str
+    secondary_keywords: List[str] = []
+
+class TopicSuggestRequest(BaseModel):
+    category: str = "ogólne"
+    context: str = "aktualne tematy podatkowe i księgowe w Polsce"
+
+class ExportRequest(BaseModel):
+    format: str  # "facebook", "google_business", "html", "pdf"
+
+
+# ============ Helper Functions ============
+
+def serialize_doc(doc: dict) -> dict:
+    """Serialize MongoDB document for JSON response."""
+    if doc is None:
+        return None
+    if "_id" in doc:
+        del doc["_id"]
+    # Convert datetime objects
+    for key, value in doc.items():
+        if isinstance(value, datetime):
+            doc[key] = value.isoformat()
+    return doc
+
+
+# ============ API Routes ============
+
 @api_router.get("/")
 async def root():
-    return {"message": "Hello World"}
+    return {"message": "SEO Article Writer API", "status": "running"}
 
-@api_router.post("/status", response_model=StatusCheck)
-async def create_status_check(input: StatusCheckCreate):
-    status_dict = input.model_dump()
-    status_obj = StatusCheck(**status_dict)
-    
-    # Convert to dict and serialize datetime to ISO string for MongoDB
-    doc = status_obj.model_dump()
-    doc['timestamp'] = doc['timestamp'].isoformat()
-    
-    _ = await db.status_checks.insert_one(doc)
-    return status_obj
 
-@api_router.get("/status", response_model=List[StatusCheck])
-async def get_status_checks():
-    # Exclude MongoDB's _id field from the query results
-    status_checks = await db.status_checks.find({}, {"_id": 0}).to_list(1000)
+@api_router.get("/health")
+async def health():
+    return {"status": "healthy"}
+
+
+# --- Article Generation ---
+
+@api_router.post("/articles/generate")
+async def generate_article_endpoint(request: ArticleGenerateRequest):
+    """Generate a new SEO-optimized article."""
+    try:
+        article_data = await generate_article(
+            topic=request.topic,
+            primary_keyword=request.primary_keyword,
+            secondary_keywords=request.secondary_keywords,
+            target_length=request.target_length,
+            tone=request.tone
+        )
+        
+        # Compute initial SEO score
+        seo_score = compute_seo_score(
+            article_data, 
+            request.primary_keyword, 
+            request.secondary_keywords
+        )
+        
+        # Create article document
+        article_id = str(uuid.uuid4())
+        article_doc = {
+            "id": article_id,
+            "topic": request.topic,
+            "primary_keyword": request.primary_keyword,
+            "secondary_keywords": request.secondary_keywords,
+            "target_length": request.target_length,
+            "tone": request.tone,
+            "title": article_data.get("title", ""),
+            "slug": article_data.get("slug", ""),
+            "meta_title": article_data.get("meta_title", ""),
+            "meta_description": article_data.get("meta_description", ""),
+            "toc": article_data.get("toc", []),
+            "sections": article_data.get("sections", []),
+            "faq": article_data.get("faq", []),
+            "internal_link_suggestions": article_data.get("internal_link_suggestions", []),
+            "sources": article_data.get("sources", []),
+            "seo_score": seo_score,
+            "status": "draft",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        # Save to MongoDB
+        await db.articles.insert_one(article_doc)
+        
+        return serialize_doc(article_doc)
+        
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=500, detail=f"AI returned invalid JSON: {str(e)}")
+    except Exception as e:
+        logging.error(f"Article generation error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- Article CRUD ---
+
+@api_router.get("/articles")
+async def list_articles():
+    """List all articles."""
+    articles = await db.articles.find({}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    return [{**serialize_doc(a)} for a in articles]
+
+
+@api_router.get("/articles/{article_id}")
+async def get_article(article_id: str):
+    """Get a single article by ID."""
+    article = await db.articles.find_one({"id": article_id}, {"_id": 0})
+    if not article:
+        raise HTTPException(status_code=404, detail="Article not found")
+    return serialize_doc(article)
+
+
+@api_router.put("/articles/{article_id}")
+async def update_article(article_id: str, request: ArticleUpdateRequest):
+    """Update an existing article."""
+    update_data = {k: v for k, v in request.model_dump().items() if v is not None}
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
     
-    # Convert ISO string timestamps back to datetime objects
-    for check in status_checks:
-        if isinstance(check['timestamp'], str):
-            check['timestamp'] = datetime.fromisoformat(check['timestamp'])
+    result = await db.articles.update_one(
+        {"id": article_id},
+        {"$set": update_data}
+    )
     
-    return status_checks
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Article not found")
+    
+    article = await db.articles.find_one({"id": article_id}, {"_id": 0})
+    return serialize_doc(article)
+
+
+@api_router.delete("/articles/{article_id}")
+async def delete_article(article_id: str):
+    """Delete an article."""
+    result = await db.articles.delete_one({"id": article_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Article not found")
+    return {"message": "Article deleted", "id": article_id}
+
+
+# --- SEO Scoring ---
+
+@api_router.post("/articles/{article_id}/score")
+async def score_article(article_id: str, request: ScoreRequest):
+    """Compute SEO score for an article."""
+    article = await db.articles.find_one({"id": article_id}, {"_id": 0})
+    if not article:
+        raise HTTPException(status_code=404, detail="Article not found")
+    
+    score = compute_seo_score(article, request.primary_keyword, request.secondary_keywords)
+    
+    # Update score in DB
+    await db.articles.update_one(
+        {"id": article_id},
+        {"$set": {"seo_score": score, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    return score
+
+
+# --- Export ---
+
+@api_router.post("/articles/{article_id}/export")
+async def export_article(article_id: str, request: ExportRequest):
+    """Export article in various formats."""
+    article = await db.articles.find_one({"id": article_id}, {"_id": 0})
+    if not article:
+        raise HTTPException(status_code=404, detail="Article not found")
+    
+    if request.format == "facebook":
+        content = generate_facebook_post(article)
+        return {"format": "facebook", "content": content}
+    
+    elif request.format == "google_business":
+        content = generate_google_business_post(article)
+        return {"format": "google_business", "content": content}
+    
+    elif request.format == "html":
+        html = generate_full_html(article)
+        return {"format": "html", "content": html}
+    
+    elif request.format == "pdf":
+        pdf_bytes = generate_pdf_bytes(article)
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename={article.get('slug', 'article')}.pdf"}
+        )
+    
+    else:
+        raise HTTPException(status_code=400, detail=f"Unknown format: {request.format}")
+
+
+# --- Topic Suggestions ---
+
+@api_router.post("/topics/suggest")
+async def suggest_topics_endpoint(request: TopicSuggestRequest):
+    """Get AI-powered topic suggestions."""
+    try:
+        result = await suggest_topics(
+            category=request.category,
+            context=request.context
+        )
+        return result
+    except Exception as e:
+        logging.error(f"Topic suggestion error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- Dashboard Stats ---
+
+@api_router.get("/stats")
+async def get_stats():
+    """Get dashboard statistics."""
+    total_articles = await db.articles.count_documents({})
+    
+    # Average SEO score
+    pipeline = [
+        {"$match": {"seo_score.percentage": {"$exists": True}}},
+        {"$group": {"_id": None, "avg_score": {"$avg": "$seo_score.percentage"}}}
+    ]
+    avg_result = await db.articles.aggregate(pipeline).to_list(1)
+    avg_score = round(avg_result[0]["avg_score"]) if avg_result else 0
+    
+    # Articles needing improvement (score < 70)
+    needs_improvement = await db.articles.count_documents(
+        {"seo_score.percentage": {"$lt": 70}}
+    )
+    
+    return {
+        "total_articles": total_articles,
+        "avg_seo_score": avg_score,
+        "needs_improvement": needs_improvement
+    }
+
 
 # Include the router in the main app
 app.include_router(api_router)
