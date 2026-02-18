@@ -7,7 +7,7 @@ const Sidebar = () => {
   
   const navItems = [
     { path: '/', label: 'Pulpit', icon: LayoutDashboard, testId: 'sidebar-nav-dashboard' },
-    { path: '/generator', label: 'Nowy artyku\u0142', icon: PenTool, testId: 'sidebar-nav-generator' },
+    { path: '/generator', label: 'Nowy artykuł', icon: PenTool, testId: 'sidebar-nav-generator' },
     { path: '/topics', label: 'Tematy', icon: Lightbulb, testId: 'sidebar-nav-topics' },
   ];
 
@@ -19,8 +19,8 @@ const Sidebar = () => {
             <FileText size={20} />
           </div>
           <div>
-            <h1>Ksi\u0119gowySEO</h1>
-            <span>Generator artyku\u0142\u00f3w</span>
+            <h1>KsięgowySEO</h1>
+            <span>Generator artykułów</span>
           </div>
         </div>
       </div>

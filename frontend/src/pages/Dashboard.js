@@ -30,7 +30,7 @@ const Dashboard = () => {
       setStats(statsRes.data);
     } catch (error) {
       console.error('Error fetching data:', error);
-      toast.error('B\u0142\u0105d podczas \u0142adowania danych');
+      toast.error('Błąd podczas ładowania danych');
     } finally {
       setLoading(false);
     }
@@ -39,13 +39,13 @@ const Dashboard = () => {
   const handleDelete = async (e, articleId) => {
     e.stopPropagation();
     e.preventDefault();
-    if (!window.confirm('Czy na pewno chcesz usun\u0105\u0107 ten artyku\u0142?')) return;
+    if (!window.confirm('Czy na pewno chcesz usunąć ten artykuł?')) return;
     try {
       await axios.delete(`${BACKEND_URL}/api/articles/${articleId}`);
-      toast.success('Artyku\u0142 usuni\u0119ty');
+      toast.success('Artykuł usunięty');
       fetchData();
     } catch (error) {
-      toast.error('B\u0142\u0105d podczas usuwania');
+      toast.error('Błąd podczas usuwania');
     }
   };
 
@@ -63,7 +63,7 @@ const Dashboard = () => {
   const getSEOLabel = (score) => {
     if (score >= 80) return 'Dobry';
     if (score >= 50) return 'OK';
-    return 'S\u0142aby';
+    return 'Słaby';
   };
 
   const formatDate = (dateStr) => {
@@ -82,20 +82,20 @@ const Dashboard = () => {
           className="gap-2"
         >
           <Plus size={18} />
-          Nowy artyku\u0142
+          Nowy artykuł
         </Button>
       </div>
 
       {/* Stats */}
       <div className="stats-grid">
         <div className="stat-card">
-          <div className="stat-card-label">Wygenerowane artyku\u0142y</div>
+          <div className="stat-card-label">Wygenerowane artykuły</div>
           <div className="stat-card-value" data-testid="stat-total-articles">
             {loading ? '...' : stats.total_articles}
           </div>
         </div>
         <div className="stat-card">
-          <div className="stat-card-label">\u015ar. wynik SEO</div>
+          <div className="stat-card-label">Śr. wynik SEO</div>
           <div className="stat-card-value score" data-testid="stat-avg-seo">
             {loading ? '...' : `${stats.avg_seo_score}%`}
           </div>
@@ -113,7 +113,7 @@ const Dashboard = () => {
         <div style={{ position: 'relative', maxWidth: 400 }}>
           <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'hsl(215, 16%, 45%)' }} />
           <Input
-            placeholder="Szukaj artyku\u0142\u00f3w..."
+            placeholder="Szukaj artykułów..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{ paddingLeft: 36 }}
@@ -132,11 +132,11 @@ const Dashboard = () => {
       ) : filteredArticles.length === 0 ? (
         <div className="empty-state">
           <FileText size={64} className="empty-state-icon" />
-          <h3>Brak artyku\u0142\u00f3w</h3>
-          <p>Wygeneruj pierwszy artyku\u0142 SEO dla swojego bloga ksi\u0119gowego.</p>
+          <h3>Brak artykułów</h3>
+          <p>Wygeneruj pierwszy artykuł SEO dla swojego bloga księgowego.</p>
           <Button onClick={() => navigate('/generator')} className="gap-2">
             <Plus size={18} />
-            Wygeneruj artyku\u0142
+            Wygeneruj artykuł
           </Button>
         </div>
       ) : (
@@ -144,8 +144,8 @@ const Dashboard = () => {
           <table>
             <thead>
               <tr>
-                <th>Tytu\u0142</th>
-                <th>S\u0142owo kluczowe</th>
+                <th>Tytuł</th>
+                <th>Słowo kluczowe</th>
                 <th>Wynik SEO</th>
                 <th>Data</th>
                 <th>Akcje</th>
@@ -183,7 +183,7 @@ const Dashboard = () => {
                         className="btn-icon" 
                         onClick={(e) => handleDelete(e, article.id)}
                         data-testid={`delete-article-${article.id}`}
-                        title="Usu\u0144"
+                        title="Usuń"
                       >
                         <Trash2 size={16} />
                       </button>

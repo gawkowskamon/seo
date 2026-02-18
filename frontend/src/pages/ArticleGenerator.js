@@ -11,22 +11,22 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const TONES = [
   { value: 'profesjonalny', label: 'Profesjonalny' },
   { value: 'ekspercki', label: 'Ekspercki' },
-  { value: 'przyst\u0119pny', label: 'Przyst\u0119pny' },
+  { value: 'przystępny', label: 'Przystępny' },
   { value: 'formalny', label: 'Formalny' },
 ];
 
 const LENGTHS = [
-  { value: 1000, label: '1000 s\u0142\u00f3w' },
-  { value: 1500, label: '1500 s\u0142\u00f3w' },
-  { value: 2000, label: '2000 s\u0142\u00f3w' },
-  { value: 2500, label: '2500 s\u0142\u00f3w' },
-  { value: 3000, label: '3000 s\u0142\u00f3w' },
+  { value: 1000, label: '1000 słów' },
+  { value: 1500, label: '1500 słów' },
+  { value: 2000, label: '2000 słów' },
+  { value: 2500, label: '2500 słów' },
+  { value: 3000, label: '3000 słów' },
 ];
 
 const STAGES = [
-  { key: 'analyze', label: 'Analiza tematu i s\u0142\u00f3w kluczowych', icon: Search },
-  { key: 'outline', label: 'Tworzenie struktury artyku\u0142u', icon: BookOpen },
-  { key: 'write', label: 'Pisanie tre\u015bci i FAQ', icon: PenLine },
+  { key: 'analyze', label: 'Analiza tematu i słów kluczowych', icon: Search },
+  { key: 'outline', label: 'Tworzenie struktury artykułu', icon: BookOpen },
+  { key: 'write', label: 'Pisanie treści i FAQ', icon: PenLine },
   { key: 'seo', label: 'Optymalizacja SEO i korekty', icon: FileCheck },
   { key: 'done', label: 'Finalizacja i ocena', icon: CheckCircle2 },
 ];
@@ -73,11 +73,11 @@ const ArticleGenerator = () => {
 
   const handleGenerate = async () => {
     if (!topic.trim()) {
-      toast.error('Podaj temat artyku\u0142u');
+      toast.error('Podaj temat artykułu');
       return;
     }
     if (!primaryKeyword.trim()) {
-      toast.error('Podaj g\u0142\u00f3wne s\u0142owo kluczowe');
+      toast.error('Podaj główne słowo kluczowe');
       return;
     }
 
@@ -105,13 +105,13 @@ const ArticleGenerator = () => {
       setCurrentStage(4);
 
       setTimeout(() => {
-        toast.success('Artyku\u0142 wygenerowany pomy\u015blnie!');
+        toast.success('Artykuł wygenerowany pomyślnie!');
         navigate(`/editor/${response.data.id}`);
       }, 1000);
     } catch (error) {
       clearInterval(stageInterval);
       setIsGenerating(false);
-      const msg = error.response?.data?.detail || 'B\u0142\u0105d podczas generowania artyku\u0142u';
+      const msg = error.response?.data?.detail || 'Błąd podczas generowania artykułu';
       toast.error(msg);
     }
   };
@@ -121,8 +121,8 @@ const ArticleGenerator = () => {
       <div className="generation-overlay" data-testid="generation-progress">
         <div className="generation-card">
           <Wand2 size={40} style={{ color: 'hsl(209, 88%, 36%)', marginBottom: 16 }} />
-          <h2>Generowanie artyku\u0142u</h2>
-          <p style={{ color: 'hsl(215, 16%, 45%)', marginBottom: 24 }}>To mo\u017ce potrwa\u0107 15-30 sekund...</p>
+          <h2>Generowanie artykułu</h2>
+          <p style={{ color: 'hsl(215, 16%, 45%)', marginBottom: 24 }}>To może potrwać 15-30 sekund...</p>
           
           <div className="generation-stages">
             {STAGES.map((stage, idx) => (
@@ -145,7 +145,7 @@ const ArticleGenerator = () => {
           
           <div style={{ background: 'hsl(210, 22%, 96%)', borderRadius: 8, padding: 16, marginTop: 16 }}>
             <p style={{ fontSize: 13, color: 'hsl(215, 16%, 45%)', margin: 0 }}>
-              Wskaz\u00f3wka: Artyku\u0142y z FAQ i spisem tre\u015bci osi\u0105gaj\u0105 \u015brednio 30% wi\u0119cej ruchu organicznego.
+              Wskazówka: Artykuły z FAQ i spisem treści osiągają średnio 30% więcej ruchu organicznego.
             </p>
           </div>
         </div>
@@ -156,37 +156,37 @@ const ArticleGenerator = () => {
   return (
     <div className="page-container">
       <div className="page-header">
-        <h1>Nowy artyku\u0142 SEO</h1>
+        <h1>Nowy artykuł SEO</h1>
       </div>
 
       <div className="generator-card">
         {/* Topic */}
         <div className="form-group">
-          <label className="form-label">Temat artyku\u0142u</label>
+          <label className="form-label">Temat artykułu</label>
           <Input
-            placeholder="np. Jak rozlicza\u0107 VAT w jednoosobowej dzia\u0142alno\u015bci gospodarczej"
+            placeholder="np. Jak rozliczać VAT w jednoosobowej działalności gospodarczej"
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
             data-testid="generator-topic-input"
           />
-          <div className="form-hint">Opisz dok\u0142adnie temat, kt\u00f3ry chcesz poruszy\u0107 w artykule</div>
+          <div className="form-hint">Opisz dokładnie temat, który chcesz poruszyć w artykule</div>
         </div>
 
         {/* Primary keyword */}
         <div className="form-group">
-          <label className="form-label">G\u0142\u00f3wne s\u0142owo kluczowe</label>
+          <label className="form-label">Główne słowo kluczowe</label>
           <Input
             placeholder="np. rozliczanie VAT"
             value={primaryKeyword}
             onChange={(e) => setPrimaryKeyword(e.target.value)}
             data-testid="generator-keywords-input"
           />
-          <div className="form-hint">Fraza, na kt\u00f3r\u0105 artyku\u0142 ma si\u0119 pozycjonowa\u0107</div>
+          <div className="form-hint">Fraza, na którą artykuł ma się pozycjonować</div>
         </div>
 
         {/* Secondary keywords */}
         <div className="form-group">
-          <label className="form-label">S\u0142owa kluczowe dodatkowe</label>
+          <label className="form-label">Słowa kluczowe dodatkowe</label>
           <div className="keywords-input-wrapper">
             {secondaryKeywords.map(kw => (
               <span key={kw} className="keyword-tag">
@@ -198,20 +198,20 @@ const ArticleGenerator = () => {
             ))}
             <input
               className="keywords-input"
-              placeholder="Wpisz i naci\u015bnij Enter..."
+              placeholder="Wpisz i naciśnij Enter..."
               value={keywordInput}
               onChange={(e) => setKeywordInput(e.target.value)}
               onKeyDown={handleKeyDown}
               data-testid="generator-secondary-keywords-input"
             />
           </div>
-          <div className="form-hint">Naci\u015bnij Enter aby doda\u0107 s\u0142owo kluczowe</div>
+          <div className="form-hint">Naciśnij Enter aby dodać słowo kluczowe</div>
         </div>
 
         {/* Tone & Length */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
           <div className="form-group">
-            <label className="form-label">Ton artyku\u0142u</label>
+            <label className="form-label">Ton artykułu</label>
             <select
               value={tone}
               onChange={(e) => setTone(e.target.value)}
@@ -232,7 +232,7 @@ const ArticleGenerator = () => {
             </select>
           </div>
           <div className="form-group">
-            <label className="form-label">D\u0142ugo\u015b\u0107 artyku\u0142u</label>
+            <label className="form-label">Długość artykułu</label>
             <select
               value={targetLength}
               onChange={(e) => setTargetLength(Number(e.target.value))}
@@ -263,7 +263,7 @@ const ArticleGenerator = () => {
           data-testid="generator-generate-article-button"
         >
           <Wand2 size={20} />
-          Wygeneruj artyku\u0142
+          Wygeneruj artykuł
         </Button>
       </div>
     </div>
