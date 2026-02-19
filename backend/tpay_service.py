@@ -6,8 +6,6 @@ Handles subscription payments via tpay.com API
 import httpx
 import os
 import logging
-import hashlib
-import json
 from datetime import datetime, timezone, timedelta
 
 logger = logging.getLogger(__name__)
@@ -18,7 +16,7 @@ SUBSCRIPTION_PLANS = {
         "id": "monthly",
         "name": "Miesięczny",
         "price_netto": 59.99,
-        "price_brutto": 73.79,  # 59.99 * 1.23 VAT
+        "price_brutto": 73.79,
         "vat_rate": 0.23,
         "period_months": 1,
         "discount_pct": 0,
@@ -36,7 +34,7 @@ SUBSCRIPTION_PLANS = {
     "semiannual": {
         "id": "semiannual",
         "name": "Półroczny",
-        "price_netto": round(59.99 * 6 * 0.93, 2),  # 7% discount
+        "price_netto": round(59.99 * 6 * 0.93, 2),
         "price_brutto": round(59.99 * 6 * 0.93 * 1.23, 2),
         "vat_rate": 0.23,
         "period_months": 6,
@@ -52,7 +50,7 @@ SUBSCRIPTION_PLANS = {
     "annual": {
         "id": "annual",
         "name": "Roczny",
-        "price_netto": round(59.99 * 12 * 0.85, 2),  # 15% discount
+        "price_netto": round(59.99 * 12 * 0.85, 2),
         "price_brutto": round(59.99 * 12 * 0.85 * 1.23, 2),
         "vat_rate": 0.23,
         "period_months": 12,
@@ -82,49 +80,49 @@ def get_plan(plan_id: str):
 async def create_tpay_transaction(plan_id: str, user: dict, callback_url: str, return_url: str) -> dict:
     """
     Create a tpay transaction for subscription purchase.
-    
-    Args:
-        plan_id: ID of the subscription plan
-        user: User dict from DB
-        callback_url: URL for tpay to send payment notifications
-        return_url: URL to redirect user after payment
-    
-    Returns:
-        dict with transaction_url, transaction_id, status
+    Uses TPay Open API with OAuth2 authentication.
     """
     plan = get_plan(plan_id)
     if not plan:
         return {"success": False, "error": "Nieznany plan subskrypcji"}
-    
+
     client_id = os.environ.get("TPAY_CLIENT_ID", "")
     client_secret = os.environ.get("TPAY_CLIENT_SECRET", "")
-    
+
     if not client_id or not client_secret:
-        # Return a simulated response when tpay is not configured
         logger.warning("tpay credentials not configured, returning demo response")
         return {
             "success": False,
             "error": "tpay nie jest jeszcze skonfigurowany. Skontaktuj sie z administratorem.",
             "demo": True
         }
-    
+
     try:
-        # Step 1: Get OAuth token
-        token_url = "https://api.tpay.com/oauth/auth"
-        token_data = {
-            "client_id": client_id,
-            "client_secret": client_secret,
-            "scope": "read write"
-        }
-        
         async with httpx.AsyncClient(timeout=30.0) as client:
-            token_res = await client.post(token_url, json=token_data)
+            # Step 1: Get OAuth token (form-encoded, NOT JSON)
+            token_url = "https://api.tpay.com/oauth/auth"
+            token_data = {
+                "client_id": client_id,
+                "client_secret": client_secret,
+            }
+
+            token_res = await client.post(
+                token_url,
+                data=token_data,
+                headers={"Content-Type": "application/x-www-form-urlencoded"}
+            )
+
+            logger.info(f"tpay auth response: status={token_res.status_code}")
+
             if token_res.status_code != 200:
-                logger.error(f"tpay auth failed: {token_res.status_code}")
+                logger.error(f"tpay auth failed: {token_res.status_code} - {token_res.text}")
                 return {"success": False, "error": "Błąd autoryzacji tpay"}
-            
+
             access_token = token_res.json().get("access_token")
-            
+            if not access_token:
+                logger.error(f"tpay auth: no access_token in response: {token_res.text}")
+                return {"success": False, "error": "Błąd autoryzacji tpay - brak tokenu"}
+
             # Step 2: Create transaction
             tx_url = "https://api.tpay.com/transactions"
             tx_data = {
@@ -133,7 +131,7 @@ async def create_tpay_transaction(plan_id: str, user: dict, callback_url: str, r
                 "hiddenDescription": f"plan:{plan_id}|user:{user['id']}",
                 "payer": {
                     "email": user["email"],
-                    "name": user.get("name", "")
+                    "name": user.get("full_name", user.get("name", ""))
                 },
                 "callbacks": {
                     "payerUrls": {
@@ -143,42 +141,44 @@ async def create_tpay_transaction(plan_id: str, user: dict, callback_url: str, r
                     "notification": {
                         "url": callback_url
                     }
-                },
-                "pay": {
-                    "groupId": 150  # Online transfer group
                 }
             }
-            
+
             headers = {
                 "Authorization": f"Bearer {access_token}",
                 "Content-Type": "application/json"
             }
-            
+
             tx_res = await client.post(tx_url, json=tx_data, headers=headers)
-            
+
+            logger.info(f"tpay transaction response: status={tx_res.status_code}")
+
             if tx_res.status_code in (200, 201):
-                tx_data = tx_res.json()
+                tx_response = tx_res.json()
+                logger.info(f"tpay transaction created: {tx_response.get('transactionId')}")
                 return {
                     "success": True,
-                    "transaction_id": tx_data.get("transactionId"),
-                    "transaction_url": tx_data.get("transactionPaymentUrl"),
+                    "transaction_id": tx_response.get("transactionId"),
+                    "transaction_url": tx_response.get("transactionPaymentUrl") or tx_response.get("paymentUrl"),
                     "status": "pending"
                 }
             else:
                 logger.error(f"tpay transaction failed: {tx_res.status_code} - {tx_res.text}")
-                return {"success": False, "error": "Błąd tworzenia transakcji"}
-    
+                return {"success": False, "error": f"Błąd tworzenia transakcji tpay ({tx_res.status_code})"}
+
+    except httpx.TimeoutException:
+        logger.error("tpay request timed out")
+        return {"success": False, "error": "Przekroczono czas oczekiwania na odpowiedź tpay"}
+    except httpx.ConnectError as e:
+        logger.error(f"tpay connection error: {e}")
+        return {"success": False, "error": "Nie można połączyć się z serwerem tpay"}
     except Exception as e:
         logger.error(f"tpay error: {e}")
         return {"success": False, "error": str(e)}
 
 
 def verify_tpay_notification(data: dict, notification_secret: str) -> bool:
-    """
-    Verify tpay notification signature.
-    """
-    # tpay sends JWS signed notifications in newer API
-    # For basic verification, check if transaction ID exists
+    """Verify tpay notification signature."""
     return bool(data.get("tr_id") or data.get("transactionId"))
 
 
@@ -186,12 +186,11 @@ def calculate_subscription_end(plan_id: str, start_date: datetime = None) -> dat
     """Calculate subscription end date based on plan."""
     if start_date is None:
         start_date = datetime.now(timezone.utc)
-    
+
     plan = get_plan(plan_id)
     if not plan:
         return start_date
-    
+
     months = plan["period_months"]
-    # Approximate: add months
     end_date = start_date + timedelta(days=months * 30)
     return end_date
