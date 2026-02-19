@@ -1,13 +1,13 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, PenTool, Lightbulb, FileText } from 'lucide-react';
+import { LayoutDashboard, PenTool, Lightbulb } from 'lucide-react';
 
 const Sidebar = () => {
   const location = useLocation();
   
   const navItems = [
     { path: '/', label: 'Pulpit', icon: LayoutDashboard, testId: 'sidebar-nav-dashboard' },
-    { path: '/generator', label: 'Nowy artykuł', icon: PenTool, testId: 'sidebar-nav-generator' },
+    { path: '/generator', label: 'Nowy artykul', icon: PenTool, testId: 'sidebar-nav-generator' },
     { path: '/topics', label: 'Tematy', icon: Lightbulb, testId: 'sidebar-nav-topics' },
   ];
 
@@ -15,12 +15,10 @@ const Sidebar = () => {
     <aside className="sidebar">
       <div className="sidebar-header">
         <div className="sidebar-logo">
-          <div className="sidebar-logo-icon">
-            <FileText size={20} />
-          </div>
+          <div className="sidebar-logo-mark">K</div>
           <div>
-            <h1>KsięgowySEO</h1>
-            <span>Generator artykułów</span>
+            <h1 className="sidebar-brand-name">Kurdynowski<span className="sidebar-brand-dot">.</span></h1>
+            <span className="sidebar-brand-desc">Accounting & Tax Solutions</span>
           </div>
         </div>
       </div>
