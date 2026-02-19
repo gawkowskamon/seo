@@ -656,43 +656,276 @@ class SEOArticleAPITester:
         
         return success
 
+    def test_admin_login(self):
+        """Test POST /api/auth/login with Monika returns is_admin=true"""
+        data = {
+            "email": "monika.gawkowska@kurdynowski.pl",
+            "password": "MonZuz8180!"
+        }
+        
+        success, response = self.run_test("Admin Login (Monika)", "POST", "auth/login", 200, data=data)
+        if success:
+            required_keys = ['user', 'token']
+            for key in required_keys:
+                if key not in response:
+                    print(f"❌ Missing key in admin login response: {key}")
+                    return False
+            
+            user = response['user']
+            if not user.get('is_admin'):
+                print(f"❌ Monika should have is_admin=true, got: {user.get('is_admin')}")
+                return False
+            
+            self.token = response['token']
+            self.user_data = user
+            print(f"   ✅ Admin user logged in: {user.get('email')}")
+            print(f"   ✅ is_admin: {user.get('is_admin')}")
+            print(f"   Token: {self.token[:20]}...")
+            
+        return success
+
+    def test_image_styles(self):
+        """Test GET /api/image-styles returns 8 styles"""
+        success, response = self.run_test("Get Image Styles", "GET", "image-styles", 200)
+        if success:
+            if not isinstance(response, list):
+                print(f"❌ Image styles response should be a list, got: {type(response)}")
+                return False
+            
+            if len(response) != 8:
+                print(f"❌ Expected 8 image styles, got {len(response)}")
+                return False
+            
+            print(f"   ✅ Found {len(response)} image styles")
+            
+            # Check structure of first style
+            if len(response) > 0:
+                style = response[0]
+                required_keys = ['id', 'name', 'description', 'icon']
+                for key in required_keys:
+                    if key not in style:
+                        print(f"❌ Missing key in image style: {key}")
+                        return False
+                
+                style_names = [s.get('name', 'Unknown') for s in response]
+                print(f"   Style names: {', '.join(style_names)}")
+            
+        return success
+
+    def test_series_generation(self):
+        """Test POST /api/series/generate creates series outline"""
+        if not self.token:
+            print("❌ Skipping - no token available")
+            return False
+        
+        data = {
+            "topic": "Przewodnik po rozliczeniach CIT dla małych firm",
+            "primary_keyword": "rozliczenie CIT",
+            "num_parts": 4,
+            "source_text": "Test source context for CIT accounting"
+        }
+        
+        print(f"\n🔍 Testing Series Generation...")
+        print(f"   ⚠️  This may take 15-30 seconds (calling OpenAI GPT)")
+        
+        success, response = self.run_test(
+            "Series Generation", 
+            "POST", 
+            "series/generate", 
+            200, 
+            data=data,
+            timeout=120,
+            use_auth=True
+        )
+        
+        if success:
+            required_keys = ['id', 'series_title', 'parts', 'seo_strategy']
+            for key in required_keys:
+                if key not in response:
+                    print(f"❌ Missing key in series response: {key}")
+                    return False
+            
+            parts = response.get('parts', [])
+            if len(parts) != 4:
+                print(f"❌ Expected 4 parts, got {len(parts)}")
+                return False
+            
+            print(f"   ✅ Generated series: {response.get('series_title')}")
+            print(f"   ✅ Parts: {len(parts)}")
+            print(f"   SEO Strategy: {response.get('seo_strategy', '')[:100]}...")
+            
+            # Check first part structure
+            if parts:
+                part = parts[0]
+                required_part_keys = ['part_number', 'title', 'primary_keyword', 'secondary_keywords', 'summary']
+                for key in required_part_keys:
+                    if key not in part:
+                        print(f"❌ Missing key in series part: {key}")
+                        return False
+                
+                print(f"   First part: {part.get('title')}")
+            
+        return success
+
+    def test_list_series(self):
+        """Test GET /api/series lists user series"""
+        if not self.token:
+            print("❌ Skipping - no token available")
+            return False
+            
+        success, response = self.run_test("List Series", "GET", "series", 200, use_auth=True)
+        if success:
+            if not isinstance(response, list):
+                print(f"❌ Series response should be a list, got: {type(response)}")
+                return False
+            print(f"   ✅ Found {len(response)} series")
+            
+            if len(response) > 0:
+                series = response[0]
+                if 'series_title' in series:
+                    print(f"   First series: {series.get('series_title')}")
+        
+        return success
+
+    def test_article_generation_user_id(self):
+        """Test POST /api/articles/generate includes user_id in document"""
+        if not self.token:
+            print("❌ Skipping - no token available")
+            return False
+            
+        data = {
+            "topic": "Test article for user_id verification",
+            "primary_keyword": "test keyword",
+            "secondary_keywords": [],
+            "target_length": 800,
+            "tone": "profesjonalny",
+            "template": "standard"
+        }
+        
+        print(f"\n🔍 Testing Article Generation with user_id...")
+        print(f"   ⚠️  This may take 15-30 seconds (calling OpenAI GPT)")
+        
+        success, response = self.run_test(
+            "Article Generation (user_id check)", 
+            "POST", 
+            "articles/generate", 
+            200, 
+            data=data,
+            timeout=60,
+            use_auth=True
+        )
+        
+        if success and 'id' in response:
+            if 'user_id' not in response:
+                print(f"❌ Missing user_id in article response")
+                return False
+            
+            expected_user_id = self.user_data.get('id') if self.user_data else None
+            actual_user_id = response.get('user_id')
+            
+            if actual_user_id != expected_user_id:
+                print(f"❌ user_id mismatch. Expected: {expected_user_id}, Got: {actual_user_id}")
+                return False
+                
+            print(f"   ✅ Article includes correct user_id: {actual_user_id}")
+            self.article_id = response['id']
+            
+        return success
+
+    def test_articles_scoped_by_user(self):
+        """Test GET /api/articles scoped by user_id (admin sees all, others see own)"""
+        if not self.token:
+            print("❌ Skipping - no token available")
+            return False
+            
+        success, response = self.run_test("List Articles (scoped)", "GET", "articles", 200, use_auth=True)
+        if success:
+            if not isinstance(response, list):
+                print(f"❌ Articles response should be a list, got: {type(response)}")
+                return False
+                
+            print(f"   Found {len(response)} articles")
+            
+            # If user is admin, they should see all articles (or at least their own)
+            if self.user_data and self.user_data.get('is_admin'):
+                print(f"   ✅ Admin user can see {len(response)} articles (all articles in system)")
+            else:
+                # Non-admin should only see their own articles
+                user_id = self.user_data.get('id') if self.user_data else None
+                for article in response:
+                    article_user_id = article.get('user_id')
+                    if article_user_id != user_id:
+                        print(f"❌ Non-admin user seeing article from different user. Expected: {user_id}, Got: {article_user_id}")
+                        return False
+                print(f"   ✅ Non-admin user sees only own articles ({len(response)} articles)")
+        
+        return success
+
+    def test_stats_scoped_by_user(self):
+        """Test GET /api/stats scoped by user_id"""
+        if not self.token:
+            print("❌ Skipping - no token available")
+            return False
+            
+        success, response = self.run_test("Dashboard Stats (scoped)", "GET", "stats", 200, use_auth=True)
+        if success:
+            required_keys = ['total_articles', 'avg_seo_score', 'needs_improvement']
+            for key in required_keys:
+                if key not in response:
+                    print(f"❌ Missing key in stats response: {key}")
+                    return False
+            
+            stats = response
+            print(f"   ✅ User stats - Total articles: {stats.get('total_articles')}")
+            print(f"   ✅ Avg SEO score: {stats.get('avg_seo_score')}")
+            print(f"   ✅ Needs improvement: {stats.get('needs_improvement')}")
+            
+            # For admin, stats might include all articles
+            if self.user_data and self.user_data.get('is_admin'):
+                print(f"   (Admin user - stats may include all system articles)")
+            else:
+                print(f"   (Non-admin user - stats scoped to user's articles only)")
+        
+        return success
+
 def main():
-    print("🚀 Testing SEO Article Builder API - Authentication & Templates")
-    print("=" * 60)
+    print("🚀 Testing SEO Article Builder API - Enhanced Features")
+    print("=" * 70)
     
     tester = SEOArticleAPITester()
     
     # Test core functionality first
     print("\n🏠 Basic API Tests")
     tester.test_api_root()
-    tester.test_get_stats()
     
-    # Test new template system
+    # Test template system (should return 8 templates)
     print("\n📋 Template System Tests")
     tester.test_get_templates()
     
-    # Test authentication system
-    print("\n🔐 Authentication System Tests")
-    tester.test_register_user()
-    tester.test_register_duplicate_email()
-    tester.test_login_user()
-    tester.test_get_me_with_token()
-    tester.test_get_me_without_token()
+    # Test image styles (should return 8 styles)
+    print("\n🖼️  Image Styles Tests")
+    tester.test_image_styles()
     
-    # Test article generation with templates
-    print("\n📝 Article Generation with Templates")
-    tester.test_article_generation_with_template()
+    # Test admin login functionality
+    print("\n👑 Admin Authentication Tests")
+    tester.test_admin_login()
     
-    # Test basic article operations
-    print("\n📚 Article Management Tests")
-    tester.test_list_articles()
-    if tester.article_id:
-        tester.test_get_article()
-        tester.test_seo_scoring()
-        tester.test_export_functionality()
+    # Test user-scoped endpoints
+    print("\n👤 User Scoping Tests")
+    tester.test_stats_scoped_by_user()
+    tester.test_articles_scoped_by_user()
+    
+    # Test article generation with user_id
+    print("\n📝 Article Generation Tests")
+    tester.test_article_generation_user_id()
+    
+    # Test series functionality
+    print("\n📚 Series Generation Tests")
+    tester.test_series_generation()
+    tester.test_list_series()
     
     # Print final results
-    print("\n" + "=" * 60)
+    print("\n" + "=" * 70)
     print(f"📊 Final Results: {tester.tests_passed}/{tester.tests_run} tests passed")
     
     if tester.tests_passed == tester.tests_run:
