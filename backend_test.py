@@ -387,8 +387,8 @@ class SEOArticleAPITester:
         return True
 
 def main():
-    print("🚀 Testing Polish SEO Article Writer API - Focused Test")
-    print("=" * 50)
+    print("🚀 Testing Polish SEO Article Writer API - Image Features Test")
+    print("=" * 60)
     
     tester = SEOArticleAPITester()
     existing_article_id = "322bc85b-91e7-4888-a055-32a14db1ed85"
@@ -398,11 +398,20 @@ def main():
     tester.test_get_stats()
     tester.test_list_articles()
     tester.test_existing_article(existing_article_id)
+    
+    # Test new image-related endpoints
+    print("\n🖼️ Image API Tests")
+    tester.test_get_article_images(existing_article_id)
+    tester.test_get_single_image()
+    tester.test_image_generation_skip()  # Skip actual generation as instructed
+    
+    # Test existing functionality
+    print("\n📤 Export & Regeneration Tests")
     tester.test_exports_for_existing_article(existing_article_id)
     tester.test_regenerate_meta_for_existing_article(existing_article_id)
     
     # Print final results
-    print("\n" + "=" * 50)
+    print("\n" + "=" * 60)
     print(f"📊 Final Results: {tester.tests_passed}/{tester.tests_run} tests passed")
     
     if tester.tests_passed == tester.tests_run:
