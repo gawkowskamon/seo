@@ -917,6 +917,107 @@ async def list_templates():
     return get_all_templates()
 
 
+# --- WordPress Integration ---
+
+class WordPressSettingsRequest(BaseModel):
+    wp_url: str
+    wp_user: str
+    wp_app_password: str
+
+@api_router.get("/settings/wordpress")
+async def get_wordpress_settings(user: dict = Depends(require_admin)):
+    """Get WordPress settings (admin only)."""
+    settings = await db.settings.find_one({"key": "wordpress"}, {"_id": 0})
+    if not settings:
+        return {"configured": False}
+    return {
+        "configured": True,
+        "wp_url": settings.get("wp_url", ""),
+        "wp_user": settings.get("wp_user", ""),
+        "has_password": bool(settings.get("wp_app_password"))
+    }
+
+@api_router.post("/settings/wordpress")
+async def save_wordpress_settings(request: WordPressSettingsRequest, user: dict = Depends(require_admin)):
+    """Save WordPress settings (admin only)."""
+    await db.settings.update_one(
+        {"key": "wordpress"},
+        {"$set": {
+            "key": "wordpress",
+            "wp_url": request.wp_url.rstrip("/"),
+            "wp_user": request.wp_user,
+            "wp_app_password": request.wp_app_password,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "updated_by": user["id"]
+        }},
+        upsert=True
+    )
+    return {"message": "Ustawienia WordPress zapisane", "configured": True}
+
+@api_router.post("/articles/{article_id}/publish-wordpress")
+async def publish_article_to_wordpress(article_id: str, user: dict = Depends(get_current_user)):
+    """Publish an article to WordPress as a draft."""
+    # Get WordPress settings
+    wp_settings = await db.settings.find_one({"key": "wordpress"})
+    if not wp_settings or not wp_settings.get("wp_url"):
+        raise HTTPException(status_code=400, detail="WordPress nie jest skonfigurowany. Przejdz do ustawien admina.")
+    
+    # Get article
+    article = await db.articles.find_one({"id": article_id}, {"_id": 0})
+    if not article:
+        raise HTTPException(status_code=404, detail="Artykul nie znaleziony")
+    
+    # Check ownership
+    if not user.get("is_admin") and article.get("user_id") != user["id"]:
+        raise HTTPException(status_code=403, detail="Brak dostepu do artykulu")
+    
+    try:
+        result = await publish_to_wordpress(
+            wp_url=wp_settings["wp_url"],
+            wp_user=wp_settings["wp_user"],
+            wp_app_password=wp_settings["wp_app_password"],
+            article=article
+        )
+        
+        if result.get("success"):
+            # Save WP post reference
+            await db.articles.update_one(
+                {"id": article_id},
+                {"$set": {
+                    "wp_post_id": result.get("post_id"),
+                    "wp_post_url": result.get("post_url"),
+                    "wp_published_at": datetime.now(timezone.utc).isoformat()
+                }}
+            )
+            return result
+        else:
+            raise HTTPException(status_code=502, detail=result.get("error", "Blad publikacji na WordPress"))
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"WordPress publish error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/wordpress/plugin")
+async def download_wordpress_plugin(user: dict = Depends(get_current_user)):
+    """Generate and download the WordPress plugin file."""
+    # Use the current API base URL
+    api_base = os.environ.get("API_BASE_URL", "")
+    if not api_base:
+        # Try to construct from request context
+        api_base = "https://accounting-blog-ai.preview.emergentagent.com/api"
+    
+    plugin_code = generate_wordpress_plugin(api_base)
+    
+    return Response(
+        content=plugin_code.encode('utf-8'),
+        media_type="application/octet-stream",
+        headers={
+            "Content-Disposition": "attachment; filename=kurdynowski-importer.php"
+        }
+    )
+
+
 # --- Article Series ---
 
 class SeriesRequest(BaseModel):
