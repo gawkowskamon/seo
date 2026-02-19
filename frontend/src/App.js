@@ -87,6 +87,9 @@ function AppRoutes() {
       <Route path="/biblioteka" element={
         <ProtectedLayout><ImageLibrary /></ProtectedLayout>
       } />
+      <Route path="/generator-obrazow" element={
+        <ProtectedLayout><ImageGeneratorPage /></ProtectedLayout>
+      } />
       <Route path="/admin/users" element={
         <ProtectedLayout requireAdmin><AdminUsers /></ProtectedLayout>
       } />
