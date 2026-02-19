@@ -1,15 +1,15 @@
 [
   {
     "content": "Phase 2A: Add /admin/users route in App.js with admin guard",
-    "status": "in_progress"
+    "status": "completed"
   },
   {
     "content": "Phase 2A: Add admin link in Sidebar.js (visible only for admins)",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "content": "Phase 2A: Verify AdminUsers.js works end-to-end with backend",
-    "status": "pending"
+    "status": "in_progress"
   },
   {
     "content": "Phase 2B: Update backend - add reference_image support to ImageGenerateRequest + image_generator.py",
