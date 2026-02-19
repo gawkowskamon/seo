@@ -13,10 +13,14 @@ class SEOArticleAPITester:
         self.token = None
         self.user_data = None
 
-    def run_test(self, name, method, endpoint, expected_status, data=None, timeout=30):
+    def run_test(self, name, method, endpoint, expected_status, data=None, timeout=30, use_auth=False):
         """Run a single API test"""
         url = f"{self.base_url}/api/{endpoint}"
         headers = {'Content-Type': 'application/json'}
+        
+        # Add auth header if token is available and use_auth is True
+        if use_auth and self.token:
+            headers['Authorization'] = f'Bearer {self.token}'
 
         self.tests_run += 1
         print(f"\n🔍 Testing {name}...")
