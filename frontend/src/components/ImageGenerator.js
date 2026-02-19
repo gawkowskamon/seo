@@ -541,8 +541,9 @@ const ImageGenerator = ({ articleId, article, onInsertImage }) => {
             <img
               src={`data:${generatedImage.mime_type};base64,${generatedImage.data}`}
               alt={generatedImage.prompt}
-              style={{ width: '100%', display: 'block' }}
+              style={{ width: '100%', display: 'block', cursor: 'pointer' }}
               data-testid="generated-image-preview"
+              onClick={() => openLightbox(generatedImage, 0)}
             />
           </div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
