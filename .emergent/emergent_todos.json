@@ -17,10 +17,10 @@
   },
   {
     "content": "Build verification: lint + screenshot + service logs",
-    "status": "in_progress"
+    "status": "completed"
   },
   {
     "content": "Testing: Run testing agent for full validation",
-    "status": "pending"
+    "status": "completed"
   }
 ]
