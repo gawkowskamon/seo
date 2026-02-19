@@ -59,9 +59,167 @@ class SEOArticleAPITester:
             print(f"❌ Failed - Error: {str(e)}")
             return False, {}
 
-    def test_health_check(self):
-        """Test health endpoint"""
-        return self.run_test("Health Check", "GET", "", 200)
+    def test_get_templates(self):
+        """Test GET /api/templates returns 8 templates"""
+        success, response = self.run_test("Get Templates", "GET", "templates", 200)
+        if success:
+            if not isinstance(response, list):
+                print(f"❌ Templates response should be a list, got: {type(response)}")
+                return False
+            print(f"   Found {len(response)} templates")
+            if len(response) != 8:
+                print(f"❌ Expected 8 templates, got {len(response)}")
+                return False
+            
+            # Verify template structure
+            if len(response) > 0:
+                template = response[0]
+                required_keys = ['id', 'name', 'description', 'icon', 'category']
+                for key in required_keys:
+                    if key not in template:
+                        print(f"❌ Missing key in template: {key}")
+                        return False
+                        
+            # Show all template names
+            template_names = [t.get('name', 'Unknown') for t in response]
+            print(f"   Template names: {', '.join(template_names)}")
+        return success
+
+    def test_register_user(self):
+        """Test POST /api/auth/register creates user and returns JWT token"""
+        timestamp = int(datetime.now().timestamp())
+        test_email = f"test_user_{timestamp}@kurdynowski.pl"
+        test_password = "TestPass123!"
+        test_name = f"Test User {timestamp}"
+        
+        data = {
+            "email": test_email,
+            "password": test_password,
+            "full_name": test_name
+        }
+        
+        success, response = self.run_test("Register New User", "POST", "auth/register", 200, data=data)
+        if success:
+            required_keys = ['user', 'token']
+            for key in required_keys:
+                if key not in response:
+                    print(f"❌ Missing key in register response: {key}")
+                    return False
+            
+            self.token = response['token']
+            self.user_data = response['user']
+            print(f"   Registered user: {self.user_data.get('email')}")
+            print(f"   Token received: {self.token[:20]}...")
+            
+        return success
+
+    def test_register_duplicate_email(self):
+        """Test POST /api/auth/register rejects duplicate email"""
+        # Use existing test user email
+        data = {
+            "email": "test@kurdynowski.pl",
+            "password": "test123",
+            "full_name": "Duplicate Test"
+        }
+        
+        success, response = self.run_test("Register Duplicate Email", "POST", "auth/register", 400, data=data)
+        if success:
+            print(f"   ✅ Correctly rejected duplicate email registration")
+        return success
+
+    def test_login_user(self):
+        """Test POST /api/auth/login authenticates user and returns JWT token"""
+        data = {
+            "email": "test@kurdynowski.pl",
+            "password": "test123"
+        }
+        
+        success, response = self.run_test("Login Existing User", "POST", "auth/login", 200, data=data)
+        if success:
+            required_keys = ['user', 'token']
+            for key in required_keys:
+                if key not in response:
+                    print(f"❌ Missing key in login response: {key}")
+                    return False
+            
+            self.token = response['token']
+            self.user_data = response['user']
+            print(f"   Logged in user: {self.user_data.get('email')}")
+            print(f"   Token received: {self.token[:20]}...")
+            
+        return success
+
+    def test_get_me_with_token(self):
+        """Test GET /api/auth/me returns user data with valid token"""
+        if not self.token:
+            print("❌ Skipping - no token available")
+            return False
+            
+        success, response = self.run_test("Get User Profile", "GET", "auth/me", 200, use_auth=True)
+        if success:
+            required_keys = ['id', 'email']
+            for key in required_keys:
+                if key not in response:
+                    print(f"❌ Missing key in user profile response: {key}")
+                    return False
+            
+            print(f"   User ID: {response.get('id')}")
+            print(f"   Email: {response.get('email')}")
+            print(f"   Full name: {response.get('full_name', 'N/A')}")
+            
+        return success
+
+    def test_get_me_without_token(self):
+        """Test GET /api/auth/me returns 401 without token"""
+        success, response = self.run_test("Get User Profile Without Token", "GET", "auth/me", 401, use_auth=False)
+        if success:
+            print(f"   ✅ Correctly rejected request without token")
+        return success
+
+    def test_article_generation_with_template(self):
+        """Test POST /api/articles/generate accepts template parameter"""
+        if not self.token:
+            print("❌ Skipping - no token available")
+            return False
+            
+        data = {
+            "topic": "Jak rozliczać VAT w jednoosobowej działalności gospodarczej",
+            "primary_keyword": "rozliczanie VAT",
+            "secondary_keywords": ["VAT księgowość", "płatnik VAT"],
+            "target_length": 1500,
+            "tone": "profesjonalny",
+            "template": "poradnik"  # Test with specific template
+        }
+        
+        print(f"\n🔍 Testing Article Generation with Template...")
+        print(f"   ⚠️  This may take 15-30 seconds (calling OpenAI GPT)")
+        
+        success, response = self.run_test(
+            "Article Generation with Template", 
+            "POST", 
+            "articles/generate", 
+            200, 
+            data=data,
+            timeout=60,
+            use_auth=True
+        )
+        
+        if success and 'id' in response:
+            self.article_id = response['id']
+            print(f"   Generated article ID: {self.article_id}")
+            print(f"   Template used: {response.get('template', 'N/A')}")
+            
+            # Verify the template was saved
+            if response.get('template') != 'poradnik':
+                print(f"❌ Template not saved correctly. Expected 'poradnik', got '{response.get('template')}'")
+                return False
+            
+            # Check for Polish content
+            title = response.get('title', '')
+            if title:
+                print(f"   Article title: {title}")
+                
+        return success
 
     def test_api_root(self):
         """Test API root endpoint"""
