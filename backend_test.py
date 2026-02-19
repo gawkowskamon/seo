@@ -332,6 +332,7 @@ def main():
     tester.test_list_articles()
     tester.test_existing_article(existing_article_id)
     tester.test_exports_for_existing_article(existing_article_id)
+    tester.test_regenerate_meta_for_existing_article(existing_article_id)
     
     # Print final results
     print("\n" + "=" * 50)
