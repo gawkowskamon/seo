@@ -101,7 +101,7 @@ def _build_contextual_prompt(user_prompt: str, style_id: str, article_context: d
     return prompt
 
 
-async def generate_image(prompt: str, style: str = "hero", topic: str = "", article_context: dict = None) -> dict:
+async def generate_image(prompt: str, style: str = "hero", topic: str = "", article_context: dict = None, reference_image: dict = None) -> dict:
     """Generate an image using Gemini Nano Banana model.
     
     Args:
@@ -109,6 +109,7 @@ async def generate_image(prompt: str, style: str = "hero", topic: str = "", arti
         style: Style preset ID from IMAGE_STYLES
         topic: Legacy topic parameter
         article_context: Optional article context for contextual prompts
+        reference_image: Optional reference image dict with 'data' (base64) and 'mime_type'
     
     Returns dict with 'data' (base64) and 'mime_type'.
     """
@@ -119,6 +120,10 @@ async def generate_image(prompt: str, style: str = "hero", topic: str = "", arti
     # Build contextual prompt
     full_prompt = _build_contextual_prompt(prompt or topic, style, article_context)
     
+    # If reference image is provided, add instruction to the prompt
+    if reference_image:
+        full_prompt += "\n\nIMPORTANT: Use the attached reference image as inspiration for style, composition, or content. Create a new image that takes cues from this reference while matching the described style and topic."
+    
     session_id = f"img-gen-{uuid.uuid4().hex[:8]}"
     
     chat = LlmChat(
@@ -128,9 +133,19 @@ async def generate_image(prompt: str, style: str = "hero", topic: str = "", arti
     )
     chat.with_model("gemini", "gemini-3-pro-image-preview").with_params(modalities=["image", "text"])
     
-    msg = UserMessage(text=full_prompt)
+    # Build message with optional reference image
+    file_contents = None
+    if reference_image:
+        file_contents = [
+            FileContent(
+                content_type=reference_image["mime_type"],
+                file_content_base64=reference_image["data"]
+            )
+        ]
     
-    logger.info(f"Generating image with style={style}, prompt_len={len(full_prompt)}")
+    msg = UserMessage(text=full_prompt, file_contents=file_contents)
+    
+    logger.info(f"Generating image with style={style}, prompt_len={len(full_prompt)}, has_reference={reference_image is not None}")
     
     text, images = await chat.send_message_multimodal_response(msg)
     
