@@ -1151,6 +1151,290 @@ class SEOArticleAPITester:
             
             print(f"   ✅ Generated image without reference: {response.get('id')}")
             print(f"   Style: {response.get('style')}")
+            # Store image ID for library tests
+            self.test_image_id = response.get('id')
+        
+        return success
+
+    # ============ IMAGE LIBRARY TESTS ============
+    
+    def test_library_list_images(self):
+        """Test GET /api/library/images returns user's images"""
+        if not self.token:
+            print("❌ Skipping - no token available")
+            return False
+            
+        success, response = self.run_test("Library List Images", "GET", "library/images", 200, use_auth=True)
+        if success:
+            required_keys = ['images', 'total', 'limit', 'offset']
+            for key in required_keys:
+                if key not in response:
+                    print(f"❌ Missing key in library response: {key}")
+                    return False
+            
+            images = response.get('images', [])
+            total = response.get('total', 0)
+            print(f"   ✅ Found {total} images in library ({len(images)} returned)")
+            
+            if images:
+                # Check first image structure
+                img = images[0]
+                required_img_keys = ['id', 'prompt', 'style', 'has_data', 'created_at']
+                for key in required_img_keys:
+                    if key not in img:
+                        print(f"❌ Missing key in image: {key}")
+                        return False
+                
+                print(f"   First image: {img.get('prompt', '')[:50]}... (style: {img.get('style')})")
+        
+        return success
+
+    def test_library_search_images(self):
+        """Test GET /api/library/images with search query"""
+        if not self.token:
+            print("❌ Skipping - no token available")
+            return False
+            
+        # Test search functionality
+        success, response = self.run_test(
+            "Library Search Images", 
+            "GET", 
+            "library/images", 
+            200, 
+            data={"q": "test", "limit": 10},
+            use_auth=True
+        )
+        if success:
+            images = response.get('images', [])
+            print(f"   ✅ Search returned {len(images)} images for 'test'")
+        
+        return success
+
+    def test_library_filter_by_style(self):
+        """Test GET /api/library/images with style filter"""
+        if not self.token:
+            print("❌ Skipping - no token available")
+            return False
+            
+        success, response = self.run_test(
+            "Library Filter by Style", 
+            "GET", 
+            "library/images", 
+            200, 
+            data={"style": "hero", "limit": 5},
+            use_auth=True
+        )
+        if success:
+            images = response.get('images', [])
+            print(f"   ✅ Style filter returned {len(images)} hero images")
+            
+            # Verify all returned images have correct style
+            if images:
+                style_match = all(img.get('style') == 'hero' for img in images)
+                if style_match:
+                    print(f"   ✅ All returned images match 'hero' style")
+                else:
+                    print(f"   ❌ Some images don't match 'hero' style")
+                    return False
+        
+        return success
+
+    def test_library_tags(self):
+        """Test GET /api/library/tags returns unique tags"""
+        if not self.token:
+            print("❌ Skipping - no token available")
+            return False
+            
+        success, response = self.run_test("Library List Tags", "GET", "library/tags", 200, use_auth=True)
+        if success:
+            if not isinstance(response, list):
+                print(f"❌ Tags response should be a list, got: {type(response)}")
+                return False
+            
+            print(f"   ✅ Found {len(response)} unique tags")
+            if response:
+                # Check tag structure
+                tag = response[0]
+                required_keys = ['tag', 'count']
+                for key in required_keys:
+                    if key not in tag:
+                        print(f"❌ Missing key in tag: {key}")
+                        return False
+                
+                sample_tags = [t.get('tag') for t in response[:3]]
+                print(f"   Sample tags: {sample_tags}")
+        
+        return success
+
+    def test_image_tags_update(self):
+        """Test PUT /api/images/{id}/tags updates image tags"""
+        if not self.token or not hasattr(self, 'test_image_id'):
+            print("❌ Skipping - no token or test image available")
+            return False
+        
+        test_tags = ["test", "księgowość", "ai-generated"]
+        data = {"tags": test_tags}
+        
+        success, response = self.run_test(
+            "Update Image Tags", 
+            "PUT", 
+            f"images/{self.test_image_id}/tags", 
+            200, 
+            data=data,
+            use_auth=True
+        )
+        if success:
+            if 'tags' not in response or 'id' not in response:
+                print(f"❌ Missing keys in tag update response")
+                return False
+            
+            updated_tags = response.get('tags', [])
+            print(f"   ✅ Updated tags: {updated_tags}")
+            
+            # Verify tags were updated correctly
+            if set(updated_tags) == set(test_tags):
+                print(f"   ✅ Tags updated correctly")
+            else:
+                print(f"   ❌ Tag update mismatch. Expected: {test_tags}, Got: {updated_tags}")
+                return False
+        
+        return success
+
+    def test_batch_image_generation(self):
+        """Test POST /api/images/generate-batch creates multiple variants"""
+        if not self.token:
+            print("❌ Skipping - no token available")
+            return False
+        
+        data = {
+            "prompt": "Profesjonalna księgowość cyfrowa",
+            "style": "ilustracja", 
+            "num_variants": 4
+        }
+        
+        print(f"\n🔍 Testing Batch Image Generation (4 variants)...")
+        print(f"   ⚠️  This may take 60-90 seconds (generating 4 images)")
+        
+        success, response = self.run_test(
+            "Batch Image Generation", 
+            "POST", 
+            "images/generate-batch", 
+            200, 
+            data=data,
+            timeout=180,  # Longer timeout for batch generation
+            use_auth=True
+        )
+        
+        if success:
+            required_keys = ['variants', 'total']
+            for key in required_keys:
+                if key not in response:
+                    print(f"❌ Missing key in batch response: {key}")
+                    return False
+            
+            variants = response.get('variants', [])
+            total = response.get('total', 0)
+            
+            print(f"   ✅ Generated {total} variants")
+            
+            # Check variant structure
+            successful_variants = [v for v in variants if not v.get('error')]
+            failed_variants = [v for v in variants if v.get('error')]
+            
+            print(f"   Success: {len(successful_variants)}, Failed: {len(failed_variants)}")
+            
+            if successful_variants:
+                variant = successful_variants[0]
+                required_variant_keys = ['id', 'prompt', 'style', 'mime_type', 'data']
+                for key in required_variant_keys:
+                    if key not in variant:
+                        print(f"❌ Missing key in variant: {key}")
+                        return False
+                
+                print(f"   First variant ID: {variant.get('id')}")
+                # Store for AI edit tests
+                self.batch_image_id = variant.get('id')
+        
+        return success
+
+    def test_ai_image_editing(self):
+        """Test POST /api/images/edit AI image editing modes"""
+        if not self.token or not hasattr(self, 'batch_image_id'):
+            print("❌ Skipping - no token or batch image available")
+            return False
+        
+        # Test different AI editing modes
+        edit_modes = [
+            ("inpaint", "Dodaj wykres słupkowy w prawym górnym rogu"),
+            ("background", "Zmień tło na nowoczesne biuro"),
+            ("style_transfer", "Zmień na styl minimalistyczny"),
+            ("enhance", "Popraw jakość i detale")
+        ]
+        
+        for mode, prompt in edit_modes:
+            data = {
+                "mode": mode,
+                "prompt": prompt,
+                "image_id": self.batch_image_id
+            }
+            
+            print(f"\n🔍 Testing AI Image Edit - {mode}...")
+            print(f"   ⚠️  This may take 15-30 seconds (AI image editing)")
+            
+            success, response = self.run_test(
+                f"AI Edit {mode}", 
+                "POST", 
+                "images/edit", 
+                200, 
+                data=data,
+                timeout=120,
+                use_auth=True
+            )
+            
+            if success:
+                required_keys = ['id', 'prompt', 'mode', 'mime_type', 'data']
+                for key in required_keys:
+                    if key not in response:
+                        print(f"❌ Missing key in edit response: {key}")
+                        return False
+                
+                print(f"   ✅ Edited image: {response.get('id')} (mode: {mode})")
+                
+                if response.get('mode') != mode:
+                    print(f"   ❌ Mode mismatch. Expected: {mode}, Got: {response.get('mode')}")
+                    return False
+            else:
+                return False
+        
+        return True
+
+    def test_library_filter_by_tag(self):
+        """Test GET /api/library/images with tag filter"""
+        if not self.token:
+            print("❌ Skipping - no token available")
+            return False
+            
+        # Use a tag we created earlier
+        success, response = self.run_test(
+            "Library Filter by Tag", 
+            "GET", 
+            "library/images", 
+            200, 
+            data={"tag": "test", "limit": 5},
+            use_auth=True
+        )
+        if success:
+            images = response.get('images', [])
+            print(f"   ✅ Tag filter returned {len(images)} images with 'test' tag")
+            
+            # Verify all returned images have the tag
+            if images:
+                tag_match = all('test' in (img.get('tags') or []) for img in images)
+                if tag_match:
+                    print(f"   ✅ All returned images contain 'test' tag")
+                else:
+                    print(f"   ❌ Some images don't contain 'test' tag")
+                    return False
         
         return success
 
