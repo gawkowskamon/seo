@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Image as ImageIcon, Loader2, Download, Copy, Trash2, RefreshCw, Sparkles, Camera, PenTool, BarChart3, Circle, GitBranch, TrendingUp, Edit, Palette, Layout, Zap, Minimize2, Paperclip, X, FileImage } from 'lucide-react';
+import { Image as ImageIcon, Loader2, Download, Copy, Trash2, RefreshCw, Sparkles, Camera, PenTool, BarChart3, Circle, GitBranch, TrendingUp, Edit, Palette, Layout, Zap, Minimize2, Paperclip, X, FileImage, Grid2X2, Wand2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { toast } from 'sonner';
 import axios from 'axios';
+import ImageLightbox from './ImageLightbox';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
