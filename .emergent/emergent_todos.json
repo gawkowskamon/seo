@@ -1,42 +1,30 @@
 [
   {
-    "content": "Phase 4: Backend - GET /api/library/images + PUT /api/images/{id}/tags + GET /api/library/tags",
-    "status": "completed"
+    "content": "Fix PDF Polish font - register DejaVu Sans in ReportLab",
+    "status": "in_progress"
   },
   {
-    "content": "Phase 4: Frontend - ImageLibrary page (/biblioteka) with grid, search, filters, tags",
-    "status": "completed"
+    "content": "Backend: WordPress settings endpoints (admin configures WP URL + credentials)",
+    "status": "pending"
   },
   {
-    "content": "Phase 4: Frontend - Lightbox modal with full preview + prev/next navigation",
-    "status": "completed"
+    "content": "Backend: Publish-to-WordPress endpoint (WP REST API)",
+    "status": "pending"
   },
   {
-    "content": "Phase 4: Sidebar - Add 'Biblioteka' link for all users",
-    "status": "completed"
+    "content": "Frontend: WordPress config in admin/settings or export panel",
+    "status": "pending"
   },
   {
-    "content": "Phase 4: App.js - Add /biblioteka route",
-    "status": "completed"
+    "content": "Frontend: 'Opublikuj na WordPress' button in ExportPanel",
+    "status": "pending"
   },
   {
-    "content": "Phase 5: Backend - Multi-variant generation (4 at once)",
-    "status": "completed"
+    "content": "Generate downloadable WordPress plugin (PHP)",
+    "status": "pending"
   },
   {
-    "content": "Phase 5: Backend - AI edit endpoint (inpaint/background/style transfer)",
-    "status": "completed"
-  },
-  {
-    "content": "Phase 5: Frontend - Multi-variant UI (2x2 grid) in generator",
-    "status": "completed"
-  },
-  {
-    "content": "Phase 5: Frontend - Image editing panel (crop, filters, AI edits)",
-    "status": "completed"
-  },
-  {
-    "content": "Phase 6: Testing with testing agent",
-    "status": "completed"
+    "content": "Testing",
+    "status": "pending"
   }
 ]
