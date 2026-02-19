@@ -142,6 +142,13 @@ const ImageGenerator = ({ articleId, article, onInsertImage }) => {
       if (variationType) {
         payload.variation_type = variationType;
       }
+      if (referenceFile) {
+        payload.reference_image = {
+          data: referenceFile.base64,
+          mime_type: referenceFile.mime_type,
+          name: referenceFile.name
+        };
+      }
 
       const res = await axios.post(`${BACKEND_URL}/api/images/generate`, payload, { timeout: 120000 });
       
