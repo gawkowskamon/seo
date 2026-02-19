@@ -1,23 +1,23 @@
 [
   {
     "content": "Backend: Implement POST /api/articles/{id}/seo-assistant endpoint with GPT-5.2",
-    "status": "in_progress"
+    "status": "completed"
   },
   {
     "content": "Frontend: Create SEOAssistantPanel.js component (suggestions list + chat)",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "content": "Frontend: Add 'Asystent AI' tab in ArticleEditor right panel",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "content": "Frontend: Implement apply-suggestion logic (meta/html/faq state updates)",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "content": "Build verification: lint + screenshot + service logs",
-    "status": "pending"
+    "status": "in_progress"
   },
   {
     "content": "Testing: Run testing agent for full validation",
