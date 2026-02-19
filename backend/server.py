@@ -1169,7 +1169,6 @@ async def tpay_webhook(request_data: dict):
     
     if status in ("TRUE", "paid", "correct"):
         # Payment confirmed
-        plan = get_plan(sub["plan_id"])
         end_date = calculate_subscription_end(sub["plan_id"])
         
         await db.subscriptions.update_one(
