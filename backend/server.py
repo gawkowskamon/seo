@@ -452,6 +452,14 @@ async def delete_image(image_id: str):
     return {"message": "Image deleted", "id": image_id}
 
 
+# --- Content Templates ---
+
+@api_router.get("/templates")
+async def list_templates():
+    """Return all available content templates."""
+    return get_all_templates()
+
+
 # --- SEO Assistant ---
 
 class SEOAssistantRequest(BaseModel):
