@@ -4,7 +4,7 @@
     "status": "completed"
   },
   {
-    "content": "Phase 10: Enhanced image generator - 8 styles, variants, contextual prompts",
+    "content": "Phase 10: Enhanced image generator",
     "status": "completed"
   },
   {
@@ -13,10 +13,10 @@
   },
   {
     "content": "Phase 12: Series generation + sources-driven content",
-    "status": "in_progress"
+    "status": "completed"
   },
   {
     "content": "Full testing of all new features",
-    "status": "pending"
+    "status": "in_progress"
   }
 ]
