@@ -17,11 +17,11 @@
   },
   {
     "content": "Phase 2B: Update frontend ImageGenerator.js - add file upload UI",
-    "status": "in_progress"
+    "status": "completed"
   },
   {
     "content": "Phase 3: Comprehensive testing with testing agent",
-    "status": "pending"
+    "status": "in_progress"
   },
   {
     "content": "Phase 3: Fix all bugs from test results",
