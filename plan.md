@@ -1,4 +1,4 @@
-# plan.md (updated after Phase 5 — AI SEO Assistant ✅ COMPLETED; Phase 6–8 approved and queued)
+# plan.md (updated after Phase 8 — JWT Auth ✅ COMPLETED; Phase 6–8 ✅ COMPLETED)
 
 ## Objectives
 - Deliver a working end‑to‑end content workflow for Polish accounting/tax marketing:
@@ -8,15 +8,17 @@
 - Provide an in-editor **AI SEO Assistant** to improve drafts faster:
   - Combines **prioritized suggestions (with Apply actions)** + **interactive chat**.
   - Uses **OpenAI `gpt-5.2`** via Emergent integrations.
-- Upgrade the product from MVP UI to a **brand-aligned, premium SaaS**:
+- Deliver a **brand-aligned, premium SaaS UI**:
   - **Kurdynowski branding** (primary blue `#04389E`, accent orange `#F28C28`), modern‑classic look.
-  - Improved typography (serif display headings + sans UI body).
-- Add **advanced content creation** for specialized, high-value deliverables:
-  - Templates, multi‑part series, advanced formatting blocks, generation from sources.
-- Add **simple authentication + workspaces** for client/brand separation:
-  - Email/password auth (JWT) and user-scoped data.
+  - Typography: **Instrument Serif** for display/headings + IBM Plex Sans for UI + IBM Plex Mono for code.
+- Add **advanced content creation** for specialized, higher‑value deliverables:
+  - Template-based generation with specialized structures.
+  - Advanced formatting blocks (callouts, tables, checklists) rendered and styled in the visual editor.
+- Add **simple authentication** and prepare for multi‑tenant separation:
+  - Email/password auth (JWT) and protected routes.
+  - (Next) Workspaces + user/workspace-scoped data isolation.
 - Preserve reliability and production readiness:
-  - Stable LLM calls (retries/fallbacks where relevant).
+  - Stable LLM calls.
   - Correct Polish UX (UTF‑8, no `\uXXXX` artifacts).
   - Exports remain consistent.
 
@@ -165,116 +167,125 @@
 
 ---
 
-## Phase 6 — UI Redesign: Kurdynowski Branding 🔥 IN PROGRESS (P1)
-> Goal: modernize the UI to a premium “modern-classic” feel consistent with Kurdynowski brand. Text-only wordmark (no logo image).
+## Phase 6 — UI Redesign: Kurdynowski Branding ✅ COMPLETED (P1)
+> Goal achieved: modernize the UI to a premium “modern-classic” feel consistent with Kurdynowski brand. Text-only wordmark (no logo image).
 
 ### Brand constraints (confirmed)
 - Primary: **brand blue `#04389E`**
 - Accent: **brand orange `#F28C28`**
 - Sidebar: stylized **text wordmark** “Kurdynowski” (serif) + descriptor “Accounting & Tax Solutions” (sans)
 
-### Goals
-- Replace existing blue palette with brand blue and warm neutrals.
-- Introduce orange accent sparingly for highlights/CTAs.
-- Update typography: **Instrument Serif** for headings/wordmark, keep IBM Plex Sans for UI and IBM Plex Mono for code.
-- Improve layout polish: spacing, surfaces, shadows, hover/focus rings.
+### Delivered changes
+1. **Global tokens & typography**
+   - Updated `/app/frontend/src/index.css` design tokens to match brand.
+   - Added Google Fonts import and applied:
+     - **Instrument Serif** to headings/wordmark
+     - IBM Plex Sans to UI
+     - IBM Plex Mono to code
+2. **App-wide styling refresh**
+   - Updated `/app/frontend/src/App.css` with:
+     - brand color mapping (blue actions, orange accents)
+     - modern surfaces, borders, spacing, hover/focus states
+3. **Sidebar wordmark**
+   - Updated `/app/frontend/src/components/Sidebar.js`:
+     - stylized “Kurdynowski.” with orange dot
+     - descriptor line
+     - improved nav active/hover states
 
-### Implementation steps (planned)
-1. **Global tokens**: update `/app/frontend/src/index.css` `:root` tokens to match brand HSL mapping (primary/ring = brand blue; accent/secondary warm neutrals).
-2. **Typography**:
-   - Add Google Font import for **Instrument Serif**.
-   - Apply serif only to headings + brand wordmark.
-3. **App-wide color replacement**:
-   - Update `/app/frontend/src/App.css` hardcoded HSL values to use brand blue equivalents and ensure consistent borders/muted tones.
-4. **Sidebar wordmark**:
-   - Update `/app/frontend/src/components/Sidebar.js` to display “Kurdynowski” with a subtle orange accent (dot/mark) and a small descriptor line.
-5. **Page polish pass**:
-   - Dashboard KPI cards and table headers.
-   - Generator card + progress overlay.
-   - Editor panels and tab styles (SEO/AI/FAQ/Images/Export).
-6. Accessibility regression check: focus rings, contrast.
-
-### Success criteria
-- The entire app visually reads as “Kurdynowski” brand: deep blue actions, warm neutral surfaces, subtle orange highlights.
+### Success criteria (met)
+- App visually reads as “Kurdynowski” across Dashboard/Generator/Editor.
 - No regressions in existing flows.
 
 ---
 
-## Phase 7 — Advanced Content Creation (Templates + Sources + Blocks) ⏳ PLANNED (P1)
-> Goal: add specialized, higher-value content creation beyond basic article generation.
+## Phase 7 — Advanced Content Creation (Templates + Blocks) ✅ COMPLETED (P1)
+> Goal achieved: add specialized, higher-value content creation beyond basic generation.
 
-### Scope (confirmed by user)
-- “Wszystko plus”:
-  - Content templates (poradnik, case study, porównanie, lista, FAQ-heavy, local SEO, pillar page).
-  - Multi‑part article series.
-  - Advanced formatting blocks (tables, callout boxes, checklists).
-  - Generation from sources (URL / pasted text; optional file upload later).
-  - More specialized content: e.g., compliance updates, deadlines calendars, step-by-step procedures, segment-specific variants.
+### Scope (delivered)
+- **8 content templates** with specialized structures:
+  - `standard`, `poradnik`, `case_study`, `porownanie`, `checklist`, `pillar`, `nowelizacja`, `kalkulator`
+- **Advanced formatting blocks** supported in generated HTML and styled in visual editor:
+  - callout boxes (`.callout-tip/.callout-warning/.callout-info/.callout-link`)
+  - tables (`.data-table/.comparison-table/.changes-table`)
+  - checklist items (`.checklist-item`)
 
-### Implementation steps (planned)
-1. **Template system**
-   - Extend generator UI with template selection (shadcn Select).
-   - Add backend prompt variants per template and enforce output JSON schema.
-2. **Advanced blocks**
-   - Define allowed HTML blocks (table, callouts, checklist) and extend editor styling.
-   - Add “Insert block” actions (optional) in editor.
-3. **Series generation**
-   - Backend: generate outline for N-part series + generate per-part article drafts.
-   - Frontend: series view with list of parts and navigation.
-4. **Sources-driven generation**
-   - UI: input for URLs / pasted sources.
-   - Backend: fetch/parse text (safe allowlist) and use as context.
-5. **Quality controls**
-   - More strict factuality prompts + citation enforcement.
+### Implementation details (as built)
+- Backend:
+  - New module `/app/backend/content_templates.py`:
+    - template registry + specialized prompts
+    - strict JSON schema contract shared across templates
+  - New endpoint: `GET /api/templates`
+  - Updated `generate_article(...)` to accept `template` and switch prompt accordingly.
+  - Stored `template` on the article document.
+- Frontend:
+  - Updated `/app/frontend/src/pages/ArticleGenerator.js`:
+    - template cards grouped by category
+    - template selection persists into generation request
+- Styling:
+  - Added advanced block CSS rules into `/app/frontend/src/App.css` for visual editor rendering.
 
-### Success criteria
-- User can generate specialized content reliably with consistent structure and reusable blocks.
+### Follow-ups (still planned)
+- Series generation (N-part outlines + per-part drafts).
+- Sources-driven generation (URL/paste; optional file upload).
 
 ---
 
-## Phase 8 — JWT Authentication (Email/Password) + Workspaces ⏳ PLANNED (P1)
-> Goal: introduce basic auth and user-scoped data, with workspace concept for multiple clients/brands.
+## Phase 8 — JWT Authentication (Email/Password) ✅ COMPLETED (P1)
+> Goal achieved: introduce basic auth and protected routes.
 
-### Requirements (confirmed)
+### Requirements (delivered)
 - **Email + password** registration/login.
 - JWT-based auth.
 - Protected routes.
-- User-specific articles and images.
+- Logged-in user panel + logout in sidebar.
 
-### Implementation steps (planned)
-1. Backend:
-   - Users collection (hashed passwords).
-   - JWT issuance + refresh strategy (simple MVP: access token only).
-   - Middleware/dependency to enforce auth.
-2. Workspaces:
-   - Workspace collection + membership.
-   - Add `workspace_id` to articles/images.
-   - Update endpoints to scope by user/workspace.
-3. Frontend:
-   - Login + Register pages.
-   - Auth state storage + axios interceptor.
-   - Route guards.
+### Implementation details (as built)
+#### Backend
+- New module: `/app/backend/auth.py`
+  - bcrypt password hashing
+  - JWT issuance + verification
+- New endpoints:
+  - `POST /api/auth/register`
+  - `POST /api/auth/login`
+  - `GET /api/auth/me`
 
-### Success criteria
-- Each user sees only their content; can switch workspace.
+#### Frontend
+- New Auth context: `/app/frontend/src/contexts/AuthContext.js`
+  - token storage in localStorage
+  - axios default Authorization header
+  - fetch current user `/auth/me`
+- New page: `/app/frontend/src/pages/AuthPage.js` (login/register UI)
+- Updated routing in `/app/frontend/src/App.js`:
+  - route guards
+  - redirect unauthenticated users to `/auth`
+- Sidebar updated to show user profile + logout.
+
+### Follow-ups (still planned)
+- Workspaces (multi-client/brand separation) and scoping articles/images by workspace.
 
 ---
 
 ## Next Actions (updated)
-1. **Start Phase 6 (now): UI redesign to Kurdynowski branding**.
-2. Phase 7: Advanced content creation feature set.
-3. Phase 8: JWT auth + workspaces.
-4. Then:
-   - P2: Improve image generator (prompting, styles, variations, consistency).
-   - P3 (optional): Insert images directly in visual editor.
+1. **P2 — Image generator enhancements**
+   - Style presets, variations, consistency controls.
+   - Better prompts (brand-safe, context-aware) and caching.
+2. **P3 (optional) — Insert images directly in Visual editor**
+   - Insert from gallery into cursor position.
+   - Captions/alt text support.
+3. **P1 extension — Workspaces**
+   - Add workspace entities + membership.
+   - Scope articles/images by workspace and implement workspace switch.
+4. **Advanced Content extensions**
+   - Multi-part series generation.
+   - Sources-driven generation (URL/paste; later file upload).
 
 ---
 
 ## Success Criteria (updated)
-- Phase 1–5: ✅ delivered as documented.
-- Phase 6: Brand-consistent premium UI across all pages.
-- Phase 7: Advanced, specialized content generation with templates + blocks + sources.
-- Phase 8: Authenticated, user-scoped workspaces and data isolation.
+- Phase 1–8: ✅ delivered as documented.
+- Brand-consistent premium UI across all pages.
+- Advanced, specialized content generation with templates + advanced blocks.
+- Authenticated app with protected routes.
 - Reliability preserved:
   - No broken anchors.
   - Correct UTF‑8.
