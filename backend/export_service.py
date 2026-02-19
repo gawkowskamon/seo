@@ -288,7 +288,7 @@ def generate_pdf_bytes(article: dict) -> bytes:
         fontSize=16,
         spaceBefore=20,
         spaceAfter=10,
-        textColor='#0e6ba8'
+        textColor='#04389E'
     )
     
     h3_style = ParagraphStyle(
@@ -298,7 +298,7 @@ def generate_pdf_bytes(article: dict) -> bytes:
         fontSize=13,
         spaceBefore=12,
         spaceAfter=6,
-        textColor='#1a7bc0'
+        textColor='#1a3a6e'
     )
     
     body_style = ParagraphStyle(
