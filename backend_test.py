@@ -1155,8 +1155,8 @@ class SEOArticleAPITester:
         return success
 
 def main():
-    print("🚀 Testing SEO Article Builder API - Enhanced Features")
-    print("=" * 70)
+    print("🚀 Testing SEO Article Builder API - Admin User Management & Image Generator Features")
+    print("=" * 80)
     
     tester = SEOArticleAPITester()
     
@@ -1174,7 +1174,25 @@ def main():
     
     # Test admin login functionality
     print("\n👑 Admin Authentication Tests")
-    tester.test_admin_login()
+    admin_login_success = tester.test_admin_login()
+    
+    if admin_login_success:
+        # Test admin user management endpoints
+        print("\n🔧 Admin User Management Tests")
+        tester.test_admin_list_users()
+        tester.test_admin_create_user()
+        tester.test_admin_update_user()
+        tester.test_admin_deactivate_user()
+        
+        # Test authorization (non-admin access)
+        print("\n🚫 Authorization Tests")
+        tester.test_non_admin_access_admin_endpoints()
+        
+        # Test image generation with reference files
+        print("\n🖼️  Image Generation with Reference Tests")
+        tester.test_image_generation_without_reference()
+        tester.test_image_generation_with_reference()
+        tester.test_image_generation_invalid_mime_type()
     
     # Test user-scoped endpoints
     print("\n👤 User Scoping Tests")
@@ -1191,7 +1209,7 @@ def main():
     tester.test_list_series()
     
     # Print final results
-    print("\n" + "=" * 70)
+    print("\n" + "=" * 80)
     print(f"📊 Final Results: {tester.tests_passed}/{tester.tests_run} tests passed")
     
     if tester.tests_passed == tester.tests_run:
