@@ -537,11 +537,17 @@ async def get_stats(user: dict = Depends(get_current_user)):
 
 # --- Image Generation ---
 
+class ReferenceImageData(BaseModel):
+    data: str  # base64 encoded image
+    mime_type: str  # e.g. "image/png", "image/jpeg"
+    name: Optional[str] = None
+
 class ImageGenerateRequest(BaseModel):
     prompt: str
     style: str = "hero"
     article_id: Optional[str] = None
     variation_type: Optional[str] = None  # color, composition, mood, simplify
+    reference_image: Optional[ReferenceImageData] = None
 
 @api_router.get("/image-styles")
 async def list_image_styles():
