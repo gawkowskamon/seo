@@ -368,6 +368,87 @@ async def get_stats():
     }
 
 
+# --- Image Generation ---
+
+class ImageGenerateRequest(BaseModel):
+    prompt: str
+    style: str = "hero"  # hero, section, infographic, custom
+    article_id: Optional[str] = None
+
+@api_router.post("/images/generate")
+async def generate_image_endpoint(request: ImageGenerateRequest):
+    """Generate an image using Gemini Nano Banana model."""
+    try:
+        result = await generate_image(
+            prompt=request.prompt,
+            style=request.style
+        )
+        
+        # Save image to DB
+        image_id = str(uuid.uuid4())
+        image_doc = {
+            "id": image_id,
+            "prompt": request.prompt,
+            "style": request.style,
+            "article_id": request.article_id,
+            "mime_type": result["mime_type"],
+            "data": result["data"],  # base64
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        await db.images.insert_one(image_doc)
+        
+        return {
+            "id": image_id,
+            "prompt": request.prompt,
+            "style": request.style,
+            "mime_type": result["mime_type"],
+            "data": result["data"],
+            "created_at": image_doc["created_at"]
+        }
+        
+    except Exception as e:
+        logging.error(f"Image generation error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/images/{image_id}")
+async def get_image(image_id: str):
+    """Get a single image by ID."""
+    image = await db.images.find_one({"id": image_id}, {"_id": 0})
+    if not image:
+        raise HTTPException(status_code=404, detail="Image not found")
+    return {
+        "id": image["id"],
+        "prompt": image.get("prompt", ""),
+        "style": image.get("style", ""),
+        "mime_type": image.get("mime_type", ""),
+        "data": image.get("data", ""),
+        "article_id": image.get("article_id"),
+        "created_at": image.get("created_at")
+    }
+
+
+@api_router.get("/articles/{article_id}/images")
+async def get_article_images(article_id: str):
+    """Get all images for a specific article."""
+    images = await db.images.find(
+        {"article_id": article_id}, 
+        {"_id": 0, "data": 0}  # Exclude base64 data from list for performance
+    ).sort("created_at", -1).to_list(50)
+    return images
+
+
+@api_router.delete("/images/{image_id}")
+async def delete_image(image_id: str):
+    """Delete an image."""
+    result = await db.images.delete_one({"id": image_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Image not found")
+    return {"message": "Image deleted", "id": image_id}
+
+
+
 # Include the router in the main app
 app.include_router(api_router)
 
