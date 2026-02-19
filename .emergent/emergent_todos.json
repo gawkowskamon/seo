@@ -1,23 +1,23 @@
 [
   {
     "content": "Phase 6: Update index.css tokens + fonts (brand blue, orange, Instrument Serif)",
-    "status": "in_progress"
+    "status": "completed"
   },
   {
     "content": "Phase 6: Update App.css with brand colors throughout",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "content": "Phase 6: Restyle Sidebar with Kurdynowski wordmark",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "content": "Phase 6: Verify redesign with screenshots",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "content": "Phase 7: Advanced Content - Templates + blocks backend",
-    "status": "pending"
+    "status": "in_progress"
   },
   {
     "content": "Phase 7: Advanced Content - Frontend template UI",
