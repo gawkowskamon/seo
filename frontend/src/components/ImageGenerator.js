@@ -302,7 +302,7 @@ const ImageGenerator = ({ articleId, articleTitle, articleTopic }) => {
                   overflow: 'hidden',
                   cursor: 'pointer',
                   border: selectedImage?.id === image.id 
-                    ? '2px solid hsl(209, 88%, 36%)' 
+                    ? '2px solid #04389E' 
                     : '1px solid hsl(214, 18%, 88%)',
                   transition: 'border-color 0.15s',
                   position: 'relative'
