@@ -1,30 +1,30 @@
 [
   {
     "content": "Visual editor toolbar (bold, italic, headings, lists, links, undo/redo)",
-    "status": "in_progress"
+    "status": "completed"
   },
   {
     "content": "1:1 export styling - embed Kurdynowski CSS/fonts in HTML export",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "content": "1:1 export styling - update PDF export with matching visual styles",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "content": "Backend: Subscription plans + tpay integration endpoints",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "content": "Frontend: Pricing page (/cennik) with 3 tiers + tpay checkout",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "content": "Frontend: Subscription status in user profile/sidebar",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "content": "Testing",
-    "status": "pending"
+    "status": "in_progress"
   }
 ]
