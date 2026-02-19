@@ -44,7 +44,7 @@ const TOCPanel = ({ sections, toc }) => {
           title={`Kliknij aby skopiowa\u0107 #${item.anchor}`}
         >
           {item.level === 'h2' ? (
-            <Hash size={14} style={{ color: 'hsl(209, 88%, 36%)', flexShrink: 0 }} />
+            <Hash size={14} style={{ color: '#04389E', flexShrink: 0 }} />
           ) : (
             <LinkIcon size={12} style={{ color: 'hsl(215, 16%, 65%)', flexShrink: 0 }} />
           )}
