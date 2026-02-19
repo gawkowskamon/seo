@@ -657,11 +657,10 @@ const ImageGenerator = ({ articleId, article, onInsertImage }) => {
                 }}
                 data-testid="gallery-image-item"
                 onClick={async () => {
-                  // Load full image
+                  // Load full image for lightbox preview
                   try {
                     const res = await axios.get(`${BACKEND_URL}/api/images/${img.id}`);
-                    setGeneratedImage(res.data);
-                    setShowVariants(true);
+                    openLightbox(res.data, gallery.indexOf(img));
                   } catch (err) {
                     toast.error('Blad ladowania obrazu');
                   }
