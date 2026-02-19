@@ -403,6 +403,13 @@ const ArticleEditor = () => {
             FAQ
           </button>
           <button 
+            className={`right-panel-tab ${rightTab === 'images' ? 'active' : ''}`}
+            onClick={() => setRightTab('images')}
+          >
+            <ImageIcon size={14} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
+            Obrazy
+          </button>
+          <button 
             className={`right-panel-tab ${rightTab === 'export' ? 'active' : ''}`}
             onClick={() => setRightTab('export')}
           >
