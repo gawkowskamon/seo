@@ -20,6 +20,7 @@ from export_service import (
     generate_full_html,
     generate_pdf_bytes
 )
+from image_generator import generate_image
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
