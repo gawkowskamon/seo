@@ -183,7 +183,7 @@ async def suggest_topics(category: str = "ogólne", context: str = "aktualne tem
         session_id=f"topic-suggest-{hash(category) % 100000}",
         system_message="Jesteś ekspertem SEO od księgowości w Polsce. Odpowiadaj WYŁĄCZNIE poprawnym JSON-em."
     )
-    chat.with_model("openai", "gpt-4.1")
+    chat.with_model("openai", "gpt-4.1-mini")
     
     response = await chat.send_message(UserMessage(text=prompt))
     
