@@ -424,22 +424,23 @@ async def suggest_topics_endpoint(request: TopicSuggestRequest):
 # --- Dashboard Stats ---
 
 @api_router.get("/stats")
-async def get_stats():
-    """Get dashboard statistics."""
-    total_articles = await db.articles.count_documents({})
+async def get_stats(user: dict = Depends(get_current_user)):
+    """Get dashboard statistics scoped to user (admin sees all)."""
+    query = {} if user.get("is_admin") else {"user_id": user["id"]}
+    total_articles = await db.articles.count_documents(query)
     
     # Average SEO score
+    match_query = {**query, "seo_score.percentage": {"$exists": True}}
     pipeline = [
-        {"$match": {"seo_score.percentage": {"$exists": True}}},
+        {"$match": match_query},
         {"$group": {"_id": None, "avg_score": {"$avg": "$seo_score.percentage"}}}
     ]
     avg_result = await db.articles.aggregate(pipeline).to_list(1)
     avg_score = round(avg_result[0]["avg_score"]) if avg_result else 0
     
     # Articles needing improvement (score < 70)
-    needs_improvement = await db.articles.count_documents(
-        {"seo_score.percentage": {"$lt": 70}}
-    )
+    needs_query = {**query, "seo_score.percentage": {"$lt": 70}}
+    needs_improvement = await db.articles.count_documents(needs_query)
     
     return {
         "total_articles": total_articles,
