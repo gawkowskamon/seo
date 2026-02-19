@@ -284,6 +284,41 @@ class SEOArticleAPITester:
                 
         return all_passed
 
+    def test_regenerate_meta_for_existing_article(self, article_id):
+        """Test regenerate meta endpoint for existing article"""
+        data = {"section": "meta"}
+        success, response = self.run_test(
+            f"Regenerate Meta for {article_id}", 
+            "POST", 
+            f"articles/{article_id}/regenerate", 
+            200,
+            data=data,
+            timeout=45  # Longer timeout for AI regeneration
+        )
+        
+        if success:
+            required_keys = ['meta_title', 'meta_description']
+            for key in required_keys:
+                if key not in response:
+                    print(f"❌ Missing key in regenerate response: {key}")
+                    return False
+            
+            meta_title = response.get('meta_title', '')
+            meta_description = response.get('meta_description', '')
+            print(f"   Generated meta title: {meta_title}")
+            print(f"   Generated meta description: {meta_description}")
+            
+            # Check if content is in Polish
+            polish_chars = ['ą', 'ć', 'ę', 'ł', 'ń', 'ó', 'ś', 'ź', 'ż']
+            meta_text = (meta_title + ' ' + meta_description).lower()
+            has_polish = any(char in meta_text for char in polish_chars)
+            if has_polish:
+                print(f"   ✅ Polish characters found in generated meta data")
+            else:
+                print(f"   ⚠️  No Polish characters detected in meta data")
+                
+        return success
+
 def main():
     print("🚀 Testing Polish SEO Article Writer API - Focused Test")
     print("=" * 50)
