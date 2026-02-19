@@ -415,14 +415,21 @@ const ArticleEditor = () => {
 
         <div className="editor-content-area">
           {editorTab === 'visual' ? (
-            <div 
-              className="visual-editor-canvas"
-              contentEditable
-              suppressContentEditableWarning
-              dangerouslySetInnerHTML={{ __html: htmlContent }}
-              onBlur={handleVisualBlur}
-              data-testid="article-visual-editor"
-            />
+            <>
+              <EditorToolbar editorRef={editorContentRef} />
+              <div 
+                ref={editorContentRef}
+                className="visual-editor-canvas"
+                contentEditable
+                suppressContentEditableWarning
+                dangerouslySetInnerHTML={{ __html: htmlContent }}
+                onBlur={handleVisualBlur}
+                onInput={(e) => {
+                  if (!hasUnsavedChanges) setHasUnsavedChanges(true);
+                }}
+                data-testid="article-visual-editor"
+              />
+            </>
           ) : (
             <div className="html-editor-area">
               <textarea
