@@ -11,6 +11,7 @@ import FAQEditor from '../components/FAQEditor';
 import TOCPanel from '../components/TOCPanel';
 import ImageGenerator from '../components/ImageGenerator';
 import SEOAssistantPanel from '../components/SEOAssistantPanel';
+import EditorToolbar from '../components/EditorToolbar';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
