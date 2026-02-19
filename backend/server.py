@@ -132,6 +132,37 @@ async def root():
     return {"message": "SEO Article Writer API", "status": "running"}
 
 
+# ============ Auth Routes ============
+
+@api_router.post("/auth/register")
+async def api_register(request: RegisterRequest):
+    """Register a new user."""
+    if len(request.password) < 6:
+        raise HTTPException(status_code=400, detail="Haslo musi miec minimum 6 znakow")
+    if "@" not in request.email:
+        raise HTTPException(status_code=400, detail="Nieprawidlowy adres email")
+    try:
+        user = await register_user(db, request.email, request.password, request.full_name)
+        token = create_access_token(data={"sub": user["id"], "email": user["email"]})
+        return {"user": user, "token": token}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@api_router.post("/auth/login")
+async def api_login(request: LoginRequest):
+    """Login and get JWT token."""
+    user = await authenticate_user(db, request.email, request.password)
+    if not user:
+        raise HTTPException(status_code=401, detail="Nieprawidlowy email lub haslo")
+    token = create_access_token(data={"sub": user["id"], "email": user["email"]})
+    return {"user": user, "token": token}
+
+@api_router.get("/auth/me")
+async def api_get_me(user: dict = Depends(get_current_user)):
+    """Get current user profile."""
+    return user
+
+
 @api_router.get("/health")
 async def health():
     return {"status": "healthy"}
