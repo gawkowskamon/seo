@@ -20,7 +20,7 @@ from export_service import (
     generate_full_html,
     generate_pdf_bytes
 )
-from image_generator import generate_image
+from image_generator import generate_image, generate_image_variant, get_all_image_styles
 from seo_assistant import analyze_article_seo, chat_about_seo
 from content_templates import get_all_templates
 from auth import (
