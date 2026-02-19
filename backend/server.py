@@ -164,6 +164,91 @@ async def api_get_me(user: dict = Depends(get_current_user)):
     return user
 
 
+# ============ Admin Routes ============
+
+class AdminCreateUserRequest(BaseModel):
+    email: str
+    password: str
+    full_name: str = ""
+    is_admin: bool = False
+
+class AdminUpdateUserRequest(BaseModel):
+    full_name: Optional[str] = None
+    is_admin: Optional[bool] = None
+    is_active: Optional[bool] = None
+
+async def require_admin(user: dict = Depends(get_current_user)):
+    """Require admin role."""
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Wymagane uprawnienia administratora")
+    return user
+
+@api_router.get("/admin/users")
+async def admin_list_users(admin: dict = Depends(require_admin)):
+    """List all users (admin only)."""
+    users = await db.users.find({}, {"_id": 0, "password_hash": 0}).sort("created_at", -1).to_list(200)
+    result = []
+    for u in users:
+        if isinstance(u.get("created_at"), datetime):
+            u["created_at"] = u["created_at"].isoformat()
+        # Count articles for this user
+        article_count = await db.articles.count_documents({"user_id": u["id"]})
+        u["article_count"] = article_count
+        result.append(u)
+    return result
+
+@api_router.post("/admin/users")
+async def admin_create_user(request: AdminCreateUserRequest, admin: dict = Depends(require_admin)):
+    """Create a new user (admin only)."""
+    if len(request.password) < 6:
+        raise HTTPException(status_code=400, detail="Haslo musi miec minimum 6 znakow")
+    if "@" not in request.email:
+        raise HTTPException(status_code=400, detail="Nieprawidlowy adres email")
+    try:
+        user = await register_user(db, request.email, request.password, request.full_name)
+        # Update admin flag if set
+        if request.is_admin:
+            await db.users.update_one({"id": user["id"]}, {"$set": {"is_admin": True}})
+            user["is_admin"] = True
+        return user
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@api_router.put("/admin/users/{user_id}")
+async def admin_update_user(user_id: str, request: AdminUpdateUserRequest, admin: dict = Depends(require_admin)):
+    """Update user role/permissions (admin only)."""
+    target = await db.users.find_one({"id": user_id})
+    if not target:
+        raise HTTPException(status_code=404, detail="Uzytkownik nie znaleziony")
+    
+    update_data = {}
+    if request.full_name is not None:
+        update_data["full_name"] = request.full_name
+    if request.is_admin is not None:
+        update_data["is_admin"] = request.is_admin
+    if request.is_active is not None:
+        update_data["is_active"] = request.is_active
+    
+    if update_data:
+        await db.users.update_one({"id": user_id}, {"$set": update_data})
+    
+    updated = await db.users.find_one({"id": user_id}, {"_id": 0, "password_hash": 0})
+    if isinstance(updated.get("created_at"), datetime):
+        updated["created_at"] = updated["created_at"].isoformat()
+    return updated
+
+@api_router.delete("/admin/users/{user_id}")
+async def admin_delete_user(user_id: str, admin: dict = Depends(require_admin)):
+    """Deactivate a user (admin only). Cannot deactivate yourself."""
+    if user_id == admin["id"]:
+        raise HTTPException(status_code=400, detail="Nie mozesz dezaktywowac wlasnego konta")
+    target = await db.users.find_one({"id": user_id})
+    if not target:
+        raise HTTPException(status_code=404, detail="Uzytkownik nie znaleziony")
+    await db.users.update_one({"id": user_id}, {"$set": {"is_active": False}})
+    return {"message": "Uzytkownik dezaktywowany", "id": user_id}
+
+
 @api_router.get("/health")
 async def health():
     return {"status": "healthy"}
