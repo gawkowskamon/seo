@@ -11,8 +11,8 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
 const IMPACT_CONFIG = {
   high: { label: 'Wysoki', color: 'hsl(0, 72%, 51%)', bg: 'hsl(0, 72%, 96%)', border: 'hsl(0, 72%, 88%)' },
-  medium: { label: 'Sredni', color: 'hsl(38, 92%, 40%)', bg: 'hsl(38, 92%, 95%)', border: 'hsl(38, 80%, 80%)' },
-  low: { label: 'Niski', color: 'hsl(209, 88%, 36%)', bg: 'hsl(209, 88%, 96%)', border: 'hsl(209, 60%, 85%)' },
+  medium: { label: 'Sredni', color: '#F28C28', bg: 'hsl(34, 90%, 95%)', border: 'hsl(34, 80%, 85%)' },
+  low: { label: 'Niski', color: '#04389E', bg: 'hsl(220, 95%, 96%)', border: 'hsl(220, 60%, 85%)' },
 };
 
 const CATEGORY_LABELS = {
