@@ -167,6 +167,11 @@ def generate_full_html(article: dict) -> str:
 
 def generate_pdf_bytes(article: dict) -> bytes:
     """Generate PDF from article. Returns PDF bytes."""
+    # Register Polish-compatible fonts
+    FONT_PATH = '/usr/share/fonts/truetype/dejavu/'
+    pdfmetrics.registerFont(TTFont('DejaVuSans', os.path.join(FONT_PATH, 'DejaVuSans.ttf')))
+    pdfmetrics.registerFont(TTFont('DejaVuSans-Bold', os.path.join(FONT_PATH, 'DejaVuSans-Bold.ttf')))
+
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
         buffer,
@@ -179,10 +184,11 @@ def generate_pdf_bytes(article: dict) -> bytes:
     
     styles = getSampleStyleSheet()
     
-    # Custom styles
+    # Custom styles with DejaVuSans (supports Polish diacritics)
     title_style = ParagraphStyle(
         'ArticleTitle',
         parent=styles['Title'],
+        fontName='DejaVuSans-Bold',
         fontSize=20,
         spaceAfter=20,
         alignment=TA_CENTER
@@ -191,6 +197,7 @@ def generate_pdf_bytes(article: dict) -> bytes:
     h2_style = ParagraphStyle(
         'H2Style',
         parent=styles['Heading2'],
+        fontName='DejaVuSans-Bold',
         fontSize=16,
         spaceBefore=20,
         spaceAfter=10,
@@ -200,6 +207,7 @@ def generate_pdf_bytes(article: dict) -> bytes:
     h3_style = ParagraphStyle(
         'H3Style',
         parent=styles['Heading3'],
+        fontName='DejaVuSans-Bold',
         fontSize=13,
         spaceBefore=12,
         spaceAfter=6,
@@ -209,6 +217,7 @@ def generate_pdf_bytes(article: dict) -> bytes:
     body_style = ParagraphStyle(
         'BodyText2',
         parent=styles['BodyText'],
+        fontName='DejaVuSans',
         fontSize=10,
         leading=14,
         alignment=TA_JUSTIFY,
@@ -218,6 +227,7 @@ def generate_pdf_bytes(article: dict) -> bytes:
     faq_q_style = ParagraphStyle(
         'FAQQuestion',
         parent=styles['Heading4'],
+        fontName='DejaVuSans-Bold',
         fontSize=11,
         spaceBefore=10,
         spaceAfter=4,
