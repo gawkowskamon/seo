@@ -5,7 +5,7 @@
     "critical_bugs": [],
     "flaky_endpoints": [
       {
-        "endpoint": "External API access via https://seo-article-builder-1.preview.emergentagent.com",
+        "endpoint": "External API access via https://accounting-blog-ai.preview.emergentagent.com",
         "failure_rate": "High timeout rate",
         "symptoms": "External endpoint timeouts during testing, but localhost:8001 works fine",
         "workaround": "Use local testing or investigate ingress configuration"
