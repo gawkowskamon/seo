@@ -1,42 +1,42 @@
 [
   {
-    "content": "Phase 4: Backend - GET /api/library/images (user-scoped, admin all) + PUT /api/images/{id}/tags",
-    "status": "in_progress"
+    "content": "Phase 4: Backend - GET /api/library/images + PUT /api/images/{id}/tags + GET /api/library/tags",
+    "status": "completed"
   },
   {
     "content": "Phase 4: Frontend - ImageLibrary page (/biblioteka) with grid, search, filters, tags",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "content": "Phase 4: Frontend - Lightbox modal with full preview + prev/next navigation",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "content": "Phase 4: Sidebar - Add 'Biblioteka' link for all users",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "content": "Phase 4: App.js - Add /biblioteka route",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "content": "Phase 5: Backend - Multi-variant generation (4 at once)",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "content": "Phase 5: Backend - AI edit endpoint (inpaint/background/style transfer)",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "content": "Phase 5: Frontend - Multi-variant UI (2x2 grid) in generator",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "content": "Phase 5: Frontend - Image editing panel (crop, filters, AI edits)",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "content": "Phase 6: Testing with testing agent",
-    "status": "pending"
+    "status": "in_progress"
   }
 ]
