@@ -58,8 +58,14 @@ const Sidebar = () => {
               {(user.full_name || user.email || '?')[0].toUpperCase()}
             </div>
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'hsl(222, 47%, 11%)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'hsl(222, 47%, 11%)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}>
                 {user.full_name || 'Uzytkownik'}
+                {user.is_admin && (
+                  <span style={{
+                    fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4,
+                    background: '#F28C28', color: 'white', letterSpacing: '0.04em'
+                  }}>ADMIN</span>
+                )}
               </div>
               <div style={{ fontSize: 11, color: 'hsl(215, 16%, 50%)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {user.email}
