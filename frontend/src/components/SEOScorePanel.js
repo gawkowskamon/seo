@@ -76,7 +76,7 @@ const SEOScorePanel = ({ seoScore, onRescore, scoring }) => {
           <div key={key} style={{ marginBottom: 12 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13 }}>
               <span style={{ color: 'hsl(222, 47%, 20%)' }}>{data.label}</span>
-              <span style={{ fontWeight: 600, fontFamily: 'Space Grotesk, sans-serif' }}>{data.score}/{data.max}</span>
+              <span style={{ fontWeight: 600, fontFamily: "'Instrument Serif', Georgia, serif" }}>{data.score}/{data.max}</span>
             </div>
             <div className="seo-bar">
               <div 
