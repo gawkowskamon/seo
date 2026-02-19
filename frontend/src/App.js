@@ -94,6 +94,9 @@ function AppRoutes() {
       <Route path="/admin/users" element={
         <ProtectedLayout requireAdmin><AdminUsers /></ProtectedLayout>
       } />
+      <Route path="/admin/settings" element={
+        <ProtectedLayout requireAdmin><AdminSettings /></ProtectedLayout>
+      } />
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>
   );
