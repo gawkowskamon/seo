@@ -76,6 +76,39 @@ class TopicSuggestRequest(BaseModel):
 class ExportRequest(BaseModel):
     format: str  # "facebook", "google_business", "html", "pdf"
 
+class RegisterRequest(BaseModel):
+    email: str
+    password: str
+    full_name: str = ""
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+# ============ Auth Helper ============
+
+async def get_current_user_optional(authorization: Optional[str] = Header(None)):
+    """Get current user from token if present, otherwise return None."""
+    if not authorization or not authorization.startswith("Bearer "):
+        return None
+    token = authorization.replace("Bearer ", "")
+    payload = decode_access_token(token)
+    if not payload:
+        return None
+    user_id = payload.get("sub")
+    if not user_id:
+        return None
+    user = await get_user_by_id(db, user_id)
+    return user
+
+async def get_current_user(authorization: Optional[str] = Header(None)):
+    """Get current user from token. Raises 401 if not authenticated."""
+    user = await get_current_user_optional(authorization)
+    if not user:
+        raise HTTPException(status_code=401, detail="Wymagane logowanie")
+    return user
+
 
 # ============ Helper Functions ============
 
