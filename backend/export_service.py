@@ -318,7 +318,7 @@ def generate_pdf_bytes(article: dict) -> bytes:
         fontSize=11,
         spaceBefore=10,
         spaceAfter=4,
-        textColor='#0a4c7a'
+        textColor='#04389E'
     )
     
     elements = []
