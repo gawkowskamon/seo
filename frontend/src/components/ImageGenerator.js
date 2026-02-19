@@ -1,344 +1,378 @@
-import React, { useState, useEffect } from 'react';
-import { Image, Loader2, Wand2, Download, Trash2, Copy, Plus, X, ImagePlus } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Image as ImageIcon, Loader2, Download, Copy, Trash2, RefreshCw, Sparkles, Camera, PenTool, BarChart3, Circle, GitBranch, TrendingUp, Edit, Palette, Layout, Zap, Minimize2 } from 'lucide-react';
 import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Badge } from './ui/badge';
 import { toast } from 'sonner';
 import axios from 'axios';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
-const STYLES = [
-  { value: 'hero', label: 'Hero / Główny' },
-  { value: 'section', label: 'Ilustracja sekcji' },
-  { value: 'infographic', label: 'Infografika' },
-  { value: 'custom', label: 'Własny prompt' },
+const STYLE_ICONS = {
+  'image': ImageIcon,
+  'camera': Camera,
+  'pen-tool': PenTool,
+  'bar-chart-3': BarChart3,
+  'circle': Circle,
+  'git-branch': GitBranch,
+  'trending-up': TrendingUp,
+  'edit': Edit,
+};
+
+const VARIATION_TYPES = [
+  { id: 'color', label: 'Kolory', icon: Palette, desc: 'Inna paleta kolorow' },
+  { id: 'composition', label: 'Kompozycja', icon: Layout, desc: 'Inny uklad elementow' },
+  { id: 'mood', label: 'Nastroj', icon: Zap, desc: 'Inna energia i ton' },
+  { id: 'simplify', label: 'Uproszczona', icon: Minimize2, desc: 'Prostsza wersja' },
 ];
 
-const ImageGenerator = ({ articleId, articleTitle, articleTopic }) => {
+const ImageGenerator = ({ articleId, article }) => {
   const [prompt, setPrompt] = useState('');
-  const [style, setStyle] = useState('hero');
+  const [styles, setStyles] = useState([]);
+  const [selectedStyle, setSelectedStyle] = useState('hero');
   const [generating, setGenerating] = useState(false);
-  const [images, setImages] = useState([]);
-  const [loadingImages, setLoadingImages] = useState(true);
-  const [selectedImage, setSelectedImage] = useState(null);
-  const [showGenerator, setShowGenerator] = useState(false);
+  const [generatedImage, setGeneratedImage] = useState(null);
+  const [gallery, setGallery] = useState([]);
+  const [loadingGallery, setLoadingGallery] = useState(true);
+  const [showVariants, setShowVariants] = useState(false);
+  const [generatingVariant, setGeneratingVariant] = useState(null);
 
   useEffect(() => {
-    if (articleId) {
-      fetchImages();
+    const fetchStyles = async () => {
+      try {
+        const res = await axios.get(`${BACKEND_URL}/api/image-styles`);
+        setStyles(res.data);
+      } catch (err) {
+        // Use defaults
+        setStyles([
+          { id: 'hero', name: 'Okladka artykulu', icon: 'image' },
+          { id: 'fotorealizm', name: 'Foto-realizm', icon: 'camera' },
+          { id: 'ilustracja', name: 'Ilustracja flat', icon: 'pen-tool' },
+          { id: 'infografika', name: 'Infografika', icon: 'bar-chart-3' },
+          { id: 'custom', name: 'Wlasny prompt', icon: 'edit' },
+        ]);
+      }
+    };
+    fetchStyles();
+  }, []);
+
+  const loadGallery = useCallback(async () => {
+    if (!articleId) return;
+    try {
+      const res = await axios.get(`${BACKEND_URL}/api/articles/${articleId}/images`);
+      setGallery(res.data);
+    } catch (err) {
+      console.warn('Error loading gallery:', err);
+    } finally {
+      setLoadingGallery(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [articleId]);
 
   useEffect(() => {
-    // Auto-fill prompt based on style and article info
-    if (style !== 'custom') {
-      setPrompt(articleTopic || articleTitle || '');
-    }
-  }, [style, articleTopic, articleTitle]);
+    loadGallery();
+  }, [loadGallery]);
 
-  const fetchImages = async () => {
-    try {
-      setLoadingImages(true);
-      const res = await axios.get(`${BACKEND_URL}/api/articles/${articleId}/images`);
-      setImages(res.data);
-    } catch (e) {
-      console.error('Error fetching images:', e);
-    } finally {
-      setLoadingImages(false);
+  // Auto-fill prompt from article context
+  useEffect(() => {
+    if (article && !prompt) {
+      const topic = article.topic || article.primary_keyword || '';
+      if (topic) {
+        setPrompt(topic);
+      }
     }
-  };
+  }, [article]);
 
-  const handleGenerate = async () => {
+  const handleGenerate = async (variationType = null) => {
     if (!prompt.trim()) {
-      toast.error('Podaj opis obrazu');
+      toast.error('Wpisz temat lub opis obrazu');
       return;
     }
 
-    setGenerating(true);
-    try {
-      const res = await axios.post(`${BACKEND_URL}/api/images/generate`, {
-        prompt: prompt.trim(),
-        style: style,
-        article_id: articleId
-      }, { timeout: 120000 });
+    if (variationType) {
+      setGeneratingVariant(variationType);
+    } else {
+      setGenerating(true);
+    }
 
-      // Fetch full image with data
-      const imageRes = await axios.get(`${BACKEND_URL}/api/images/${res.data.id}`);
+    try {
+      const payload = {
+        prompt: prompt.trim(),
+        style: selectedStyle,
+        article_id: articleId
+      };
+      if (variationType) {
+        payload.variation_type = variationType;
+      }
+
+      const res = await axios.post(`${BACKEND_URL}/api/images/generate`, payload, { timeout: 120000 });
       
-      setImages(prev => [imageRes.data, ...prev]);
-      setSelectedImage(imageRes.data);
-      setShowGenerator(false);
-      toast.success('Obraz wygenerowany!');
-    } catch (e) {
-      const msg = e.response?.data?.detail || 'Błąd generowania obrazu';
+      setGeneratedImage(res.data);
+      setShowVariants(true);
+      await loadGallery();
+      toast.success(variationType ? 'Wariant wygenerowany' : 'Obraz wygenerowany');
+    } catch (err) {
+      const msg = err.response?.data?.detail || 'Blad generowania obrazu';
       toast.error(msg);
     } finally {
       setGenerating(false);
+      setGeneratingVariant(null);
     }
   };
 
   const handleDelete = async (imageId) => {
-    if (!window.confirm('Czy na pewno chcesz usunąć ten obraz?')) return;
     try {
       await axios.delete(`${BACKEND_URL}/api/images/${imageId}`);
-      setImages(prev => prev.filter(img => img.id !== imageId));
-      if (selectedImage?.id === imageId) setSelectedImage(null);
-      toast.success('Obraz usunięty');
-    } catch (e) {
-      toast.error('Błąd usuwania obrazu');
+      setGallery(prev => prev.filter(img => img.id !== imageId));
+      if (generatedImage?.id === imageId) setGeneratedImage(null);
+      toast.success('Obraz usuniety');
+    } catch (err) {
+      toast.error('Blad usuwania');
     }
   };
 
   const handleCopyHtml = (image) => {
-    const imgSrc = image.data 
-      ? `data:${image.mime_type};base64,${image.data}`
-      : '';
-    const html = `<img src="${imgSrc}" alt="${image.prompt || 'Ilustracja artykułu'}" style="max-width:100%;height:auto;border-radius:8px;margin:16px 0;" />`;
+    const html = `<img src="data:${image.mime_type};base64,${image.data}" alt="${image.prompt || ''}" style="max-width: 100%; height: auto;" />`;
     navigator.clipboard.writeText(html);
-    toast.success('HTML obrazu skopiowany! Wklej w edytorze HTML.');
-  };
-
-  const handleDownload = (image) => {
-    if (!image.data) return;
-    const byteCharacters = atob(image.data);
-    const byteNumbers = new Array(byteCharacters.length);
-    for (let i = 0; i < byteCharacters.length; i++) {
-      byteNumbers[i] = byteCharacters.charCodeAt(i);
-    }
-    const byteArray = new Uint8Array(byteNumbers);
-    const blob = new Blob([byteArray], { type: image.mime_type || 'image/jpeg' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `article-image-${image.id?.slice(0, 8) || 'img'}.${image.mime_type?.includes('png') ? 'png' : 'jpg'}`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success('Obraz pobrany');
-  };
-
-  const loadFullImage = async (image) => {
-    if (image.data) {
-      setSelectedImage(image);
-      return;
-    }
-    try {
-      const res = await axios.get(`${BACKEND_URL}/api/images/${image.id}`);
-      const fullImage = res.data;
-      // Update in list
-      setImages(prev => prev.map(img => img.id === fullImage.id ? fullImage : img));
-      setSelectedImage(fullImage);
-    } catch (e) {
-      toast.error('Błąd ładowania obrazu');
-    }
+    toast.success('HTML skopiowany do schowka');
   };
 
   return (
-    <div>
-      {/* Image Generator Form */}
-      <div className="panel-section">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <div className="panel-section-title" style={{ marginBottom: 0 }}>
-            Obrazy ({images.length})
-          </div>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => setShowGenerator(!showGenerator)} 
-            className="gap-1"
-            data-testid="image-generate-toggle"
-          >
-            {showGenerator ? <X size={14} /> : <ImagePlus size={14} />}
-            {showGenerator ? 'Zamknij' : 'Generuj'}
-          </Button>
+    <div data-testid="image-generator-panel" style={{ padding: '16px 0' }}>
+      {/* Style selector */}
+      <div className="panel-section" style={{ paddingTop: 0 }}>
+        <div className="panel-section-title">Styl obrazu</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6 }}>
+          {styles.map(style => {
+            const IconComp = STYLE_ICONS[style.icon] || ImageIcon;
+            const isSelected = selectedStyle === style.id;
+            return (
+              <button
+                key={style.id}
+                onClick={() => setSelectedStyle(style.id)}
+                data-testid={`image-style-${style.id}`}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '8px 10px',
+                  borderRadius: 8,
+                  border: isSelected ? '2px solid #04389E' : '1px solid hsl(214, 18%, 88%)',
+                  background: isSelected ? 'hsl(220, 95%, 98%)' : 'white',
+                  cursor: 'pointer',
+                  fontSize: 12,
+                  fontWeight: isSelected ? 600 : 500,
+                  color: isSelected ? '#04389E' : 'hsl(215, 16%, 45%)',
+                  transition: 'all 0.15s',
+                  textAlign: 'left'
+                }}
+              >
+                <IconComp size={14} />
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{style.name}</span>
+              </button>
+            );
+          })}
         </div>
-
-        {showGenerator && (
-          <div style={{ 
-            background: 'hsl(210, 22%, 96%)', 
-            borderRadius: 10, 
-            padding: 14, 
-            marginBottom: 12,
-            border: '1px solid hsl(214, 18%, 88%)'
-          }}>
-            <div style={{ marginBottom: 10 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: 'hsl(215, 16%, 45%)', display: 'block', marginBottom: 4 }}>Styl obrazu</label>
-              <Select value={style} onValueChange={setStyle}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {STYLES.map(s => (
-                    <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div style={{ marginBottom: 10 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: 'hsl(215, 16%, 45%)', display: 'block', marginBottom: 4 }}>
-                {style === 'custom' ? 'Własny prompt' : 'Temat / opis'}
-              </label>
-              <Input
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                placeholder={style === 'custom' ? 'Opisz dokładnie jaki obraz chcesz...' : 'np. Rozliczanie VAT w firmie'}
-                data-testid="image-prompt-input"
-              />
-            </div>
-            <Button
-              onClick={handleGenerate}
-              disabled={generating || !prompt.trim()}
-              size="sm"
-              className="gap-1 w-full"
-              data-testid="image-generate-button"
-            >
-              {generating ? (
-                <>
-                  <Loader2 size={14} className="animate-spin" />
-                  Generowanie (15-30s)...
-                </>
-              ) : (
-                <>
-                  <Wand2 size={14} />
-                  Generuj obraz
-                </>
-              )}
-            </Button>
-          </div>
-        )}
       </div>
 
-      {/* Selected Image Preview */}
-      {selectedImage && selectedImage.data && (
+      {/* Prompt input */}
+      <div className="panel-section">
+        <div className="panel-section-title">Opis obrazu</div>
+        <textarea
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          placeholder="Opisz obraz lub wpisz temat artykulu..."
+          data-testid="image-prompt-input"
+          rows={3}
+          style={{
+            width: '100%',
+            padding: '10px 12px',
+            borderRadius: 8,
+            border: '1px solid hsl(214, 18%, 88%)',
+            fontSize: 13,
+            resize: 'vertical',
+            fontFamily: 'inherit',
+            lineHeight: 1.4,
+            outline: 'none'
+          }}
+        />
+        <Button
+          onClick={() => handleGenerate()}
+          disabled={generating || !prompt.trim()}
+          size="sm"
+          className="gap-1 w-full mt-2"
+          data-testid="image-generate-button"
+        >
+          {generating ? (
+            <>
+              <Loader2 size={14} className="animate-spin" />
+              Generowanie...
+            </>
+          ) : (
+            <>
+              <Sparkles size={14} />
+              Generuj obraz
+            </>
+          )}
+        </Button>
+      </div>
+
+      {/* Generated image preview */}
+      {generatedImage && (
         <div className="panel-section">
-          <div style={{ position: 'relative' }}>
+          <div className="panel-section-title">Wygenerowany obraz</div>
+          <div style={{
+            borderRadius: 10,
+            overflow: 'hidden',
+            border: '1px solid hsl(214, 18%, 88%)',
+            marginBottom: 10
+          }}>
             <img
-              src={`data:${selectedImage.mime_type};base64,${selectedImage.data}`}
-              alt={selectedImage.prompt || 'Wygenerowany obraz'}
-              style={{ 
-                width: '100%', 
-                borderRadius: 8, 
-                border: '1px solid hsl(214, 18%, 88%)',
-                display: 'block'
-              }}
-              data-testid="image-preview"
+              src={`data:${generatedImage.mime_type};base64,${generatedImage.data}`}
+              alt={generatedImage.prompt}
+              style={{ width: '100%', display: 'block' }}
+              data-testid="generated-image-preview"
             />
-            <button
-              onClick={() => setSelectedImage(null)}
-              style={{
-                position: 'absolute',
-                top: 6,
-                right: 6,
-                background: 'rgba(0,0,0,0.6)',
-                color: 'white',
-                border: 'none',
-                borderRadius: '50%',
-                width: 24,
-                height: 24,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer'
-              }}
-            >
-              <X size={14} />
-            </button>
           </div>
-          <p style={{ fontSize: 11, color: 'hsl(215, 16%, 45%)', marginTop: 6, lineHeight: 1.3 }}>
-            {selectedImage.prompt?.slice(0, 80)}{selectedImage.prompt?.length > 80 ? '...' : ''}
-          </p>
-          <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-            <Button 
-              size="sm" 
-              variant="outline" 
-              onClick={() => handleCopyHtml(selectedImage)} 
+          <div style={{ display: 'flex', gap: 6 }}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleCopyHtml(generatedImage)}
               className="gap-1 flex-1"
+              style={{ fontSize: 11 }}
               data-testid="image-copy-html-button"
             >
-              <Copy size={12} /> HTML
+              <Copy size={12} />
+              Kopiuj HTML
             </Button>
-            <Button 
-              size="sm" 
-              variant="outline" 
-              onClick={() => handleDownload(selectedImage)} 
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleGenerate()}
+              disabled={generating}
               className="gap-1 flex-1"
-              data-testid="image-download-button"
+              style={{ fontSize: 11 }}
             >
-              <Download size={12} /> Pobierz
-            </Button>
-            <Button 
-              size="sm" 
-              variant="outline" 
-              onClick={() => handleDelete(selectedImage.id)} 
-              className="gap-1"
-              style={{ color: 'hsl(0, 72%, 51%)' }}
-            >
-              <Trash2 size={12} />
+              <RefreshCw size={12} />
+              Regeneruj
             </Button>
           </div>
+
+          {/* Variant generation */}
+          {showVariants && (
+            <div style={{ marginTop: 12 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: 'hsl(215, 16%, 50%)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                Warianty
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6 }}>
+                {VARIATION_TYPES.map(v => {
+                  const VIcon = v.icon;
+                  const isLoading = generatingVariant === v.id;
+                  return (
+                    <button
+                      key={v.id}
+                      onClick={() => handleGenerate(v.id)}
+                      disabled={generating || !!generatingVariant}
+                      data-testid={`image-variant-${v.id}`}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        padding: '7px 10px',
+                        borderRadius: 8,
+                        border: '1px solid hsl(214, 18%, 88%)',
+                        background: 'white',
+                        cursor: generating || generatingVariant ? 'not-allowed' : 'pointer',
+                        fontSize: 11,
+                        fontWeight: 500,
+                        color: 'hsl(215, 16%, 45%)',
+                        transition: 'all 0.15s',
+                        opacity: generating || generatingVariant ? 0.6 : 1
+                      }}
+                    >
+                      {isLoading ? <Loader2 size={12} className="animate-spin" /> : <VIcon size={12} />}
+                      {v.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Image Gallery */}
-      <div className="panel-section">
-        {loadingImages ? (
-          <div style={{ padding: '16px 0' }}>
-            <div className="skeleton-line" style={{ height: 60 }} />
-            <div className="skeleton-line" style={{ height: 60 }} />
+      {/* Gallery */}
+      <div className="panel-section" style={{ borderBottom: 'none' }}>
+        <div className="panel-section-title">Galeria ({gallery.length})</div>
+        {loadingGallery ? (
+          <div style={{ textAlign: 'center', padding: 20 }}>
+            <Loader2 size={20} className="animate-spin" style={{ color: 'hsl(215, 16%, 65%)' }} />
           </div>
-        ) : images.length === 0 ? (
-          <p style={{ fontSize: 13, color: 'hsl(215, 16%, 45%)', textAlign: 'center', padding: '16px 0' }}>
-            Brak obrazów. Kliknij "Generuj" aby utworzyć ilustrację.
-          </p>
+        ) : gallery.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '20px 0' }}>
+            <ImageIcon size={24} style={{ color: 'hsl(215, 16%, 75%)', margin: '0 auto 8px', display: 'block' }} />
+            <p style={{ fontSize: 12, color: 'hsl(215, 16%, 55%)' }}>Brak obrazow</p>
+          </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            {images.map((image) => (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
+            {gallery.map(img => (
               <div
-                key={image.id}
-                onClick={() => loadFullImage(image)}
+                key={img.id}
                 style={{
                   borderRadius: 8,
                   overflow: 'hidden',
+                  border: '1px solid hsl(214, 18%, 88%)',
+                  position: 'relative',
                   cursor: 'pointer',
-                  border: selectedImage?.id === image.id 
-                    ? '2px solid #04389E' 
-                    : '1px solid hsl(214, 18%, 88%)',
-                  transition: 'border-color 0.15s',
-                  position: 'relative'
+                  transition: 'box-shadow 0.15s'
                 }}
-                data-testid="image-gallery-item"
+                data-testid="gallery-image-item"
+                onClick={async () => {
+                  // Load full image
+                  try {
+                    const res = await axios.get(`${BACKEND_URL}/api/images/${img.id}`);
+                    setGeneratedImage(res.data);
+                    setShowVariants(true);
+                  } catch (err) {
+                    toast.error('Blad ladowania obrazu');
+                  }
+                }}
               >
-                {image.data ? (
+                {img.data ? (
                   <img
-                    src={`data:${image.mime_type};base64,${image.data}`}
-                    alt={image.prompt || 'Obraz'}
-                    style={{ width: '100%', height: 80, objectFit: 'cover', display: 'block' }}
+                    src={`data:${img.mime_type};base64,${img.data}`}
+                    alt={img.prompt}
+                    style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', display: 'block' }}
                   />
                 ) : (
-                  <div style={{ 
-                    width: '100%', 
-                    height: 80, 
-                    background: 'hsl(210, 22%, 96%)', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center' 
+                  <div style={{
+                    width: '100%', aspectRatio: '1',
+                    background: 'hsl(35, 35%, 97%)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
                   }}>
-                    <Image size={20} style={{ color: 'hsl(215, 16%, 65%)' }} />
+                    <ImageIcon size={20} style={{ color: 'hsl(215, 16%, 75%)' }} />
                   </div>
                 )}
-                <div style={{ 
-                  padding: '4px 6px', 
-                  fontSize: 10, 
-                  color: 'hsl(215, 16%, 45%)',
-                  background: 'white',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap'
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleDelete(img.id); }}
+                  style={{
+                    position: 'absolute', top: 4, right: 4,
+                    width: 24, height: 24, borderRadius: 6,
+                    background: 'rgba(0,0,0,0.6)', color: 'white',
+                    border: 'none', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                  }}
+                  data-testid="delete-gallery-image"
+                >
+                  <Trash2 size={12} />
+                </button>
+                <div style={{
+                  position: 'absolute', bottom: 0, left: 0, right: 0,
+                  padding: '4px 6px',
+                  background: 'rgba(0,0,0,0.5)',
+                  color: 'white',
+                  fontSize: 10
                 }}>
-                  {image.style === 'hero' ? 'Hero' : 
-                   image.style === 'section' ? 'Sekcja' :
-                   image.style === 'infographic' ? 'Info' : 'Własny'}
+                  {(img.style || 'custom')}
                 </div>
               </div>
             ))}
