@@ -18,6 +18,7 @@ const Sidebar = () => {
 
   const adminItems = [
     { path: '/admin/users', label: 'Uzytkownicy', icon: Users, testId: 'sidebar-nav-admin-users' },
+    { path: '/admin/settings', label: 'Ustawienia', icon: Settings, testId: 'sidebar-nav-admin-settings' },
   ];
 
   return (
