@@ -74,6 +74,9 @@ function AppRoutes() {
       <Route path="/topics" element={
         <ProtectedLayout><TopicSuggestions /></ProtectedLayout>
       } />
+      <Route path="/series" element={
+        <ProtectedLayout><SeriesGenerator /></ProtectedLayout>
+      } />
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>
   );
