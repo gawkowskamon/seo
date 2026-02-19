@@ -232,9 +232,10 @@ async def generate_article_endpoint(request: ArticleGenerateRequest, user: dict 
 # --- Article CRUD ---
 
 @api_router.get("/articles")
-async def list_articles():
-    """List all articles."""
-    articles = await db.articles.find({}, {"_id": 0}).sort("created_at", -1).to_list(100)
+async def list_articles(user: dict = Depends(get_current_user)):
+    """List articles scoped to user (admin sees all)."""
+    query = {} if user.get("is_admin") else {"user_id": user["id"]}
+    articles = await db.articles.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
     return [{**serialize_doc(a)} for a in articles]
 
 
