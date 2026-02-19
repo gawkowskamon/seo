@@ -13,11 +13,11 @@
   },
   {
     "content": "Phase 2B: Update backend - add reference_image support to ImageGenerateRequest + image_generator.py",
-    "status": "in_progress"
+    "status": "completed"
   },
   {
     "content": "Phase 2B: Update frontend ImageGenerator.js - add file upload UI",
-    "status": "pending"
+    "status": "in_progress"
   },
   {
     "content": "Phase 3: Comprehensive testing with testing agent",
