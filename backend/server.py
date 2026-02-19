@@ -131,6 +131,7 @@ async def generate_article_endpoint(request: ArticleGenerateRequest):
             "secondary_keywords": request.secondary_keywords,
             "target_length": request.target_length,
             "tone": request.tone,
+            "template": request.template,
             "title": article_data.get("title", ""),
             "slug": article_data.get("slug", ""),
             "meta_title": article_data.get("meta_title", ""),
