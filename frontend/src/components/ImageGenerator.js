@@ -403,7 +403,7 @@ const ImageGenerator = ({ articleId, article, onInsertImage }) => {
 
         <Button
           onClick={() => handleGenerate()}
-          disabled={generating || !prompt.trim()}
+          disabled={generating || batchGenerating || !prompt.trim()}
           size="sm"
           className="gap-1 w-full mt-2"
           data-testid="image-generate-button"
@@ -420,7 +420,113 @@ const ImageGenerator = ({ articleId, article, onInsertImage }) => {
             </>
           )}
         </Button>
+        <Button
+          onClick={handleBatchGenerate}
+          disabled={generating || batchGenerating || !prompt.trim()}
+          variant="outline"
+          size="sm"
+          className="gap-1 w-full mt-1"
+          data-testid="image-generate-batch-button"
+        >
+          {batchGenerating ? (
+            <>
+              <Loader2 size={14} className="animate-spin" />
+              Generowanie 4 wariantow...
+            </>
+          ) : (
+            <>
+              <Grid2X2 size={14} />
+              Generuj 4 warianty
+            </>
+          )}
+        </Button>
       </div>
+
+      {/* Batch results - 2x2 grid */}
+      {batchResults && batchResults.variants && (
+        <div className="panel-section">
+          <div className="panel-section-title">Warianty (wybierz najlepszy)</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6 }}>
+            {batchResults.variants.map((v, idx) => {
+              if (v.error) return (
+                <div key={idx} style={{
+                  borderRadius: 8, border: '1px solid hsl(0, 50%, 85%)',
+                  background: 'hsl(0, 50%, 97%)', padding: 12,
+                  fontSize: 11, color: 'hsl(0, 50%, 45%)', textAlign: 'center'
+                }}>
+                  Blad wariantu
+                </div>
+              );
+              return (
+                <div key={v.id || idx} style={{
+                  borderRadius: 8,
+                  overflow: 'hidden',
+                  border: '1px solid hsl(214, 18%, 88%)',
+                  cursor: 'pointer',
+                  position: 'relative',
+                  transition: 'box-shadow 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.boxShadow = '0 4px 16px rgba(4,56,158,0.15)'}
+                onMouseLeave={(e) => e.currentTarget.style.boxShadow = 'none'}
+                >
+                  <img
+                    src={`data:${v.mime_type};base64,${v.data}`}
+                    alt={`Wariant ${idx + 1}`}
+                    style={{ width: '100%', display: 'block' }}
+                    onClick={() => openLightbox(v, idx)}
+                    data-testid={`batch-variant-${idx}`}
+                  />
+                  <div style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    background: 'linear-gradient(transparent, rgba(0,0,0,0.7))',
+                    padding: '16px 6px 6px',
+                    display: 'flex',
+                    gap: 3
+                  }}>
+                    {onInsertImage && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const imgHtml = `<img src="data:${v.mime_type};base64,${v.data}" alt="${v.prompt || ''}" style="max-width: 100%; height: auto; border-radius: 8px; margin: 16px 0;" />`;
+                          onInsertImage(imgHtml);
+                          toast.success('Obraz wstawiony');
+                        }}
+                        style={{
+                          flex: 1, padding: '4px 0', borderRadius: 5,
+                          background: 'rgba(255,255,255,0.2)', color: 'white',
+                          border: 'none', cursor: 'pointer', fontSize: 10, fontWeight: 600
+                        }}
+                        data-testid={`batch-insert-${idx}`}
+                      >
+                        Wstaw
+                      </button>
+                    )}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setGeneratedImage(v);
+                        setBatchResults(null);
+                        toast.success('Wybrany wariant');
+                      }}
+                      style={{
+                        flex: 1, padding: '4px 0', borderRadius: 5,
+                        background: '#04389E', color: 'white',
+                        border: 'none', cursor: 'pointer', fontSize: 10, fontWeight: 600
+                      }}
+                      data-testid={`batch-select-${idx}`}
+                    >
+                      Wybierz
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Generated image preview */}
       {generatedImage && (
