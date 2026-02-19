@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -12,24 +12,26 @@
     --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
-    --primary: 209 88% 36%;
+    --primary: 220 95% 32%;
     --primary-foreground: 210 40% 98%;
-    --secondary: 210 20% 96%;
+    --secondary: 35 35% 96%;
     --secondary-foreground: 222 47% 15%;
     --muted: 210 22% 96%;
     --muted-foreground: 215 16% 45%;
-    --accent: 191 63% 92%;
+    --accent: 34 90% 94%;
     --accent-foreground: 222 47% 12%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 210 40% 98%;
     --border: 214 18% 88%;
     --input: 214 18% 88%;
-    --ring: 209 88% 36%;
+    --ring: 220 95% 32%;
     --radius: 0.75rem;
     --success: 158 55% 34%;
     --success-foreground: 210 40% 98%;
-    --warning: 38 92% 45%;
+    --warning: 34 92% 45%;
     --warning-foreground: 222 47% 12%;
+    --brand-blue: #04389E;
+    --brand-orange: #F28C28;
   }
 }
 
@@ -42,9 +44,14 @@
     font-family: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
   }
   h1, h2, h3, h4, [data-role='display'] {
-    font-family: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+    font-family: 'Instrument Serif', ui-serif, Georgia, serif;
   }
   code, pre, [data-role='mono'] {
     font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
+  }
+
+  ::selection {
+    background: hsl(220, 95%, 32%, 0.15);
+    color: hsl(222, 47%, 11%);
   }
 }
