@@ -537,6 +537,117 @@
   text-underline-offset: 3px;
 }
 
+/* Advanced content blocks */
+.visual-editor-canvas .callout {
+  border-radius: 10px;
+  padding: 16px 18px;
+  margin: 16px 0;
+  font-size: 14px;
+  line-height: 1.6;
+  border-left: 4px solid;
+}
+
+.visual-editor-canvas .callout-tip {
+  background: hsl(158, 55%, 95%);
+  border-left-color: hsl(158, 55%, 34%);
+  color: hsl(158, 30%, 20%);
+}
+
+.visual-editor-canvas .callout-warning {
+  background: hsl(34, 90%, 95%);
+  border-left-color: #F28C28;
+  color: hsl(34, 50%, 20%);
+}
+
+.visual-editor-canvas .callout-info {
+  background: hsl(220, 95%, 96%);
+  border-left-color: #04389E;
+  color: hsl(220, 50%, 20%);
+}
+
+.visual-editor-canvas .callout-link {
+  background: hsl(35, 35%, 97%);
+  border-left-color: hsl(215, 16%, 65%);
+  color: hsl(215, 16%, 30%);
+}
+
+.visual-editor-canvas .callout strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 13px;
+}
+
+.visual-editor-canvas table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 20px 0;
+  font-size: 14px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid hsl(214, 18%, 88%);
+}
+
+.visual-editor-canvas table thead {
+  background: hsl(220, 95%, 96%);
+}
+
+.visual-editor-canvas table th {
+  padding: 10px 14px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 13px;
+  color: #04389E;
+  border-bottom: 2px solid hsl(214, 18%, 85%);
+  font-family: 'IBM Plex Sans', sans-serif;
+}
+
+.visual-editor-canvas table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid hsl(214, 18%, 93%);
+  color: hsl(222, 47%, 20%);
+}
+
+.visual-editor-canvas table tr:last-child td {
+  border-bottom: none;
+}
+
+.visual-editor-canvas table tr:hover td {
+  background: hsl(35, 35%, 99%);
+}
+
+.visual-editor-canvas .data-table,
+.visual-editor-canvas .comparison-table,
+.visual-editor-canvas .changes-table {
+  border: 1px solid hsl(214, 18%, 88%);
+}
+
+.visual-editor-canvas .checklist-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 0;
+  border-bottom: 1px solid hsl(214, 18%, 93%);
+}
+
+.visual-editor-canvas .checklist-item input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  flex-shrink: 0;
+  accent-color: #04389E;
+}
+
+.visual-editor-canvas .checklist-item strong {
+  display: block;
+  margin-bottom: 2px;
+}
+
+.visual-editor-canvas .checklist-item p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: hsl(215, 16%, 45%);
+}
+
 /* HTML editor */
 .html-editor-area {
   max-width: 100%;
