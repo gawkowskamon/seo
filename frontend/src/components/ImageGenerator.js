@@ -36,7 +36,11 @@ const ImageGenerator = ({ articleId, article, onInsertImage }) => {
   const [loadingGallery, setLoadingGallery] = useState(true);
   const [showVariants, setShowVariants] = useState(false);
   const [generatingVariant, setGeneratingVariant] = useState(null);
-  const [referenceFile, setReferenceFile] = useState(null); // { file, preview, base64, mime_type }
+  const [referenceFile, setReferenceFile] = useState(null);
+  const [batchGenerating, setBatchGenerating] = useState(false);
+  const [batchResults, setBatchResults] = useState(null); // { variants: [...] }
+  const [lightboxImage, setLightboxImage] = useState(null);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
   const fileInputRef = useRef(null);
 
   const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
