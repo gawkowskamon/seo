@@ -38,6 +38,7 @@ const AuthPage = () => {
       }
       navigate('/');
     } catch (err) {
+      console.error('Login/Register error:', err.response?.status, err.response?.data, err.message);
       const msg = err.response?.data?.detail || 'Wystapil blad';
       toast.error(msg);
     } finally {
