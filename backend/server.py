@@ -23,6 +23,7 @@ from export_service import (
 from image_generator import generate_image, generate_image_variant, get_all_image_styles
 from seo_assistant import analyze_article_seo, chat_about_seo
 from content_templates import get_all_templates
+from wordpress_service import publish_to_wordpress, generate_wordpress_plugin
 from auth import (
     register_user, authenticate_user, get_user_by_id,
     create_access_token, decode_access_token
