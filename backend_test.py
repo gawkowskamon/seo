@@ -657,28 +657,39 @@ class SEOArticleAPITester:
         return success
 
 def main():
-    print("🚀 Testing Polish SEO Article Writer API - SEO Assistant Feature Test")
+    print("🚀 Testing SEO Article Builder API - Authentication & Templates")
     print("=" * 60)
     
     tester = SEOArticleAPITester()
-    test_article_id = "d09f7616-782a-4ae6-b385-27cdc4f24a56"  # Article ID for testing
     
-    # Test required backend endpoints
-    print("\n📊 Required Backend API Tests")
+    # Test core functionality first
+    print("\n🏠 Basic API Tests")
+    tester.test_api_root()
     tester.test_get_stats()
+    
+    # Test new template system
+    print("\n📋 Template System Tests")
+    tester.test_get_templates()
+    
+    # Test authentication system
+    print("\n🔐 Authentication System Tests")
+    tester.test_register_user()
+    tester.test_register_duplicate_email()
+    tester.test_login_user()
+    tester.test_get_me_with_token()
+    tester.test_get_me_without_token()
+    
+    # Test article generation with templates
+    print("\n📝 Article Generation with Templates")
+    tester.test_article_generation_with_template()
+    
+    # Test basic article operations
+    print("\n📚 Article Management Tests")
     tester.test_list_articles()
-    tester.test_existing_article(test_article_id)
-    
-    # Test new SEO Assistant endpoints
-    print("\n🤖 SEO Assistant AI Tests")
-    tester.test_seo_assistant_analyze(test_article_id)
-    tester.test_seo_assistant_chat(test_article_id)
-    tester.test_seo_assistant_invalid_article()
-    
-    # Test existing functionality
-    print("\n📤 Export & Regeneration Tests")
-    tester.test_exports_for_existing_article(test_article_id)
-    tester.test_regenerate_meta_for_existing_article(test_article_id)
+    if tester.article_id:
+        tester.test_get_article()
+        tester.test_seo_scoring()
+        tester.test_export_functionality()
     
     # Print final results
     print("\n" + "=" * 60)
