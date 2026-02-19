@@ -170,7 +170,56 @@ const ImageGenerator = ({ articleId, article, onInsertImage }) => {
     }
   };
 
-  const handleDelete = async (imageId) => {
+  const handleBatchGenerate = async () => {
+    if (!prompt.trim()) {
+      toast.error('Wpisz temat lub opis obrazu');
+      return;
+    }
+    setBatchGenerating(true);
+    setBatchResults(null);
+    try {
+      const payload = {
+        prompt: prompt.trim(),
+        style: selectedStyle,
+        article_id: articleId,
+        num_variants: 4
+      };
+      if (referenceFile) {
+        payload.reference_image = {
+          data: referenceFile.base64,
+          mime_type: referenceFile.mime_type,
+          name: referenceFile.name
+        };
+      }
+      const res = await axios.post(`${BACKEND_URL}/api/images/generate-batch`, payload, { timeout: 300000 });
+      setBatchResults(res.data);
+      await loadGallery();
+      const successCount = res.data.variants.filter(v => !v.error).length;
+      toast.success(`Wygenerowano ${successCount} z 4 wariantow`);
+    } catch (err) {
+      const msg = err.response?.data?.detail || 'Blad generowania wariantow';
+      toast.error(msg);
+    } finally {
+      setBatchGenerating(false);
+    }
+  };
+
+  const openLightbox = async (img, index) => {
+    if (img.data && img.data.length > 300) {
+      setLightboxImage(img);
+      setLightboxIndex(index);
+    } else {
+      try {
+        const res = await axios.get(`${BACKEND_URL}/api/images/${img.id}`);
+        setLightboxImage({ ...img, ...res.data });
+        setLightboxIndex(index);
+      } catch (err) {
+        toast.error('Blad ladowania obrazu');
+      }
+    }
+  };
+
+  const handleDeleteImage = async (imageId) => {
     try {
       await axios.delete(`${BACKEND_URL}/api/images/${imageId}`);
       setGallery(prev => prev.filter(img => img.id !== imageId));
