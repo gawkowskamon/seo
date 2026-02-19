@@ -1,19 +1,11 @@
 [
   {
-    "content": "Phase 9: Add user_id/workspace_id to auth + users schema + admin flag",
-    "status": "in_progress"
-  },
-  {
-    "content": "Phase 9: Scope articles/images by user_id, admin bypasses",
-    "status": "pending"
-  },
-  {
-    "content": "Phase 9: Migrate existing articles to Monika, frontend admin badge",
-    "status": "pending"
+    "content": "Phase 9: Workspaces + admin (backend scoping + frontend admin badge)",
+    "status": "completed"
   },
   {
     "content": "Phase 10: Enhanced image generator - presets, context, variants backend",
-    "status": "pending"
+    "status": "in_progress"
   },
   {
     "content": "Phase 10: Enhanced image generator - frontend UI updates",
