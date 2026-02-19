@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Image as ImageIcon, Loader2, Download, Copy, Trash2, RefreshCw, Sparkles, Camera, PenTool, BarChart3, Circle, GitBranch, TrendingUp, Edit, Palette, Layout, Zap, Minimize2 } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Image as ImageIcon, Loader2, Download, Copy, Trash2, RefreshCw, Sparkles, Camera, PenTool, BarChart3, Circle, GitBranch, TrendingUp, Edit, Palette, Layout, Zap, Minimize2, Paperclip, X, FileImage } from 'lucide-react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { toast } from 'sonner';
