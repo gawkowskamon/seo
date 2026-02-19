@@ -485,6 +485,15 @@ const ArticleEditor = () => {
               />
             </div>
           )}
+          {rightTab === 'assistant' && (
+            <div data-testid="article-ai-assistant-panel" style={{ height: '100%' }}>
+              <SEOAssistantPanel
+                articleId={articleId}
+                article={article}
+                onApplySuggestion={handleApplySuggestion}
+              />
+            </div>
+          )}
           {rightTab === 'faq' && (
             <div data-testid="faq-accordion">
               <FAQEditor 
