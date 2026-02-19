@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Wand2, X, Loader2, BookOpen, Search, FileCheck, PenLine, CheckCircle2 } from 'lucide-react';
+import { Wand2, X, Loader2, BookOpen, Search, FileCheck, PenLine, CheckCircle2, FileText, ListOrdered, Briefcase, Columns, CheckSquare, Landmark, Scale, Calculator } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Badge } from '../components/ui/badge';
 import { toast } from 'sonner';
 import axios from 'axios';
 
@@ -12,25 +13,42 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const TONES = [
   { value: 'profesjonalny', label: 'Profesjonalny' },
   { value: 'ekspercki', label: 'Ekspercki' },
-  { value: 'przystępny', label: 'Przystępny' },
+  { value: 'przystepny', label: 'Przystepny' },
   { value: 'formalny', label: 'Formalny' },
 ];
 
 const LENGTHS = [
-  { value: '1000', label: '1000 słów' },
-  { value: '1500', label: '1500 słów' },
-  { value: '2000', label: '2000 słów' },
-  { value: '2500', label: '2500 słów' },
-  { value: '3000', label: '3000 słów' },
+  { value: '1000', label: '1000 slow' },
+  { value: '1500', label: '1500 slow' },
+  { value: '2000', label: '2000 slow' },
+  { value: '2500', label: '2500 slow' },
+  { value: '3000', label: '3000 slow' },
 ];
 
 const STAGES = [
-  { key: 'analyze', label: 'Analiza tematu i słów kluczowych', icon: Search },
-  { key: 'outline', label: 'Tworzenie struktury artykułu', icon: BookOpen },
-  { key: 'write', label: 'Pisanie treści i FAQ', icon: PenLine },
+  { key: 'analyze', label: 'Analiza tematu i slow kluczowych', icon: Search },
+  { key: 'outline', label: 'Tworzenie struktury artykulu', icon: BookOpen },
+  { key: 'write', label: 'Pisanie tresci i FAQ', icon: PenLine },
   { key: 'seo', label: 'Optymalizacja SEO i korekty', icon: FileCheck },
   { key: 'done', label: 'Finalizacja i ocena', icon: CheckCircle2 },
 ];
+
+const TEMPLATE_ICONS = {
+  'file-text': FileText,
+  'list-ordered': ListOrdered,
+  'briefcase': Briefcase,
+  'columns': Columns,
+  'check-square': CheckSquare,
+  'landmark': Landmark,
+  'scale': Scale,
+  'calculator': Calculator,
+};
+
+const CATEGORY_LABELS = {
+  'podstawowe': 'Podstawowe',
+  'specjalistyczne': 'Specjalistyczne',
+  'zaawansowane': 'Zaawansowane'
+};
 
 const ArticleGenerator = () => {
   const navigate = useNavigate();
@@ -43,8 +61,9 @@ const ArticleGenerator = () => {
   const [targetLength, setTargetLength] = useState('1500');
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentStage, setCurrentStage] = useState(0);
+  const [templates, setTemplates] = useState([]);
+  const [selectedTemplate, setSelectedTemplate] = useState('standard');
 
-  // Pre-fill from topic suggestions
   useEffect(() => {
     if (location.state) {
       if (location.state.topic) setTopic(location.state.topic);
@@ -52,6 +71,18 @@ const ArticleGenerator = () => {
       if (location.state.secondaryKeywords) setSecondaryKeywords(location.state.secondaryKeywords);
     }
   }, [location.state]);
+
+  useEffect(() => {
+    const fetchTemplates = async () => {
+      try {
+        const res = await axios.get(`${BACKEND_URL}/api/templates`);
+        setTemplates(res.data);
+      } catch (err) {
+        console.warn('Could not load templates:', err);
+      }
+    };
+    fetchTemplates();
+  }, []);
 
   const addKeyword = () => {
     const kw = keywordInput.trim();
@@ -74,11 +105,11 @@ const ArticleGenerator = () => {
 
   const handleGenerate = async () => {
     if (!topic.trim()) {
-      toast.error('Podaj temat artykułu');
+      toast.error('Podaj temat artykulu');
       return;
     }
     if (!primaryKeyword.trim()) {
-      toast.error('Podaj główne słowo kluczowe');
+      toast.error('Podaj glowne slowo kluczowe');
       return;
     }
 
@@ -98,31 +129,46 @@ const ArticleGenerator = () => {
         primary_keyword: primaryKeyword.trim(),
         secondary_keywords: secondaryKeywords,
         target_length: parseInt(targetLength),
-        tone: tone
+        tone: tone,
+        template: selectedTemplate
       }, { timeout: 180000 });
 
       clearInterval(stageInterval);
       setCurrentStage(4);
 
       setTimeout(() => {
-        toast.success('Artykuł wygenerowany pomyślnie!');
+        toast.success('Artykul wygenerowany pomyslnie!');
         navigate(`/editor/${response.data.id}`);
       }, 1000);
     } catch (error) {
       clearInterval(stageInterval);
       setIsGenerating(false);
-      const msg = error.response?.data?.detail || 'Błąd podczas generowania artykułu';
+      const msg = error.response?.data?.detail || 'Blad podczas generowania artykulu';
       toast.error(msg);
     }
   };
 
+  // Group templates by category
+  const templatesByCategory = {};
+  templates.forEach(t => {
+    const cat = t.category || 'inne';
+    if (!templatesByCategory[cat]) templatesByCategory[cat] = [];
+    templatesByCategory[cat].push(t);
+  });
+
   if (isGenerating) {
+    const selectedTmpl = templates.find(t => t.id === selectedTemplate);
     return (
       <div className="generation-overlay" data-testid="generation-progress">
         <div className="generation-card">
           <Wand2 size={40} style={{ color: '#04389E', marginBottom: 16 }} />
-          <h2>Generowanie artykułu</h2>
-          <p style={{ color: 'hsl(215, 16%, 45%)', marginBottom: 24 }}>To może potrwać 15-30 sekund...</p>
+          <h2>Generowanie artykulu</h2>
+          {selectedTmpl && selectedTmpl.id !== 'standard' && (
+            <p style={{ color: '#F28C28', fontWeight: 500, fontSize: 14, marginBottom: 4 }}>
+              Szablon: {selectedTmpl.name}
+            </p>
+          )}
+          <p style={{ color: 'hsl(215, 16%, 45%)', marginBottom: 24 }}>To moze potrwac 15-30 sekund...</p>
           
           <div className="generation-stages">
             {STAGES.map((stage, idx) => (
@@ -143,9 +189,9 @@ const ArticleGenerator = () => {
             ))}
           </div>
           
-          <div style={{ background: 'hsl(210, 22%, 96%)', borderRadius: 8, padding: 16, marginTop: 16 }}>
+          <div style={{ background: 'hsl(35, 35%, 97%)', borderRadius: 8, padding: 16, marginTop: 16 }}>
             <p style={{ fontSize: 13, color: 'hsl(215, 16%, 45%)', margin: 0 }}>
-              Wskazówka: Artykuły z FAQ i spisem treści osiągają średnio 30% więcej ruchu organicznego.
+              Wskazowka: Artykuly z FAQ i spisem tresci osiagaja srednio 30% wiecej ruchu organicznego.
             </p>
           </div>
         </div>
@@ -156,34 +202,102 @@ const ArticleGenerator = () => {
   return (
     <div className="page-container">
       <div className="page-header">
-        <h1>Nowy artykuł SEO</h1>
+        <h1>Nowy artykul SEO</h1>
       </div>
+
+      {/* Template Selection */}
+      {templates.length > 0 && (
+        <div style={{ marginBottom: 24 }}>
+          <label className="form-label" style={{ marginBottom: 12, display: 'block' }}>Wybierz szablon tresci</label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {Object.entries(templatesByCategory).map(([cat, tmpls]) => (
+              <div key={cat}>
+                <div style={{ 
+                  fontSize: 11, fontWeight: 600, color: 'hsl(215, 16%, 50%)', 
+                  textTransform: 'uppercase', letterSpacing: '0.08em',
+                  marginBottom: 8, fontFamily: "'IBM Plex Sans', sans-serif"
+                }}>
+                  {CATEGORY_LABELS[cat] || cat}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 10 }}>
+                  {tmpls.map(tmpl => {
+                    const IconComp = TEMPLATE_ICONS[tmpl.icon] || FileText;
+                    const isSelected = selectedTemplate === tmpl.id;
+                    return (
+                      <button
+                        key={tmpl.id}
+                        onClick={() => setSelectedTemplate(tmpl.id)}
+                        data-testid={`template-${tmpl.id}`}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          gap: 12,
+                          padding: '14px 16px',
+                          borderRadius: 10,
+                          border: isSelected ? '2px solid #04389E' : '1px solid hsl(214, 18%, 88%)',
+                          background: isSelected ? 'hsl(220, 95%, 98%)' : 'white',
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                          transition: 'border-color 0.15s, background-color 0.15s',
+                          width: '100%'
+                        }}
+                      >
+                        <div style={{
+                          width: 36, height: 36, borderRadius: 8,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          background: isSelected ? '#04389E' : 'hsl(35, 35%, 96%)',
+                          color: isSelected ? 'white' : 'hsl(215, 16%, 45%)',
+                          flexShrink: 0
+                        }}>
+                          <IconComp size={18} />
+                        </div>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ 
+                            fontSize: 14, fontWeight: 600,
+                            color: isSelected ? '#04389E' : 'hsl(222, 47%, 11%)',
+                            lineHeight: 1.3
+                          }}>
+                            {tmpl.name}
+                          </div>
+                          <div style={{ fontSize: 12, color: 'hsl(215, 16%, 50%)', lineHeight: 1.4, marginTop: 2 }}>
+                            {tmpl.description}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="generator-card">
         <div className="form-group">
-          <label className="form-label">Temat artykułu</label>
+          <label className="form-label">Temat artykulu</label>
           <Input
-            placeholder="np. Jak rozliczać VAT w jednoosobowej działalności gospodarczej"
+            placeholder="np. Jak rozliczac VAT w jednoosobowej dzialalnosci gospodarczej"
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
             data-testid="generator-topic-input"
           />
-          <div className="form-hint">Opisz dokładnie temat, który chcesz poruszyć w artykule</div>
+          <div className="form-hint">Opisz dokladnie temat, ktory chcesz poruszyc w artykule</div>
         </div>
 
         <div className="form-group">
-          <label className="form-label">Główne słowo kluczowe</label>
+          <label className="form-label">Glowne slowo kluczowe</label>
           <Input
             placeholder="np. rozliczanie VAT"
             value={primaryKeyword}
             onChange={(e) => setPrimaryKeyword(e.target.value)}
             data-testid="generator-keywords-input"
           />
-          <div className="form-hint">Fraza, na którą artykuł ma się pozycjonować</div>
+          <div className="form-hint">Fraza, na ktora artykul ma sie pozycjonowac</div>
         </div>
 
         <div className="form-group">
-          <label className="form-label">Słowa kluczowe dodatkowe</label>
+          <label className="form-label">Slowa kluczowe dodatkowe</label>
           <div className="keywords-input-wrapper">
             {secondaryKeywords.map(kw => (
               <span key={kw} className="keyword-tag">
@@ -195,19 +309,19 @@ const ArticleGenerator = () => {
             ))}
             <input
               className="keywords-input"
-              placeholder="Wpisz i naciśnij Enter..."
+              placeholder="Wpisz i nacisnij Enter..."
               value={keywordInput}
               onChange={(e) => setKeywordInput(e.target.value)}
               onKeyDown={handleKeyDown}
               data-testid="generator-secondary-keywords-input"
             />
           </div>
-          <div className="form-hint">Naciśnij Enter aby dodać słowo kluczowe</div>
+          <div className="form-hint">Nacisnij Enter aby dodac slowo kluczowe</div>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
           <div className="form-group">
-            <label className="form-label">Ton artykułu</label>
+            <label className="form-label">Ton artykulu</label>
             <Select value={tone} onValueChange={setTone} data-testid="generator-tone-select">
               <SelectTrigger>
                 <SelectValue placeholder="Wybierz ton" />
@@ -220,10 +334,10 @@ const ArticleGenerator = () => {
             </Select>
           </div>
           <div className="form-group">
-            <label className="form-label">Długość artykułu</label>
+            <label className="form-label">Dlugosc artykulu</label>
             <Select value={targetLength} onValueChange={setTargetLength} data-testid="generator-length-slider">
               <SelectTrigger>
-                <SelectValue placeholder="Wybierz długość" />
+                <SelectValue placeholder="Wybierz dlugosc" />
               </SelectTrigger>
               <SelectContent>
                 {LENGTHS.map(l => (
@@ -242,7 +356,7 @@ const ArticleGenerator = () => {
           data-testid="generator-generate-article-button"
         >
           <Wand2 size={20} />
-          Wygeneruj artykuł
+          Wygeneruj artykul
         </Button>
       </div>
     </div>
