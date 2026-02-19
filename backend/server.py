@@ -251,6 +251,79 @@ async def export_article(article_id: str, request: ExportRequest):
         raise HTTPException(status_code=400, detail=f"Unknown format: {request.format}")
 
 
+
+# --- Regeneration ---
+
+class RegenerateRequest(BaseModel):
+    section: str  # "faq", "meta"
+
+@api_router.post("/articles/{article_id}/regenerate")
+async def regenerate_section(article_id: str, request: RegenerateRequest):
+    """Regenerate a specific section of the article using AI."""
+    article = await db.articles.find_one({"id": article_id}, {"_id": 0})
+    if not article:
+        raise HTTPException(status_code=404, detail="Article not found")
+    
+    try:
+        from article_generator import ARTICLE_SYSTEM_PROMPT
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        
+        api_key = os.environ.get("EMERGENT_LLM_KEY")
+        if not api_key:
+            raise ValueError("EMERGENT_LLM_KEY not configured")
+        
+        topic = article.get("topic", "")
+        primary_keyword = article.get("primary_keyword", "")
+        
+        if request.section == "faq":
+            prompt = f"""Na podstawie artykułu o temacie: "{topic}" (słowo kluczowe: "{primary_keyword}"), wygeneruj 6-8 pytań FAQ ze szczegółowymi odpowiedziami.
+
+Odpowiedz WYŁĄCZNIE w formacie JSON (bez markdown):
+{{
+  "faq": [
+    {{
+      "question": "Pytanie FAQ (naturalne, jak w wyszukiwarce)",
+      "answer": "Szczegółowa odpowiedź (minimum 30 słów, konkretna i merytoryczna)"
+    }}
+  ]
+}}"""
+        elif request.section == "meta":
+            prompt = f"""Na podstawie artykułu o temacie: "{topic}" (słowo kluczowe: "{primary_keyword}"), wygeneruj nowy meta tytuł i meta opis zoptymalizowane pod SEO.
+
+Odpowiedz WYŁĄCZNIE w formacie JSON (bez markdown):
+{{
+  "meta_title": "Meta tytuł SEO (max 60 znaków, zawiera słowo kluczowe)",
+  "meta_description": "Meta opis SEO (120-160 znaków, zachęcający do kliknięcia, zawiera słowo kluczowe)"
+}}"""
+        else:
+            raise HTTPException(status_code=400, detail=f"Unknown section: {request.section}")
+        
+        chat = LlmChat(
+            api_key=api_key,
+            session_id=f"regen-{article_id}-{request.section}",
+            system_message="Jesteś ekspertem SEO od księgowości w Polsce. Odpowiadaj WYŁĄCZNIE poprawnym JSON-em."
+        )
+        chat.with_model("openai", "gpt-4.1-mini")
+        
+        response = await chat.send_message(UserMessage(text=prompt))
+        
+        import re
+        clean_response = response.strip()
+        if clean_response.startswith("```"):
+            clean_response = re.sub(r'^```(?:json)?\s*', '', clean_response)
+            clean_response = re.sub(r'\s*```$', '', clean_response)
+        
+        result = json.loads(clean_response)
+        return result
+        
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=500, detail=f"AI returned invalid JSON: {str(e)}")
+    except Exception as e:
+        logging.error(f"Regeneration error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
 # --- Topic Suggestions ---
 
 @api_router.post("/topics/suggest")
