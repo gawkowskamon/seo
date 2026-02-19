@@ -10,6 +10,7 @@ import TopicSuggestions from './pages/TopicSuggestions';
 import SeriesGenerator from './pages/SeriesGenerator';
 import AdminUsers from './pages/AdminUsers';
 import ImageLibrary from './pages/ImageLibrary';
+import ImageGeneratorPage from './pages/ImageGeneratorPage';
 import AuthPage from './pages/AuthPage';
 import './App.css';
 
