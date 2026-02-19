@@ -576,7 +576,7 @@ const ImageGenerator = ({ articleId, article, onInsertImage }) => {
                   </div>
                 )}
                 <button
-                  onClick={(e) => { e.stopPropagation(); handleDelete(img.id); }}
+                  onClick={(e) => { e.stopPropagation(); handleDeleteImage(img.id); }}
                   style={{
                     position: 'absolute', top: 4, right: 4,
                     width: 24, height: 24, borderRadius: 6,
