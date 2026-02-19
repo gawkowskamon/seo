@@ -25,6 +25,7 @@ const ArticleEditor = () => {
   const [regenerating, setRegenerating] = useState(null); // null, 'faq', 'meta'
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const autosaveTimerRef = useRef(null);
+  const editorContentRef = useRef(null);
   
   const [editorTab, setEditorTab] = useState('visual');
   const [rightTab, setRightTab] = useState('seo');
