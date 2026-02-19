@@ -47,6 +47,7 @@ class ArticleGenerateRequest(BaseModel):
     secondary_keywords: List[str] = []
     target_length: int = 1500
     tone: str = "profesjonalny"
+    template: str = "standard"
 
 class ArticleUpdateRequest(BaseModel):
     title: Optional[str] = None
