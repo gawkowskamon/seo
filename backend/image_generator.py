@@ -161,13 +161,14 @@ async def generate_image(prompt: str, style: str = "hero", topic: str = "", arti
     }
 
 
-async def generate_image_variant(original_prompt: str, style: str, variation_type: str = "color", article_context: dict = None) -> dict:
+async def generate_image_variant(original_prompt: str, style: str, variation_type: str = "color", article_context: dict = None, reference_image: dict = None) -> dict:
     """Generate a variant of an image with modifications.
     
     Args:
         original_prompt: The original image prompt
         style: Style preset
         variation_type: Type of variation (color, composition, mood, simplify)
+        reference_image: Optional reference image dict with 'data' (base64) and 'mime_type'
     
     Returns dict with 'data' (base64) and 'mime_type'.
     """
@@ -185,5 +186,6 @@ async def generate_image_variant(original_prompt: str, style: str, variation_typ
     return await generate_image(
         prompt=modified_prompt,
         style=style,
-        article_context=article_context
+        article_context=article_context,
+        reference_image=reference_image
     )
