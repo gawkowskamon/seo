@@ -1,31 +1,19 @@
 [
   {
-    "content": "Phase 6: Update index.css tokens + fonts (brand blue, orange, Instrument Serif)",
-    "status": "completed"
-  },
-  {
-    "content": "Phase 6: Update App.css with brand colors throughout",
-    "status": "completed"
-  },
-  {
-    "content": "Phase 6: Restyle Sidebar with Kurdynowski wordmark",
-    "status": "completed"
-  },
-  {
-    "content": "Phase 6: Verify redesign with screenshots",
+    "content": "Phase 6: Redesign UI",
     "status": "completed"
   },
   {
     "content": "Phase 7: Advanced Content - Templates + blocks backend",
-    "status": "in_progress"
+    "status": "completed"
   },
   {
     "content": "Phase 7: Advanced Content - Frontend template UI",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "content": "Phase 8: JWT Auth backend (users, login, register)",
-    "status": "pending"
+    "status": "in_progress"
   },
   {
     "content": "Phase 8: JWT Auth frontend (login/register pages, route guards)",
