@@ -339,12 +339,20 @@ def main():
         tester.test_subscription_status()
         tester.test_checkout_simulation()
         
-        # Create test article and test exports
+        tester.test_articles_crud()
+        
+        # Try to test exports with existing articles
         if tester.create_test_article():
             tester.test_html_export()
             tester.test_pdf_export()
-        
-        tester.test_articles_crud()
+        else:
+            # Use existing article if available
+            success, articles = tester.make_request('GET', '/articles')
+            if success and articles and len(articles) > 0:
+                tester.test_article_id = articles[0]['id']
+                print(f"\n📝 Using existing article for export tests: {tester.test_article_id}")
+                tester.test_html_export()
+                tester.test_pdf_export()
         
     except KeyboardInterrupt:
         print("\n⏹️  Tests interrupted by user")
