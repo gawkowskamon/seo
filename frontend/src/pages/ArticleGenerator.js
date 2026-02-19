@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Wand2, X, Loader2, BookOpen, Search, FileCheck, PenLine, CheckCircle2 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { toast } from 'sonner';
 import axios from 'axios';
 
@@ -16,11 +17,11 @@ const TONES = [
 ];
 
 const LENGTHS = [
-  { value: 1000, label: '1000 słów' },
-  { value: 1500, label: '1500 słów' },
-  { value: 2000, label: '2000 słów' },
-  { value: 2500, label: '2500 słów' },
-  { value: 3000, label: '3000 słów' },
+  { value: '1000', label: '1000 słów' },
+  { value: '1500', label: '1500 słów' },
+  { value: '2000', label: '2000 słów' },
+  { value: '2500', label: '2500 słów' },
+  { value: '3000', label: '3000 słów' },
 ];
 
 const STAGES = [
@@ -39,7 +40,7 @@ const ArticleGenerator = () => {
   const [secondaryKeywords, setSecondaryKeywords] = useState([]);
   const [keywordInput, setKeywordInput] = useState('');
   const [tone, setTone] = useState('profesjonalny');
-  const [targetLength, setTargetLength] = useState(1500);
+  const [targetLength, setTargetLength] = useState('1500');
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentStage, setCurrentStage] = useState(0);
 
@@ -84,7 +85,6 @@ const ArticleGenerator = () => {
     setIsGenerating(true);
     setCurrentStage(0);
 
-    // Simulate stage progression
     const stageInterval = setInterval(() => {
       setCurrentStage(prev => {
         if (prev < 3) return prev + 1;
@@ -97,7 +97,7 @@ const ArticleGenerator = () => {
         topic: topic.trim(),
         primary_keyword: primaryKeyword.trim(),
         secondary_keywords: secondaryKeywords,
-        target_length: targetLength,
+        target_length: parseInt(targetLength),
         tone: tone
       }, { timeout: 180000 });
 
@@ -160,7 +160,6 @@ const ArticleGenerator = () => {
       </div>
 
       <div className="generator-card">
-        {/* Topic */}
         <div className="form-group">
           <label className="form-label">Temat artykułu</label>
           <Input
@@ -172,7 +171,6 @@ const ArticleGenerator = () => {
           <div className="form-hint">Opisz dokładnie temat, który chcesz poruszyć w artykule</div>
         </div>
 
-        {/* Primary keyword */}
         <div className="form-group">
           <label className="form-label">Główne słowo kluczowe</label>
           <Input
@@ -184,7 +182,6 @@ const ArticleGenerator = () => {
           <div className="form-hint">Fraza, na którą artykuł ma się pozycjonować</div>
         </div>
 
-        {/* Secondary keywords */}
         <div className="form-group">
           <label className="form-label">Słowa kluczowe dodatkowe</label>
           <div className="keywords-input-wrapper">
@@ -208,53 +205,35 @@ const ArticleGenerator = () => {
           <div className="form-hint">Naciśnij Enter aby dodać słowo kluczowe</div>
         </div>
 
-        {/* Tone & Length */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
           <div className="form-group">
             <label className="form-label">Ton artykułu</label>
-            <select
-              value={tone}
-              onChange={(e) => setTone(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                border: '1px solid hsl(214, 18%, 88%)',
-                borderRadius: 8,
-                fontSize: 14,
-                background: 'white',
-                cursor: 'pointer'
-              }}
-              data-testid="generator-tone-select"
-            >
-              {TONES.map(t => (
-                <option key={t.value} value={t.value}>{t.label}</option>
-              ))}
-            </select>
+            <Select value={tone} onValueChange={setTone} data-testid="generator-tone-select">
+              <SelectTrigger>
+                <SelectValue placeholder="Wybierz ton" />
+              </SelectTrigger>
+              <SelectContent>
+                {TONES.map(t => (
+                  <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="form-group">
             <label className="form-label">Długość artykułu</label>
-            <select
-              value={targetLength}
-              onChange={(e) => setTargetLength(Number(e.target.value))}
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                border: '1px solid hsl(214, 18%, 88%)',
-                borderRadius: 8,
-                fontSize: 14,
-                background: 'white',
-                cursor: 'pointer'
-              }}
-              data-testid="generator-length-slider"
-            >
-              {LENGTHS.map(l => (
-                <option key={l.value} value={l.value}>{l.label}</option>
-              ))}
-            </select>
+            <Select value={targetLength} onValueChange={setTargetLength} data-testid="generator-length-slider">
+              <SelectTrigger>
+                <SelectValue placeholder="Wybierz długość" />
+              </SelectTrigger>
+              <SelectContent>
+                {LENGTHS.map(l => (
+                  <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
-        {/* Generate button */}
         <Button
           onClick={handleGenerate}
           size="lg"

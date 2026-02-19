@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Search, Lightbulb, Loader2, TrendingUp, BarChart2, ArrowRight, Sparkles } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { toast } from 'sonner';
 import axios from 'axios';
 
@@ -32,7 +33,7 @@ const TopicSuggestions = () => {
       const response = await axios.post(`${BACKEND_URL}/api/topics/suggest`, {
         category: category,
         context: context || `aktualne tematy z kategorii ${category} w Polsce`
-      });
+      }, { timeout: 60000 });
       setTopics(response.data.topics || []);
     } catch (error) {
       toast.error('Błąd podczas pobierania sugestii');
@@ -73,7 +74,6 @@ const TopicSuggestions = () => {
         <h1>Sugestie tematów</h1>
       </div>
 
-      {/* Filters */}
       <div style={{ 
         background: 'white', 
         border: '1px solid hsl(214, 18%, 88%)', 
@@ -87,23 +87,16 @@ const TopicSuggestions = () => {
       }}>
         <div style={{ flex: '0 0 200px' }}>
           <label className="form-label">Kategoria</label>
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '8px 12px',
-              border: '1px solid hsl(214, 18%, 88%)',
-              borderRadius: 8,
-              fontSize: 14,
-              background: 'white'
-            }}
-            data-testid="topics-category-select"
-          >
-            {CATEGORIES.map(c => (
-              <option key={c.value} value={c.value}>{c.label}</option>
-            ))}
-          </select>
+          <Select value={category} onValueChange={setCategory} data-testid="topics-category-select">
+            <SelectTrigger>
+              <SelectValue placeholder="Wybierz kategorię" />
+            </SelectTrigger>
+            <SelectContent>
+              {CATEGORIES.map(c => (
+                <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div style={{ flex: 1, minWidth: 200 }}>
           <label className="form-label">Kontekst (opcjonalnie)</label>
@@ -125,7 +118,6 @@ const TopicSuggestions = () => {
         </Button>
       </div>
 
-      {/* Topics */}
       {loading ? (
         <div className="topics-grid">
           {[1,2,3,4,5,6].map(i => (
