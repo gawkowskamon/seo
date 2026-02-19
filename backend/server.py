@@ -111,7 +111,8 @@ async def generate_article_endpoint(request: ArticleGenerateRequest):
             primary_keyword=request.primary_keyword,
             secondary_keywords=request.secondary_keywords,
             target_length=request.target_length,
-            tone=request.tone
+            tone=request.tone,
+            template=request.template
         )
         
         # Compute initial SEO score
