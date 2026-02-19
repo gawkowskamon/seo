@@ -240,38 +240,42 @@ async def list_articles(user: dict = Depends(get_current_user)):
 
 
 @api_router.get("/articles/{article_id}")
-async def get_article(article_id: str):
-    """Get a single article by ID."""
+async def get_article(article_id: str, user: dict = Depends(get_current_user)):
+    """Get a single article by ID (owner or admin)."""
     article = await db.articles.find_one({"id": article_id}, {"_id": 0})
     if not article:
         raise HTTPException(status_code=404, detail="Article not found")
+    if not user.get("is_admin") and article.get("user_id") and article["user_id"] != user["id"]:
+        raise HTTPException(status_code=403, detail="Brak dostepu")
     return serialize_doc(article)
 
 
 @api_router.put("/articles/{article_id}")
-async def update_article(article_id: str, request: ArticleUpdateRequest):
-    """Update an existing article."""
+async def update_article(article_id: str, request: ArticleUpdateRequest, user: dict = Depends(get_current_user)):
+    """Update an existing article (owner or admin)."""
+    article = await db.articles.find_one({"id": article_id}, {"_id": 0})
+    if not article:
+        raise HTTPException(status_code=404, detail="Article not found")
+    if not user.get("is_admin") and article.get("user_id") and article["user_id"] != user["id"]:
+        raise HTTPException(status_code=403, detail="Brak dostepu")
+    
     update_data = {k: v for k, v in request.model_dump().items() if v is not None}
     update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
     
-    result = await db.articles.update_one(
-        {"id": article_id},
-        {"$set": update_data}
-    )
-    
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Article not found")
-    
+    await db.articles.update_one({"id": article_id}, {"$set": update_data})
     article = await db.articles.find_one({"id": article_id}, {"_id": 0})
     return serialize_doc(article)
 
 
 @api_router.delete("/articles/{article_id}")
-async def delete_article(article_id: str):
-    """Delete an article."""
-    result = await db.articles.delete_one({"id": article_id})
-    if result.deleted_count == 0:
+async def delete_article(article_id: str, user: dict = Depends(get_current_user)):
+    """Delete an article (owner or admin)."""
+    article = await db.articles.find_one({"id": article_id})
+    if not article:
         raise HTTPException(status_code=404, detail="Article not found")
+    if not user.get("is_admin") and article.get("user_id") and article["user_id"] != user["id"]:
+        raise HTTPException(status_code=403, detail="Brak dostepu")
+    await db.articles.delete_one({"id": article_id})
     return {"message": "Article deleted", "id": article_id}
 
 
