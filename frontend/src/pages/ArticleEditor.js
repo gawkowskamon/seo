@@ -266,7 +266,7 @@ const ArticleEditor = () => {
     return (
       <div className="editor-layout">
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Loader2 size={40} className="animate-spin" style={{ color: 'hsl(209, 88%, 36%)' }} />
+          <Loader2 size={40} className="animate-spin" style={{ color: '#04389E' }} />
         </div>
       </div>
     );
@@ -290,7 +290,7 @@ const ArticleEditor = () => {
           <div className="panel-section-title">Linkowanie wewnętrzne</div>
           {(article.internal_link_suggestions || []).map((link, idx) => (
             <div key={idx} style={{ padding: '6px 0', fontSize: 13, borderBottom: '1px solid hsl(214, 18%, 93%)' }}>
-              <div style={{ fontWeight: 500, color: 'hsl(209, 88%, 36%)' }}>{link.anchor_text}</div>
+              <div style={{ fontWeight: 500, color: '#04389E' }}>{link.anchor_text}</div>
               <div style={{ color: 'hsl(215, 16%, 45%)', fontSize: 12, marginTop: 2 }}>{link.target_topic}</div>
             </div>
           ))}
@@ -300,7 +300,7 @@ const ArticleEditor = () => {
           <div className="panel-section-title">Źródła</div>
           {(article.sources || []).map((src, idx) => (
             <div key={idx} style={{ padding: '6px 0', fontSize: 12, borderBottom: '1px solid hsl(214, 18%, 93%)' }}>
-              <a href={src.url} target="_blank" rel="noopener noreferrer" style={{ color: 'hsl(209, 88%, 36%)', textDecoration: 'none' }}>
+              <a href={src.url} target="_blank" rel="noopener noreferrer" style={{ color: '#04389E', textDecoration: 'none' }}>
                 {src.name}
               </a>
               <span style={{ marginLeft: 6, color: 'hsl(215, 16%, 45%)' }}>({src.type})</span>
@@ -363,7 +363,7 @@ const ArticleEditor = () => {
                 <button 
                   onClick={handleRegenerateMeta}
                   disabled={regenerating === 'meta'}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'hsl(209, 88%, 36%)' }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#04389E' }}
                   title="Regeneruj meta dane"
                 >
                   {regenerating === 'meta' ? <Loader2 size={12} className="animate-spin" /> : <Wand2 size={12} />}
