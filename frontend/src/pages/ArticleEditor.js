@@ -508,8 +508,11 @@ const ArticleEditor = () => {
             <div data-testid="article-images-panel">
               <ImageGenerator
                 articleId={articleId}
-                articleTitle={article.title || ''}
-                articleTopic={article.topic || ''}
+                article={article}
+                onInsertImage={(imgHtml) => {
+                  setHtmlContent(prev => prev + '\n' + imgHtml);
+                  setHasUnsavedChanges(true);
+                }}
               />
             </div>
           )}
