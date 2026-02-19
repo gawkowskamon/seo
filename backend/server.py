@@ -692,20 +692,15 @@ async def library_list_images(
     # Get total count
     total = await db.images.count_documents(query)
     
-    # Fetch images without heavy data field for listing
+    # Fetch images - include data for thumbnails
     images = await db.images.find(
         query,
-        {"_id": 0, "data": 0}
+        {"_id": 0}
     ).sort("created_at", -1).skip(offset).limit(limit).to_list(limit)
     
-    # Fetch thumbnail data separately (small version)
+    # Mark all as having data
     for img in images:
-        full = await db.images.find_one({"id": img["id"]}, {"_id": 0, "data": 1, "mime_type": 1})
-        if full and full.get("data"):
-            img["thumbnail"] = full["data"][:200]  # Just a flag that data exists
-            img["has_data"] = True
-        else:
-            img["has_data"] = False
+        img["has_data"] = bool(img.get("data"))
     
     return {
         "images": images,
