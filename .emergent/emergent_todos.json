@@ -1,50 +1,18 @@
 [
   {
-    "content": "Phase 1: Core POC - OpenAI integration + article generation + SEO scoring",
-    "status": "completed"
+    "content": "Phase 4: Add Gemini Nano Banana image generation - backend endpoint",
+    "status": "in_progress"
   },
   {
-    "content": "Phase 1: Test POC script and fix until working",
-    "status": "completed"
+    "content": "Phase 4: Add image generation UI to article editor",
+    "status": "pending"
   },
   {
-    "content": "Phase 2: Get design guidelines from design agent",
-    "status": "completed"
+    "content": "Phase 4: Add image gallery/management in editor",
+    "status": "pending"
   },
   {
-    "content": "Phase 2: Backend implementation",
-    "status": "completed"
-  },
-  {
-    "content": "Phase 2: Frontend implementation",
-    "status": "completed"
-  },
-  {
-    "content": "Phase 2: All user stories covered in Development and testing",
-    "status": "completed"
-  },
-  {
-    "content": "Phase 2: End to End Testing using Testing Agent",
-    "status": "completed"
-  },
-  {
-    "content": "Phase 3: Replace native select with shadcn Select (fix console warnings)",
-    "status": "completed"
-  },
-  {
-    "content": "Phase 3: Add autosave with unsaved changes indicator",
-    "status": "completed"
-  },
-  {
-    "content": "Phase 3: Add regenerate actions (meta/FAQ)",
-    "status": "completed"
-  },
-  {
-    "content": "Phase 3: Add regeneration backend endpoint",
-    "status": "completed"
-  },
-  {
-    "content": "Phase 3: End to End Testing using Testing Agent",
-    "status": "completed"
+    "content": "Phase 4: Test image generation E2E",
+    "status": "pending"
   }
 ]
