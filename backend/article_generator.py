@@ -114,19 +114,33 @@ Odpowiedz WYŁĄCZNIE w formacie JSON (bez markdown):
 
 
 async def generate_article(topic: str, primary_keyword: str, secondary_keywords: list, 
-                           target_length: int = 1500, tone: str = "profesjonalny") -> dict:
+                           target_length: int = 1500, tone: str = "profesjonalny",
+                           template: str = "standard") -> dict:
     """Generate a full SEO-optimized article using OpenAI GPT."""
+    from content_templates import get_template_prompt
+    
     api_key = os.environ.get("EMERGENT_LLM_KEY")
     if not api_key:
         raise ValueError("EMERGENT_LLM_KEY not configured")
     
-    prompt = ARTICLE_GENERATION_PROMPT.format(
-        topic=topic,
-        primary_keyword=primary_keyword,
-        secondary_keywords=json.dumps(secondary_keywords, ensure_ascii=False),
-        target_length=target_length,
-        tone=tone
-    )
+    # Use template-based prompt if template is not standard, otherwise use default
+    if template and template != "standard":
+        prompt = get_template_prompt(
+            template_id=template,
+            topic=topic,
+            primary_keyword=primary_keyword,
+            secondary_keywords=secondary_keywords,
+            target_length=target_length,
+            tone=tone
+        )
+    else:
+        prompt = ARTICLE_GENERATION_PROMPT.format(
+            topic=topic,
+            primary_keyword=primary_keyword,
+            secondary_keywords=json.dumps(secondary_keywords, ensure_ascii=False),
+            target_length=target_length,
+            tone=tone
+        )
     
     # Try with retries - first try gpt-4.1-mini (faster, more reliable), fallback to gpt-4o
     models_to_try = [("openai", "gpt-4.1-mini"), ("openai", "gpt-4o")]
