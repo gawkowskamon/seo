@@ -92,6 +92,9 @@ function AppRoutes() {
       <Route path="/generator-obrazow" element={
         <ProtectedLayout><ImageGeneratorPage /></ProtectedLayout>
       } />
+      <Route path="/cennik" element={
+        <ProtectedLayout><PricingPage /></ProtectedLayout>
+      } />
       <Route path="/admin/users" element={
         <ProtectedLayout requireAdmin><AdminUsers /></ProtectedLayout>
       } />
