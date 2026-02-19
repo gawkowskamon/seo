@@ -1,23 +1,19 @@
 [
   {
-    "content": "Phase 9: Workspaces + admin (backend scoping + frontend admin badge)",
+    "content": "Phase 9: Workspaces + admin",
     "status": "completed"
   },
   {
-    "content": "Phase 10: Enhanced image generator - presets, context, variants backend",
-    "status": "in_progress"
-  },
-  {
-    "content": "Phase 10: Enhanced image generator - frontend UI updates",
-    "status": "pending"
+    "content": "Phase 10: Enhanced image generator - 8 styles, variants, contextual prompts",
+    "status": "completed"
   },
   {
     "content": "Phase 11: Insert images in visual editor",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "content": "Phase 12: Series generation + sources-driven content",
-    "status": "pending"
+    "status": "in_progress"
   },
   {
     "content": "Full testing of all new features",
