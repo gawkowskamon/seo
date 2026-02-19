@@ -11,6 +11,7 @@ const Sidebar = () => {
     { path: '/', label: 'Pulpit', icon: LayoutDashboard, testId: 'sidebar-nav-dashboard' },
     { path: '/generator', label: 'Nowy artykul', icon: PenTool, testId: 'sidebar-nav-generator' },
     { path: '/series', label: 'Serie', icon: Layers, testId: 'sidebar-nav-series' },
+    { path: '/generator-obrazow', label: 'Generator obrazow', icon: Sparkles, testId: 'sidebar-nav-image-generator' },
     { path: '/biblioteka', label: 'Biblioteka', icon: ImageIcon, testId: 'sidebar-nav-library' },
     { path: '/topics', label: 'Tematy', icon: Lightbulb, testId: 'sidebar-nav-topics' },
   ];
