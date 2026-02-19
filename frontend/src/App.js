@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard';
 import ArticleGenerator from './pages/ArticleGenerator';
 import ArticleEditor from './pages/ArticleEditor';
 import TopicSuggestions from './pages/TopicSuggestions';
+import SeriesGenerator from './pages/SeriesGenerator';
 import AuthPage from './pages/AuthPage';
 import './App.css';
 
