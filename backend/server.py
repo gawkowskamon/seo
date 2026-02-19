@@ -453,27 +453,52 @@ async def get_stats(user: dict = Depends(get_current_user)):
 
 class ImageGenerateRequest(BaseModel):
     prompt: str
-    style: str = "hero"  # hero, section, infographic, custom
+    style: str = "hero"
     article_id: Optional[str] = None
+    variation_type: Optional[str] = None  # color, composition, mood, simplify
+
+@api_router.get("/image-styles")
+async def list_image_styles():
+    """Return all available image styles."""
+    return get_all_image_styles()
 
 @api_router.post("/images/generate")
-async def generate_image_endpoint(request: ImageGenerateRequest):
+async def generate_image_endpoint(request: ImageGenerateRequest, user: dict = Depends(get_current_user)):
     """Generate an image using Gemini Nano Banana model."""
     try:
-        result = await generate_image(
-            prompt=request.prompt,
-            style=request.style
-        )
+        # Get article context if article_id provided
+        article_context = None
+        if request.article_id:
+            article = await db.articles.find_one({"id": request.article_id}, {"_id": 0, "topic": 1, "primary_keyword": 1})
+            if article:
+                article_context = article
+        
+        # Generate main or variant
+        if request.variation_type:
+            result = await generate_image_variant(
+                original_prompt=request.prompt,
+                style=request.style,
+                variation_type=request.variation_type,
+                article_context=article_context
+            )
+        else:
+            result = await generate_image(
+                prompt=request.prompt,
+                style=request.style,
+                article_context=article_context
+            )
         
         # Save image to DB
         image_id = str(uuid.uuid4())
         image_doc = {
             "id": image_id,
+            "user_id": user["id"],
             "prompt": request.prompt,
             "style": request.style,
             "article_id": request.article_id,
+            "variation_type": request.variation_type,
             "mime_type": result["mime_type"],
-            "data": result["data"],  # base64
+            "data": result["data"],
             "created_at": datetime.now(timezone.utc).isoformat()
         }
         
@@ -515,7 +540,7 @@ async def get_article_images(article_id: str):
     """Get all images for a specific article."""
     images = await db.images.find(
         {"article_id": article_id}, 
-        {"_id": 0, "data": 0}  # Exclude base64 data from list for performance
+        {"_id": 0, "data": 0}
     ).sort("created_at", -1).to_list(50)
     return images
 
