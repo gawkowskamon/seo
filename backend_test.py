@@ -386,6 +386,112 @@ class SEOArticleAPITester:
         print(f"   ✅ Would test: POST /api/images/generate with prompt and style")
         return True
 
+    def test_seo_assistant_analyze(self, article_id):
+        """Test SEO Assistant analyze mode"""
+        data = {"mode": "analyze"}
+        success, response = self.run_test(
+            f"SEO Assistant Analyze for {article_id}", 
+            "POST", 
+            f"articles/{article_id}/seo-assistant", 
+            200,
+            data=data,
+            timeout=120  # Longer timeout for AI analysis
+        )
+        
+        if success:
+            required_keys = ['suggestions', 'assistant_message']
+            for key in required_keys:
+                if key not in response:
+                    print(f"❌ Missing key in SEO assistant response: {key}")
+                    return False
+            
+            suggestions = response.get('suggestions', [])
+            assistant_message = response.get('assistant_message', '')
+            
+            print(f"   Generated {len(suggestions)} SEO suggestions")
+            print(f"   Assistant message: {assistant_message[:100]}...")
+            
+            # Validate suggestions structure
+            if len(suggestions) > 0:
+                first_suggestion = suggestions[0]
+                required_suggestion_keys = ['id', 'title', 'category', 'impact', 'rationale', 'apply_target']
+                for key in required_suggestion_keys:
+                    if key not in first_suggestion:
+                        print(f"❌ Missing key in suggestion: {key}")
+                        return False
+                
+                print(f"   First suggestion: {first_suggestion.get('title', 'N/A')}")
+                print(f"   Impact: {first_suggestion.get('impact', 'N/A')}")
+                print(f"   Category: {first_suggestion.get('category', 'N/A')}")
+                
+                # Check for Polish content
+                polish_chars = ['ą', 'ć', 'ę', 'ł', 'ń', 'ó', 'ś', 'ź', 'ż']
+                suggestion_text = (first_suggestion.get('title', '') + ' ' + first_suggestion.get('rationale', '')).lower()
+                has_polish = any(char in suggestion_text for char in polish_chars)
+                if has_polish:
+                    print(f"   ✅ Polish characters found in SEO suggestions")
+                else:
+                    print(f"   ⚠️  No Polish characters detected in suggestions")
+            
+        return success
+
+    def test_seo_assistant_chat(self, article_id):
+        """Test SEO Assistant chat mode"""
+        data = {
+            "mode": "chat",
+            "message": "Jak mogę poprawić SEO tego artykułu?",
+            "history": []
+        }
+        success, response = self.run_test(
+            f"SEO Assistant Chat for {article_id}", 
+            "POST", 
+            f"articles/{article_id}/seo-assistant", 
+            200,
+            data=data,
+            timeout=120  # Longer timeout for AI chat
+        )
+        
+        if success:
+            required_keys = ['suggestions', 'assistant_message']
+            for key in required_keys:
+                if key not in response:
+                    print(f"❌ Missing key in SEO assistant chat response: {key}")
+                    return False
+            
+            suggestions = response.get('suggestions', [])
+            assistant_message = response.get('assistant_message', '')
+            
+            print(f"   Chat response: {assistant_message[:150]}...")
+            print(f"   Additional suggestions: {len(suggestions)}")
+            
+            # Check for Polish content in response
+            polish_chars = ['ą', 'ć', 'ę', 'ł', 'ń', 'ó', 'ś', 'ź', 'ż']
+            response_text = assistant_message.lower()
+            has_polish = any(char in response_text for char in polish_chars)
+            if has_polish:
+                print(f"   ✅ Polish characters found in chat response")
+            else:
+                print(f"   ⚠️  No Polish characters detected in chat response")
+            
+        return success
+
+    def test_seo_assistant_invalid_article(self):
+        """Test SEO Assistant with invalid article ID"""
+        invalid_id = "invalid-article-id-12345"
+        data = {"mode": "analyze"}
+        success, response = self.run_test(
+            f"SEO Assistant Invalid Article {invalid_id}", 
+            "POST", 
+            f"articles/{invalid_id}/seo-assistant", 
+            404,  # Expect 404 for invalid article
+            data=data
+        )
+        
+        if success:
+            print(f"   ✅ Properly returns 404 for invalid article ID")
+        
+        return success
+
 def main():
     print("🚀 Testing Polish SEO Article Writer API - Image Features Test")
     print("=" * 60)
