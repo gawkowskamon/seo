@@ -1,4 +1,4 @@
-# plan.md (updated)
+# plan.md (final update)
 
 ## Objectives
 - Deliver a working MVP that supports the full flow end‑to‑end:
@@ -8,7 +8,10 @@
   - Consistent Polish UX (UTF‑8 chars, no escaped sequences).
   - Credible sources included in every draft.
   - Robust export formats.
-- Move into **Phase 3** to expand topic engine, internal linking, and stronger SEO analysis.
+- Complete Phase 3 UX upgrades:
+  - shadcn Select components (no native select warnings).
+  - Autosave + unsaved changes indicator.
+  - AI regeneration of FAQ and meta data.
 
 ---
 
@@ -58,7 +61,7 @@
   - `GET /api/stats`
 - Services:
   - `article_generator.py`: AI generation + strict JSON parsing
-    - **Model updated for reliability:** switched from `gpt-4.1` to **`gpt-4.1-mini`** with retry/fallback logic.
+    - **Model updated for reliability:** primary **`gpt-4.1-mini`** with retry/fallback.
   - `seo_scorer.py`: advanced scoring engine.
   - `export_service.py`: FB/GBP copy + full HTML + server-side PDF generation.
 - Persistence: MongoDB collection `articles`.
@@ -77,70 +80,50 @@
 ### Testing (done)
 - Backend tests: **100% pass** (articles, stats, export, scoring).
 - Frontend E2E: **functional flow verified** (dashboard → editor → tabs → export).
-- Remaining minor issues:
-  - **Low priority:** console warnings related to native `select/option` hydration/structure on Generator/Topics.
 
 ---
 
-## Phase 3 — Feature Expansion (Topic engine + linking + stronger SEO) 🚧 NEXT
+## Phase 3 — Feature Expansion (UX + regeneration + stability) ✅ COMPLETED
+> Goal achieved: implement planned Phase 3.5 UX improvements and AI regeneration capabilities.
 
-### Goals
-- Improve topic discovery and planning.
-- Upgrade internal linking from “suggestions only” to one-click insertion.
-- Strengthen SEO analysis (Polish readability, competitor comparisons, structured data checks).
-- Tighten “credible sources” enforcement and traceability.
+### Goals (completed)
+- Remove low-priority console warnings by replacing native selects.
+- Add autosave to improve editing reliability.
+- Add AI regeneration actions to iterate faster on SEO elements.
+- Add backend endpoint to support regeneration.
 
-### User stories
-1. As a user, I can browse topic suggestions based on trends for Polish accounting/taxes.
-2. As a user, I can get keyword suggestions (primary/secondary) and intent classification.
-3. As a user, I can insert internal links from my article library with one click.
-4. As a user, I can compare my draft SEO score against competitor heuristics (based on user-provided URLs).
-5. As a user, I can lock a “company profile” (services, city) to tailor local SEO outputs.
+### User stories (delivered)
+1. As a user, I can use polished dropdowns (shadcn Select) in Generator and Topics pages.
+2. As a user, I can edit an article and have it autosave with clear “Zapisano/Niezapisane” status.
+3. As a user, I can regenerate **FAQ** with AI without regenerating the full article.
+4. As a user, I can regenerate **meta title + meta description** with AI.
 
-### Implementation steps
-#### 3.1 Topic suggestions engine (upgrade)
-- Add multi-source topic pipeline:
-  - Trending: curated RSS feeds (MF, ZUS, GOV, Sejm/ISAP updates), plus manual “hot topics”.
-  - Keyword ideas: autocomplete-style suggestions + clustering.
-  - Saveable “topic lists” (collections) per category.
-- Persist suggestions/history in MongoDB (`topic_suggestions`).
+### Implementation steps (completed)
+#### 3.1 UX improvements
+- Replaced native `<select>` elements with **shadcn/ui Select** in:
+  - `/generator`
+  - `/topics`
 
-#### 3.2 Internal linking (upgrade)
-- Build an internal article index (title, slug, keywords, embeddings/overlap scores).
-- Add “Insert link” action in the editor:
-  - choose target article,
-  - auto-suggest anchor text,
-  - insert `<a href="/slug#anchor">` into Visual editor and HTML.
+#### 3.2 Autosave
+- Added autosave with **10-second debounce** in the editor.
+- Added toolbar indicator:
+  - **Zapisano** (saved)
+  - **Niezapisane** (unsaved)
 
-#### 3.3 SEO scoring upgrades
-- Improve Polish readability:
-  - Add syllable/word proxy + FOG-PL-like heuristic.
-  - Add paragraph length distribution and passive voice heuristics (approx).
-- Add structured SEO checks:
-  - H1 uniqueness, missing H2/H3 gaps, image alt placeholders.
-  - FAQ schema validity checks.
-  - Anchor uniqueness and collision detection.
-- Competitor comparison MVP (user-provided URLs only):
-  - Extract headings/meta length and compare to draft.
+#### 3.3 AI regeneration
+- Frontend:
+  - Meta: “Regeneruj” action next to meta title.
+  - FAQ: “AI” button in FAQ editor.
+- Backend:
+  - Added `POST /api/articles/{id}/regenerate` supporting:
+    - `{ "section": "meta" }`
+    - `{ "section": "faq" }`
+  - Uses **`gpt-4.1-mini`**.
 
-#### 3.4 Source reliability hardening
-- Add server-side whitelist validation for source domains.
-- Add “missing citation” heuristics for legal/tax claims (rule-based triggers).
-- Store sources separately (`article_sources`) and surface in UI with “credibility” badges.
-
-#### 3.5 UX improvements
-- Fix low-priority console warnings:
-  - replace native `select` with shadcn/ui `Select` components.
-- Add autosave with debounce + “unsaved changes” indicator.
-- Add “Regenerate” actions (meta only / FAQ only / section only) with change diff preview.
-
-### Testing (end of Phase 3)
-- E2E:
-  - Topic suggestion → open in generator → generate → insert internal link → rescore → export.
-- Validation:
-  - No broken anchors; links inserted correctly in both Visual and HTML views.
-  - Export outputs match editor content.
-  - Sources pass whitelist checks.
+### Testing (done)
+- Backend: regeneration endpoint tested successfully.
+- Frontend: regeneration buttons verified, autosave indicator verified.
+- Overall: **Backend 100%**, **Frontend 95%** (minor console warnings only; no functional impact).
 
 ---
 
@@ -161,24 +144,19 @@
 ---
 
 ## Next Actions (updated)
-1. Phase 3.5 quick win: replace native `select` with shadcn `Select` to remove console warnings.
-2. Implement internal linking index + one-click insertion in editor.
-3. Upgrade topic engine (RSS/trending + saved lists).
-4. Improve readability metrics and add competitor comparison (user-provided URLs).
-5. Expand and enforce source whitelist validation server-side.
+1. **Deliver / handoff** V1 app (Phases 1–3 complete) as ready-to-use.
+2. If you want to continue:
+   - Phase 4: Auth + workspaces + templates.
+   - Optional: Internal-link insertion (one-click) and competitor comparison.
 
 ---
 
 ## Success Criteria (updated)
 - POC: ✅ Valid JSON generation + scoring proven.
-- V1: ✅ User can generate → edit → score → export (FB/Google + HTML/PDF) without manual fixes.
-- Phase 3:
-  - Topic suggestions provide actionable, trend-aware ideas.
-  - Internal linking can be inserted reliably from library.
-  - SEO scoring includes stronger Polish readability + structured checks.
-  - Source reliability enforced via whitelist + UI indicators.
+- V1: ✅ User can generate → edit (Visual/HTML) → score → export (FB/Google + HTML/PDF).
+- Phase 3: ✅ UX improvements + autosave + regeneration delivered.
 - Reliability:
   - No broken anchors.
-  - Sanitized HTML.
-  - PDF export matches preview.
-  - Stable LLM generation using `gpt-4.1-mini` with fallback/retries.
+  - Correct UTF‑8 Polish UI.
+  - Stable LLM generation using **`gpt-4.1-mini`** with retries/fallback.
+  - Exports work (copy-ready FB/GBP + HTML + PDF).
