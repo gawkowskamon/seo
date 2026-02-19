@@ -128,8 +128,8 @@ async def generate_article(topic: str, primary_keyword: str, secondary_keywords:
         tone=tone
     )
     
-    # Try with retries - first try gpt-4.1, fallback to gpt-4.1-mini
-    models_to_try = [("openai", "gpt-4.1"), ("openai", "gpt-4.1-mini")]
+    # Try with retries - first try gpt-4.1-mini (faster, more reliable), fallback to gpt-4o
+    models_to_try = [("openai", "gpt-4.1-mini"), ("openai", "gpt-4o")]
     last_error = None
     
     for provider, model in models_to_try:
