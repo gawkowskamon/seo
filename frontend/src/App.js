@@ -9,6 +9,7 @@ import ArticleEditor from './pages/ArticleEditor';
 import TopicSuggestions from './pages/TopicSuggestions';
 import SeriesGenerator from './pages/SeriesGenerator';
 import AdminUsers from './pages/AdminUsers';
+import ImageLibrary from './pages/ImageLibrary';
 import AuthPage from './pages/AuthPage';
 import './App.css';
 
