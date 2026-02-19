@@ -241,6 +241,112 @@ const ImageGenerator = ({ articleId, article, onInsertImage }) => {
             outline: 'none'
           }}
         />
+
+        {/* File attachment */}
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileSelect}
+          accept="image/png,image/jpeg,image/jpg,image/webp"
+          style={{ display: 'none' }}
+          data-testid="image-file-input"
+        />
+
+        {referenceFile ? (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '8px 10px',
+              borderRadius: 8,
+              border: '1px solid hsl(214, 18%, 88%)',
+              background: 'hsl(35, 35%, 97%)',
+              marginTop: 8,
+            }}
+            data-testid="image-reference-preview"
+          >
+            <img
+              src={referenceFile.preview}
+              alt="Referencja"
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 6,
+                objectFit: 'cover',
+                flexShrink: 0,
+                border: '1px solid hsl(214, 18%, 88%)'
+              }}
+            />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: 'hsl(222, 47%, 11%)',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
+              }}>
+                {referenceFile.name}
+              </div>
+              <div style={{ fontSize: 11, color: 'hsl(215, 16%, 50%)' }}>
+                Obraz referencyjny
+              </div>
+            </div>
+            <button
+              onClick={removeReferenceFile}
+              style={{
+                width: 26,
+                height: 26,
+                borderRadius: 6,
+                border: '1px solid hsl(214, 18%, 88%)',
+                background: 'white',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+                color: 'hsl(0, 60%, 45%)'
+              }}
+              data-testid="image-remove-reference-button"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '7px 10px',
+              borderRadius: 8,
+              border: '1px dashed hsl(214, 18%, 82%)',
+              background: 'transparent',
+              cursor: 'pointer',
+              fontSize: 12,
+              fontWeight: 500,
+              color: 'hsl(215, 16%, 45%)',
+              width: '100%',
+              marginTop: 8,
+              transition: 'border-color 0.15s, color 0.15s'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = '#04389E';
+              e.currentTarget.style.color = '#04389E';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = 'hsl(214, 18%, 82%)';
+              e.currentTarget.style.color = 'hsl(215, 16%, 45%)';
+            }}
+            data-testid="image-attach-file-button"
+          >
+            <Paperclip size={14} />
+            Dolacz obraz referencyjny (PNG, JPG, WEBP)
+          </button>
+        )}
+
         <Button
           onClick={() => handleGenerate()}
           disabled={generating || !prompt.trim()}
