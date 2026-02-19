@@ -131,24 +131,111 @@ def generate_full_html(article: dict) -> str:
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="{meta_desc}">
     <title>{meta_title}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.8; max-width: 800px; margin: 0 auto; padding: 20px; color: #1a1a2e; }}
-        h1 {{ color: #0a4c7a; font-size: 2em; margin-bottom: 0.5em; }}
-        h2 {{ color: #0e6ba8; font-size: 1.5em; margin-top: 2em; padding-bottom: 0.3em; border-bottom: 2px solid #e8f1f8; }}
-        h3 {{ color: #1a7bc0; font-size: 1.2em; }}
-        .toc {{ background: #f0f7ff; padding: 20px 30px; border-radius: 8px; margin: 20px 0; }}
-        .toc h2 {{ margin-top: 0; border: none; font-size: 1.3em; }}
-        .toc ol {{ padding-left: 20px; }}
-        .toc a {{ color: #0e6ba8; text-decoration: none; }}
-        .toc a:hover {{ text-decoration: underline; }}
-        .faq {{ background: #f8fafb; padding: 20px; border-radius: 8px; margin-top: 2em; }}
-        .faq h3 {{ color: #0a4c7a; }}
-        .sources {{ margin-top: 2em; padding-top: 1em; border-top: 2px solid #e8f1f8; }}
-        .sources a {{ color: #0e6ba8; }}
-        a {{ color: #0e6ba8; }}
+        * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+        body {{
+            font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            line-height: 1.8;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 24px;
+            color: hsl(222, 47%, 20%);
+            background: white;
+        }}
+        h1 {{
+            font-family: 'Instrument Serif', Georgia, serif;
+            color: hsl(222, 47%, 11%);
+            font-size: 2.2em;
+            font-weight: 400;
+            margin-bottom: 0.6em;
+            line-height: 1.2;
+        }}
+        h2 {{
+            font-family: 'Instrument Serif', Georgia, serif;
+            color: #04389E;
+            font-size: 1.6em;
+            font-weight: 400;
+            margin-top: 2em;
+            margin-bottom: 0.6em;
+            padding-bottom: 8px;
+            border-bottom: 2px solid hsl(34, 90%, 88%);
+        }}
+        h3 {{
+            font-family: 'Instrument Serif', Georgia, serif;
+            color: hsl(220, 95%, 28%);
+            font-size: 1.2em;
+            font-weight: 400;
+            margin-top: 1.5em;
+            margin-bottom: 0.5em;
+        }}
         p {{ margin-bottom: 1em; }}
-        ul, ol {{ margin-bottom: 1em; }}
-        strong {{ color: #0a4c7a; }}
+        ul, ol {{ margin-bottom: 1em; padding-left: 24px; }}
+        li {{ margin-bottom: 4px; }}
+        strong {{ color: hsl(222, 47%, 11%); }}
+        a {{ color: #04389E; text-decoration: underline; text-underline-offset: 3px; }}
+        .toc {{
+            background: hsl(35, 35%, 97%);
+            padding: 20px 28px;
+            border-radius: 12px;
+            margin: 24px 0;
+            border: 1px solid hsl(214, 18%, 88%);
+        }}
+        .toc h2 {{ margin-top: 0; border: none; font-size: 1.2em; padding-bottom: 0; }}
+        .toc ol {{ padding-left: 20px; }}
+        .toc a {{ color: #04389E; text-decoration: none; }}
+        .toc a:hover {{ text-decoration: underline; }}
+        .faq {{
+            background: hsl(35, 35%, 97%);
+            padding: 24px;
+            border-radius: 12px;
+            margin-top: 2em;
+            border: 1px solid hsl(214, 18%, 88%);
+        }}
+        .faq h3 {{ color: #04389E; }}
+        .sources {{
+            margin-top: 2em;
+            padding-top: 1.5em;
+            border-top: 2px solid hsl(34, 90%, 88%);
+        }}
+        .sources a {{ color: #04389E; }}
+        table {{
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid hsl(214, 18%, 88%);
+        }}
+        table thead {{ background: hsl(220, 95%, 96%); }}
+        table th {{
+            padding: 10px 14px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 13px;
+            color: #04389E;
+            border-bottom: 2px solid hsl(214, 18%, 85%);
+        }}
+        table td {{
+            padding: 10px 14px;
+            border-bottom: 1px solid hsl(214, 18%, 93%);
+        }}
+        table tr:last-child td {{ border-bottom: none; }}
+        .callout {{
+            border-radius: 10px;
+            padding: 16px 18px;
+            margin: 16px 0;
+            border-left: 4px solid;
+            line-height: 1.6;
+        }}
+        .callout-tip {{ background: hsl(158, 55%, 95%); border-left-color: hsl(158, 55%, 34%); }}
+        .callout-warning {{ background: hsl(34, 90%, 95%); border-left-color: #F28C28; }}
+        .callout-info {{ background: hsl(220, 95%, 96%); border-left-color: #04389E; }}
+        img {{ max-width: 100%; height: auto; border-radius: 8px; margin: 16px 0; }}
+        @media print {{
+            body {{ padding: 0; }}
+            .toc {{ break-after: page; }}
+        }}
     </style>
 </head>
 <body>
