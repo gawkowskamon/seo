@@ -1477,6 +1477,23 @@ def main():
         tester.test_image_generation_without_reference()
         tester.test_image_generation_with_reference()
         tester.test_image_generation_invalid_mime_type()
+        
+        # Test image library functionality
+        print("\n📚 Image Library Tests")
+        tester.test_library_list_images()
+        tester.test_library_search_images()
+        tester.test_library_filter_by_style()
+        tester.test_library_tags()
+        tester.test_image_tags_update()
+        tester.test_library_filter_by_tag()
+        
+        # Test batch image generation
+        print("\n🎨 Batch Image Generation Tests")
+        tester.test_batch_image_generation()
+        
+        # Test AI image editing
+        print("\n✏️  AI Image Editing Tests")
+        tester.test_ai_image_editing()
     
     # Test user-scoped endpoints
     print("\n👤 User Scoping Tests")
