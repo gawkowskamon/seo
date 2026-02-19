@@ -41,6 +41,31 @@ const Sidebar = () => {
             {item.label}
           </Link>
         ))}
+        {user?.is_admin && (
+          <>
+            <div style={{
+              margin: '12px 12px 6px',
+              fontSize: 10,
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              color: 'hsl(215, 16%, 55%)'
+            }}>
+              Administracja
+            </div>
+            {adminItems.map((item) => (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`sidebar-nav-item ${location.pathname === item.path ? 'active' : ''}`}
+                data-testid={item.testId}
+              >
+                <item.icon size={18} />
+                {item.label}
+              </Link>
+            ))}
+          </>
+        )}
       </nav>
       {/* User section at bottom */}
       {user && (
