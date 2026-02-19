@@ -708,6 +708,18 @@ const ImageGenerator = ({ articleId, article, onInsertImage }) => {
           </div>
         )}
       </div>
+
+      {/* Lightbox */}
+      {lightboxImage && (
+        <ImageLightbox
+          image={lightboxImage}
+          images={null}
+          currentIndex={lightboxIndex}
+          onClose={() => setLightboxImage(null)}
+          onNavigate={() => {}}
+          onDelete={handleDeleteImage}
+        />
+      )}
     </div>
   );
 };
