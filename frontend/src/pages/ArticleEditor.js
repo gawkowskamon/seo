@@ -204,6 +204,54 @@ const ArticleEditor = () => {
     setHasUnsavedChanges(true);
   };
 
+  const handleApplySuggestion = (suggestion) => {
+    if (!suggestion.apply_target || suggestion.apply_target === 'none') return;
+    
+    switch (suggestion.apply_target) {
+      case 'meta_title':
+        if (suggestion.proposed_value) {
+          setMetaTitle(suggestion.proposed_value);
+          setHasUnsavedChanges(true);
+        }
+        break;
+      case 'meta_description':
+        if (suggestion.proposed_value) {
+          setMetaDescription(suggestion.proposed_value);
+          setHasUnsavedChanges(true);
+        }
+        break;
+      case 'html_content':
+        if (suggestion.proposed_value) {
+          setHtmlContent(prev => prev + '\n' + suggestion.proposed_value);
+          setHasUnsavedChanges(true);
+        }
+        break;
+      case 'faq':
+        if (suggestion.proposed_value) {
+          try {
+            let newFaq;
+            if (typeof suggestion.proposed_value === 'string') {
+              newFaq = JSON.parse(suggestion.proposed_value);
+            } else {
+              newFaq = suggestion.proposed_value;
+            }
+            if (newFaq.question && newFaq.answer) {
+              setArticle(prev => ({
+                ...prev,
+                faq: [...(prev.faq || []), newFaq]
+              }));
+              setHasUnsavedChanges(true);
+            }
+          } catch (e) {
+            console.warn('Could not parse FAQ suggestion:', e);
+          }
+        }
+        break;
+      default:
+        break;
+    }
+  };
+
   const handleHtmlChange = (e) => {
     setHtmlContent(e.target.value);
     setHasUnsavedChanges(true);
