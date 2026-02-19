@@ -11,6 +11,12 @@
     - generowanie **4 wariantów naraz** (batch) i wybór najlepszego,
     - AI edycje obrazu (inpainting/modyfikacja fragmentu, zmiana tła, transfer stylu, ulepszanie),
     - zapis wyników edycji do biblioteki.
+- **Generator obrazów jako osobna strona — COMPLETED:** Udostępnić generator obrazów także z poziomu bocznego menu jako osobną stronę (`/generator-obrazow`).
+- **PDF z polskimi znakami — COMPLETED:** Naprawić eksport PDF tak, aby poprawnie renderował polskie znaki (ą, ę, ś, ć, ź, ż, ó, ł, ń).
+- **WordPress integracja + wtyczka — COMPLETED:**
+  - Dodać publikację artykułu do WordPress (REST API) z poziomu aplikacji.
+  - Dodać konfigurację WordPress w panelu admina.
+  - Wygenerować i udostępnić do pobrania wtyczkę WordPress do importu artykułów z aplikacji.
 
 ---
 
@@ -126,6 +132,7 @@
    - **ulepszanie** jakości
 3. Jako użytkownik, chcę zapisywać wynik edycji jako nowy obraz w bibliotece.
 4. Jako admin, chcę mieć wgląd w obrazy wszystkich użytkowników (w bibliotece).
+5. Jako użytkownik, chcę uruchomić generator obrazów także poza edytorem artykułu (osobna strona).
 
 **Wykonane (Backend)**
 - Multi-variant generation:
@@ -138,6 +145,7 @@
 - Generator:
   - Dodano przycisk „Generuj 4 warianty” + UI siatki 2×2 z akcjami „Wstaw” / „Wybierz”.
   - Dodano powiększanie w lightbox (klik na wygenerowany obraz i elementy galerii).
+  - Dodano osobną stronę generatora: `/generator-obrazow` i link w sidebarze.
 - Biblioteka:
   - Dialog „Edycja obrazu AI” z 4 trybami (inpaint/background/style_transfer/enhance) i polem opisu.
 
@@ -163,10 +171,55 @@
 
 ---
 
+### Phase 7: PDF Polish Font + WordPress Integration (COMPLETED)
+
+#### 7A) PDF z polskimi znakami (COMPLETED)
+**User stories**
+1. Jako użytkownik, chcę aby eksport PDF poprawnie wyświetlał polskie znaki (ą, ę, ś, ć, ź, ż, ó, ł, ń).
+
+**Wykonane**
+- Backend `export_service.py`:
+  - Zarejestrowano czcionki `DejaVuSans` oraz `DejaVuSans-Bold` (TTF) w ReportLab.
+  - Zaktualizowano style PDF (title/headings/body) aby używały DejaVuSans.
+
+#### 7B) WordPress — publikacja z aplikacji + wtyczka (COMPLETED)
+**User stories**
+1. Jako admin, chcę skonfigurować integrację WordPress (URL, user, Application Password) w aplikacji.
+2. Jako użytkownik, chcę opublikować artykuł do WordPress z poziomu eksportu (jako szkic).
+3. Jako admin/użytkownik, chcę pobrać wtyczkę WordPress, która umożliwia import artykułów w panelu WP.
+
+**Wykonane (Backend)**
+- Ustawienia WordPress (admin-only):
+  - `GET /api/settings/wordpress` — status konfiguracji.
+  - `POST /api/settings/wordpress` — zapis konfiguracji.
+- Publikacja artykułu do WordPress:
+  - `POST /api/articles/{article_id}/publish-wordpress` — tworzy post w WP jako `draft`.
+- Wtyczka WP do pobrania:
+  - `GET /api/wordpress/plugin` — generuje plik `kurdynowski-importer.php`.
+
+**Wykonane (Frontend)**
+- Strona admina: `/admin/settings`
+  - Formularz konfiguracji WP (URL, user, Application Password)
+  - Sekcja pobrania wtyczki + instrukcje instalacji
+- Panel Eksportu (w edytorze artykułu):
+  - Sekcja WordPress z przyciskiem „Opublikuj na WordPress”
+  - Link/przycisk „Pobierz wtyczkę WP”
+- Sidebar:
+  - Dodano link „Ustawienia” w sekcji Administracja (tylko admin)
+
+**Testy**
+- Testing agent: Backend **100%**, Frontend **100%**.
+
+---
+
 ## 3) Next Actions (konkretne, kolejność)
 1. *(Opcjonalnie)* Dodać **crop/filtry client-side** (canvas) jako uzupełnienie edycji (jasność/kontrast/nasycenie + kadrowanie) i zapisywanie jako nowy obraz w bibliotece.
 2. *(Opcjonalnie)* Rozszerzyć bibliotekę o dodatkowe metadane: `favorite`, `title`, filtr po `user_id` w UI dla admina.
 3. *(Opcjonalnie)* Optymalizacje wydajności: paginacja cursorowa, lazy-loading miniatur, kompresja/thumbnailing.
+4. *(Opcjonalnie)* Rozszerzyć publikację WordPress:
+   - wybór statusu (draft/publish/scheduled),
+   - mapowanie kategorii/tagów WP,
+   - upload i ustawienie obrazka wyróżniającego (featured image).
 
 ---
 
@@ -178,5 +231,12 @@
 - **Advanced Generator — ACHIEVED:**
   - Generowanie 4 wariantów naraz działa stabilnie.
   - AI-edits (inpaint/tło/transfer stylu/ulepsz) działają na bazie obrazu wejściowego i zapisują wyniki do biblioteki.
+  - Generator dostępny także jako osobna strona w sidebarze (`/generator-obrazow`).
+- **PDF Export — ACHIEVED:**
+  - Eksport PDF poprawnie renderuje polskie znaki dzięki DejaVuSans.
+- **WordPress — ACHIEVED:**
+  - Admin ma panel konfiguracji WordPress w `/admin/settings`.
+  - Użytkownik może publikować artykuły do WP jako szkice z panelu Eksportu.
+  - Wtyczka WordPress jest dostępna do pobrania i umożliwia import artykułów w panelu WP.
 - **No regressions — ACHIEVED:**
   - Dotychczasowe generowanie, galeria per-artykuł, auth i admin panel działają jak wcześniej.
