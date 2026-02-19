@@ -82,6 +82,9 @@ function AppRoutes() {
       <Route path="/series" element={
         <ProtectedLayout><SeriesGenerator /></ProtectedLayout>
       } />
+      <Route path="/admin/users" element={
+        <ProtectedLayout requireAdmin><AdminUsers /></ProtectedLayout>
+      } />
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>
   );
