@@ -9,11 +9,11 @@
   },
   {
     "content": "Phase 2A: Verify AdminUsers.js works end-to-end with backend",
-    "status": "in_progress"
+    "status": "completed"
   },
   {
     "content": "Phase 2B: Update backend - add reference_image support to ImageGenerateRequest + image_generator.py",
-    "status": "pending"
+    "status": "in_progress"
   },
   {
     "content": "Phase 2B: Update frontend ImageGenerator.js - add file upload UI",
