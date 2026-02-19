@@ -27,6 +27,7 @@ from auth import (
     register_user, authenticate_user, get_user_by_id,
     create_access_token, decode_access_token
 )
+from series_generator import generate_series_outline
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
