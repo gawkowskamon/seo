@@ -4,23 +4,19 @@
     "status": "completed"
   },
   {
-    "content": "Phase 7: Advanced Content - Templates + blocks backend",
-    "status": "completed"
-  },
-  {
-    "content": "Phase 7: Advanced Content - Frontend template UI",
+    "content": "Phase 7: Advanced Content - Templates + blocks",
     "status": "completed"
   },
   {
     "content": "Phase 8: JWT Auth backend (users, login, register)",
-    "status": "in_progress"
+    "status": "completed"
   },
   {
     "content": "Phase 8: JWT Auth frontend (login/register pages, route guards)",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "content": "Final testing of all features",
-    "status": "pending"
+    "status": "in_progress"
   }
 ]
