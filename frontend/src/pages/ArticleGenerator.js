@@ -120,7 +120,7 @@ const ArticleGenerator = () => {
     return (
       <div className="generation-overlay" data-testid="generation-progress">
         <div className="generation-card">
-          <Wand2 size={40} style={{ color: 'hsl(209, 88%, 36%)', marginBottom: 16 }} />
+          <Wand2 size={40} style={{ color: '#04389E', marginBottom: 16 }} />
           <h2>Generowanie artykułu</h2>
           <p style={{ color: 'hsl(215, 16%, 45%)', marginBottom: 24 }}>To może potrwać 15-30 sekund...</p>
           
