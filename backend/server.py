@@ -171,7 +171,7 @@ async def health():
 # --- Article Generation ---
 
 @api_router.post("/articles/generate")
-async def generate_article_endpoint(request: ArticleGenerateRequest):
+async def generate_article_endpoint(request: ArticleGenerateRequest, user: dict = Depends(get_current_user)):
     """Generate a new SEO-optimized article."""
     try:
         article_data = await generate_article(
@@ -194,6 +194,8 @@ async def generate_article_endpoint(request: ArticleGenerateRequest):
         article_id = str(uuid.uuid4())
         article_doc = {
             "id": article_id,
+            "user_id": user["id"],
+            "workspace_id": user.get("workspace_id", user["id"]),
             "topic": request.topic,
             "primary_keyword": request.primary_keyword,
             "secondary_keywords": request.secondary_keywords,
