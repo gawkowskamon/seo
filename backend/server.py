@@ -1096,6 +1096,132 @@ async def seo_assistant_endpoint(article_id: str, request: SEOAssistantRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# --- Subscriptions & Payments ---
+
+@api_router.get("/subscription/plans")
+async def list_subscription_plans():
+    """Return all available subscription plans."""
+    return get_all_plans()
+
+class SubscriptionCheckoutRequest(BaseModel):
+    plan_id: str
+
+@api_router.post("/subscription/checkout")
+async def create_checkout(request: SubscriptionCheckoutRequest, user: dict = Depends(get_current_user)):
+    """Create a tpay checkout session for the selected plan."""
+    plan = get_plan(request.plan_id)
+    if not plan:
+        raise HTTPException(status_code=400, detail="Nieznany plan subskrypcji")
+    
+    # Get base URL for callbacks
+    base_url = os.environ.get("APP_BASE_URL", "https://accounting-blog-ai.preview.emergentagent.com")
+    callback_url = f"{base_url}/api/subscription/webhook"
+    return_url = f"{base_url}/cennik"
+    
+    result = await create_tpay_transaction(
+        plan_id=request.plan_id,
+        user=user,
+        callback_url=callback_url,
+        return_url=return_url
+    )
+    
+    if result.get("success"):
+        # Save pending subscription
+        sub_id = str(uuid.uuid4())
+        sub_doc = {
+            "id": sub_id,
+            "user_id": user["id"],
+            "plan_id": request.plan_id,
+            "plan_name": plan["name"],
+            "price_netto": plan["price_netto"],
+            "price_brutto": plan["price_brutto"],
+            "transaction_id": result.get("transaction_id"),
+            "status": "pending",
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.subscriptions.insert_one(sub_doc)
+        
+        return {
+            "subscription_id": sub_id,
+            "transaction_url": result.get("transaction_url"),
+            "plan": plan
+        }
+    else:
+        error_msg = result.get("error", "Blad tworzenia platnosci")
+        if result.get("demo"):
+            raise HTTPException(status_code=503, detail=error_msg)
+        raise HTTPException(status_code=502, detail=error_msg)
+
+@api_router.post("/subscription/webhook")
+async def tpay_webhook(request_data: dict):
+    """Handle tpay payment notification."""
+    tx_id = request_data.get("tr_id") or request_data.get("transactionId")
+    status = request_data.get("tr_status") or request_data.get("status")
+    
+    if not tx_id:
+        raise HTTPException(status_code=400, detail="Missing transaction ID")
+    
+    # Find subscription
+    sub = await db.subscriptions.find_one({"transaction_id": str(tx_id)})
+    if not sub:
+        logging.warning(f"Subscription not found for tx: {tx_id}")
+        return {"status": "ok"}
+    
+    if status in ("TRUE", "paid", "correct"):
+        # Payment confirmed
+        plan = get_plan(sub["plan_id"])
+        end_date = calculate_subscription_end(sub["plan_id"])
+        
+        await db.subscriptions.update_one(
+            {"id": sub["id"]},
+            {"$set": {
+                "status": "active",
+                "paid_at": datetime.now(timezone.utc).isoformat(),
+                "expires_at": end_date.isoformat()
+            }}
+        )
+        
+        # Update user subscription status
+        await db.users.update_one(
+            {"id": sub["user_id"]},
+            {"$set": {
+                "subscription_plan": sub["plan_id"],
+                "subscription_active": True,
+                "subscription_expires": end_date.isoformat()
+            }}
+        )
+        
+        logging.info(f"Subscription activated: user={sub['user_id']}, plan={sub['plan_id']}")
+    elif status in ("FALSE", "failed", "error"):
+        await db.subscriptions.update_one(
+            {"id": sub["id"]},
+            {"$set": {"status": "failed"}}
+        )
+    
+    return {"status": "ok"}
+
+@api_router.get("/subscription/status")
+async def get_subscription_status(user: dict = Depends(get_current_user)):
+    """Get current user's subscription status."""
+    # Check latest active subscription
+    sub = await db.subscriptions.find_one(
+        {"user_id": user["id"], "status": "active"},
+        {"_id": 0},
+        sort=[("created_at", -1)]
+    )
+    
+    user_data = await db.users.find_one({"id": user["id"]}, {"_id": 0, "subscription_plan": 1, "subscription_active": 1, "subscription_expires": 1})
+    
+    return {
+        "has_subscription": bool(sub),
+        "plan": sub.get("plan_id") if sub else None,
+        "plan_name": sub.get("plan_name") if sub else None,
+        "expires_at": sub.get("expires_at") if sub else None,
+        "status": sub.get("status") if sub else "none",
+        "user_subscription": user_data
+    }
+
+
 # Include the router in the main app
 app.include_router(api_router)
 
