@@ -99,7 +99,7 @@ const ArticleGenerator = () => {
         secondary_keywords: secondaryKeywords,
         target_length: targetLength,
         tone: tone
-      });
+      }, { timeout: 180000 });
 
       clearInterval(stageInterval);
       setCurrentStage(4);
