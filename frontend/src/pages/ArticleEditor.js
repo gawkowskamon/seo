@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Save, Eye, Code, BarChart3, Share2, ChevronLeft, Loader2, RefreshCw, Wand2, Cloud, CloudOff, Image as ImageIcon } from 'lucide-react';
+import { Save, Eye, Code, BarChart3, Share2, ChevronLeft, Loader2, RefreshCw, Wand2, Cloud, CloudOff, Image as ImageIcon, Sparkles } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { toast } from 'sonner';
@@ -10,6 +10,7 @@ import ExportPanel from '../components/ExportPanel';
 import FAQEditor from '../components/FAQEditor';
 import TOCPanel from '../components/TOCPanel';
 import ImageGenerator from '../components/ImageGenerator';
+import SEOAssistantPanel from '../components/SEOAssistantPanel';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
