@@ -1,22 +1,24 @@
-# plan.md (updated after Phase 5 — AI SEO Assistant ✅ COMPLETED)
+# plan.md (updated after Phase 5 — AI SEO Assistant ✅ COMPLETED; Phase 6–8 approved and queued)
 
 ## Objectives
-- Deliver a working MVP that supports the full flow end‑to‑end:
-  **topic/keywords → AI generates Polish accounting article (JSON) → TOC+anchors + headings + FAQ + meta → SEO scoring → dual editor (Visual + HTML) → export (FB/Google Business + HTML/PDF)**.
+- Deliver a working end‑to‑end content workflow for Polish accounting/tax marketing:
+  **topic/keywords → AI generates Polish article (JSON) → TOC+anchors + headings + FAQ + meta → SEO scoring → dual editor (Visual + HTML) → export (FB/Google Business + HTML/PDF)**.
 - Provide a complete **media workflow** for blog publishing:
-  **AI image generation (Gemini “Nano Banana”) → gallery per article → preview → copy HTML embed → download**.
-- Provide an in-editor **AI SEO Assistant** that improves drafts faster:
-  - Combines **actionable suggestion list (with Apply actions)** + **interactive chat**.
+  **AI image generation → per‑article gallery → preview → copy HTML embed → download/delete**.
+- Provide an in-editor **AI SEO Assistant** to improve drafts faster:
+  - Combines **prioritized suggestions (with Apply actions)** + **interactive chat**.
   - Uses **OpenAI `gpt-5.2`** via Emergent integrations.
-- Ensure reliability and production readiness:
-  - Stable LLM generation (model fallback/retries where relevant).
-  - Consistent Polish UX (UTF‑8 chars, no escaped sequences).
-  - Credible sources included in every draft.
-  - Robust export formats.
-- Preserve and extend Phase 3 UX upgrades:
-  - shadcn Select components (no native select warnings).
-  - Autosave + unsaved changes indicator.
-  - AI regeneration of FAQ and meta data.
+- Upgrade the product from MVP UI to a **brand-aligned, premium SaaS**:
+  - **Kurdynowski branding** (primary blue `#04389E`, accent orange `#F28C28`), modern‑classic look.
+  - Improved typography (serif display headings + sans UI body).
+- Add **advanced content creation** for specialized, high-value deliverables:
+  - Templates, multi‑part series, advanced formatting blocks, generation from sources.
+- Add **simple authentication + workspaces** for client/brand separation:
+  - Email/password auth (JWT) and user-scoped data.
+- Preserve reliability and production readiness:
+  - Stable LLM calls (retries/fallbacks where relevant).
+  - Correct Polish UX (UTF‑8, no `\uXXXX` artifacts).
+  - Exports remain consistent.
 
 ---
 
@@ -76,15 +78,12 @@
   - Dashboard (stats + article list + search + delete).
   - Generator (topic + keywords + tone + length + staged loading UI).
   - Topics (AI topic suggestions; “use in generator” deep-linking).
-  - Editor (3-panel layout):
-    - Left: TOC + anchor copy, internal link suggestions, sources.
-    - Center: Visual editor + HTML editor tabs.
-    - Right: SEO score panel + FAQ editor + Export panel tabs.
-- Polish UI and correct UTF‑8 rendering fixed (no `\uXXXX` artifacts).
+  - Editor (3-panel layout): left TOC, center editor, right SEO/FAQ/Export.
+- Polish UI and correct UTF‑8 rendering fixed.
 
 ### Testing (done)
 - Backend tests: **100% pass** (articles, stats, export, scoring).
-- Frontend E2E: **functional flow verified** (dashboard → editor → tabs → export).
+- Frontend E2E: flow verified.
 
 ---
 
@@ -92,43 +91,22 @@
 > Goal achieved: implement planned UX improvements and AI regeneration capabilities.
 
 ### Goals (completed)
-- Remove low-priority console warnings by replacing native selects.
-- Add autosave to improve editing reliability.
-- Add AI regeneration actions to iterate faster on SEO elements.
-- Add backend endpoint to support regeneration.
+- Replace native selects with shadcn Select.
+- Add autosave + unsaved indicator.
+- Add AI regeneration actions for FAQ and meta.
 
 ### User stories (delivered)
-1. As a user, I can use polished dropdowns (shadcn Select) in Generator and Topics pages.
-2. As a user, I can edit an article and have it autosave with clear “Zapisano/Niezapisane” status.
-3. As a user, I can regenerate **FAQ** with AI without regenerating the full article.
-4. As a user, I can regenerate **meta title + meta description** with AI.
+1. Polished dropdowns (shadcn Select) in Generator and Topics.
+2. Autosave with “Zapisano/Niezapisane” indicator.
+3. Regenerate **FAQ** via AI.
+4. Regenerate **meta title + meta description** via AI.
 
 ### Implementation steps (completed)
-#### 3.1 UX improvements
-- Replaced native `<select>` elements with **shadcn/ui Select** in:
-  - `/generator`
-  - `/topics`
-
-#### 3.2 Autosave
-- Added autosave with **10-second debounce** in the editor.
-- Added toolbar indicator:
-  - **Zapisano** (saved)
-  - **Niezapisane** (unsaved)
-
-#### 3.3 AI regeneration
-- Frontend:
-  - Meta: “Regeneruj” action next to meta title.
-  - FAQ: “AI” button in FAQ editor.
-- Backend:
-  - Added `POST /api/articles/{id}/regenerate` supporting:
-    - `{ "section": "meta" }`
-    - `{ "section": "faq" }`
-  - Uses **`gpt-4.1-mini`**.
+- Frontend regeneration actions + autosave.
+- Backend `POST /api/articles/{id}/regenerate` for `faq` and `meta`.
 
 ### Testing (done)
-- Backend: regeneration endpoint tested successfully.
-- Frontend: regeneration buttons verified, autosave indicator verified.
-- Overall: **Backend 100%**, **Frontend 95%** (minor console warnings only; no functional impact).
+- Backend regeneration tested successfully.
 
 ---
 
@@ -136,158 +114,168 @@
 > Goal achieved: add an image generation workflow for article illustrations, integrated into the editor.
 
 ### Goals (completed)
-- Add AI image generation using Gemini image model (“Nano Banana”).
-- Allow generating multiple image types/styles for blog publishing.
-- Provide per-article image management (gallery, preview, download, delete).
-- Make it easy to embed images into the article HTML.
-
-### User stories (delivered)
-1. As a user, I can generate an image for an article with a selected style (Hero/Sekcja/Infografika/Własny prompt).
-2. As a user, I can view all images generated for a specific article.
-3. As a user, I can open a full preview of an image.
-4. As a user, I can **copy HTML** for an image (data URI) and paste it into the HTML editor.
-5. As a user, I can download an image file.
-6. As a user, I can delete images I don’t want.
+- Generate images with styles.
+- Per‑article gallery and preview.
+- Copy HTML embed + download + delete.
 
 ### Implementation details (as built)
-#### Backend (FastAPI)
-- New service:
-  - `image_generator.py`: Gemini image generation via Emergent:
-    - Model: **`gemini-3-pro-image-preview`**
-    - Modalities: `[..., "image", "text"]`
-    - Supported styles: `hero`, `section`, `infographic`, `custom`
-- New persistence:
-  - MongoDB collection `images` storing:
-    - `id`, `article_id`, `prompt`, `style`, `mime_type`, `data` (base64), `created_at`
-- New endpoints under `/api`:
-  - `POST /api/images/generate` (returns base64 image + metadata)
-  - `GET /api/images/{image_id}` (fetch full base64)
-  - `GET /api/articles/{article_id}/images` (list images for an article; excludes `data` for performance)
+#### Backend
+- `image_generator.py` using `gemini-3-pro-image-preview`.
+- MongoDB collection `images`.
+- Endpoints:
+  - `POST /api/images/generate`
+  - `GET /api/images/{image_id}`
+  - `GET /api/articles/{article_id}/images`
   - `DELETE /api/images/{image_id}`
 
-#### Frontend (React)
-- New component:
-  - `ImageGenerator.js` embedded into the editor.
-- Editor updates:
-  - Added new right-panel tab: **Obrazy**.
-  - Image panel includes:
-    - Style selector
-    - Prompt input (auto-filled from article topic/title)
-    - Generate action (loading state)
-    - Gallery grid per article
-    - Full preview with:
-      - Copy HTML
-      - Download
-      - Delete
+#### Frontend
+- `ImageGenerator.js` in editor.
+- Right panel tab **Obrazy**.
 
 ### Testing (done)
-- Backend: **100%** (images list + retrieval tested; generation validated via POC and direct endpoint test).
-- Frontend: **100%** (Obrazy tab verified, gallery/preview/actions verified; existing flows preserved).
+- Backend and frontend flows verified.
 
 ---
 
 ## Phase 5 — AI SEO Assistant (Suggestions + Chat) ✅ COMPLETED (P0)
-> Goal achieved: help users actively improve drafts by providing prioritized SEO suggestions with one-click apply actions, plus an interactive chat for iterative improvements. Uses **OpenAI `gpt-5.2`**.
+> Goal achieved: provide in-editor SEO improvement with suggestions + chat, using **OpenAI `gpt-5.2`**.
 
 ### User stories (delivered)
-1. As a user, I can open an **Asystent SEO AI** panel inside the Article Editor.
-2. As a user, I can generate a **prioritized list of SEO improvement suggestions** for the current article.
-3. As a user, I can click **Zastosuj** on a suggestion to apply it to the article and mark it as having unsaved changes.
-4. As a user, I can chat with the assistant about the article and get concrete edits.
-5. As a user, I can re-run SEO scoring after applying changes and see improvement.
+1. AI assistant panel in editor.
+2. Prioritized SEO suggestions list.
+3. One-click **Zastosuj** for suggestions.
+4. Interactive chat about improvements.
+5. Works with rescoring + unsaved indicator.
 
 ### Implementation details (as built)
-#### Backend (FastAPI)
-- New service:
-  - `/app/backend/seo_assistant.py`
-  - Uses `emergentintegrations.llm.chat.LlmChat` with provider/model: `("openai", "gpt-5.2")`.
-  - Strict JSON contract parsing + cleanup for accidental fenced blocks.
-- New endpoint:
-  - `POST /api/articles/{article_id}/seo-assistant`
-- Request payload (implemented):
-  - `mode`: `"analyze" | "chat"`
-  - `message`: string (required for chat)
-  - `history`: list of `{ role: "user"|"assistant", content: string }` (optional)
-- Response payload (implemented):
-  - `assistant_message`: string
-  - `suggestions`: list of structured items:
-    - `id`, `title`, `category`, `impact`, `rationale`, `current_value`, `proposed_value`, `apply_target`
+#### Backend
+- New service: `/app/backend/seo_assistant.py`.
+- Endpoint: `POST /api/articles/{article_id}/seo-assistant` supporting:
+  - `mode: analyze | chat`, optional `history`, `message`.
+- Strict JSON parsing + cleanup.
 
-#### Frontend (React)
-- New component:
-  - `/app/frontend/src/components/SEOAssistantPanel.js`
-  - UI:
-    - Analyze button (loading state)
-    - Suggestions list (expand/collapse)
-    - Apply button per suggestion (when applicable)
-    - Chat mode with message list, quick questions, input + send
-- Editor integration:
-  - Added new right-panel tab: **AI** (`data-testid="article-ai-assistant-tab"`).
-  - Added panel rendering under `rightTab === 'assistant'`.
-- Apply behavior (implemented):
-  - `meta_title`: updates editor meta title state
-  - `meta_description`: updates editor meta description state
-  - `html_content`: appends proposed HTML snippet to the HTML editor content
-  - `faq`: parses JSON and appends a new FAQ item
-  - All apply actions set `hasUnsavedChanges=true` so toolbar shows **Niezapisane**.
+#### Frontend
+- New component: `/app/frontend/src/components/SEOAssistantPanel.js`.
+- Editor right-panel tab: **AI**.
+- Apply behavior supports: `meta_title`, `meta_description`, `html_content` (append), `faq` (append item).
 
 ### Testing / verification (done)
-- Backend: **100%** (endpoint analyze + chat, 404 on invalid id, JSON structure validation).
-- Frontend: verified via automation screenshots:
-  - AI tab visible
-  - Analyze produces 10 suggestions
-  - Expand shows current/proposed value + Apply button
-  - Apply changes meta title and triggers **Niezapisane**
-  - Chat tab shows quick questions + input + send
-- Existing features preserved (dashboard, editor, scoring, images, exports).
+- Backend 100%.
+- Frontend verified by automated screenshots (AI tab, suggestions, apply, chat UI).
 
 ---
 
-## Phase 6 — Hardening + Auth + Workspaces (only after approval)
+## Phase 6 — UI Redesign: Kurdynowski Branding 🔥 IN PROGRESS (P1)
+> Goal: modernize the UI to a premium “modern-classic” feel consistent with Kurdynowski brand. Text-only wordmark (no logo image).
 
-### User stories
-1. As a user, I can sign in and see only my articles.
-2. As a user, I can manage multiple brands/clients (workspaces).
-3. As a user, I can set default templates and SEO rules per workspace.
-4. As a user, I can audit generation history (prompt, model, time, cost estimate).
-5. As a user, I can collaborate via shareable review links (view/comment).
-6. As a user, I can manage media assets per workspace (quotas, tagging, reuse across articles).
+### Brand constraints (confirmed)
+- Primary: **brand blue `#04389E`**
+- Accent: **brand orange `#F28C28`**
+- Sidebar: stylized **text wordmark** “Kurdynowski” (serif) + descriptor “Accounting & Tax Solutions” (sans)
 
-### Implementation steps (proposed)
-- Add JWT auth + workspace isolation.
-- Rate limiting, caching, cost tracking.
-- Robust HTML sanitization + export consistency.
-- Media storage improvements:
-  - Optionally store images in object storage (S3/GCS) instead of base64 in MongoDB.
-  - CDN delivery + resizing/optimization.
+### Goals
+- Replace existing blue palette with brand blue and warm neutrals.
+- Introduce orange accent sparingly for highlights/CTAs.
+- Update typography: **Instrument Serif** for headings/wordmark, keep IBM Plex Sans for UI and IBM Plex Mono for code.
+- Improve layout polish: spacing, surfaces, shadows, hover/focus rings.
+
+### Implementation steps (planned)
+1. **Global tokens**: update `/app/frontend/src/index.css` `:root` tokens to match brand HSL mapping (primary/ring = brand blue; accent/secondary warm neutrals).
+2. **Typography**:
+   - Add Google Font import for **Instrument Serif**.
+   - Apply serif only to headings + brand wordmark.
+3. **App-wide color replacement**:
+   - Update `/app/frontend/src/App.css` hardcoded HSL values to use brand blue equivalents and ensure consistent borders/muted tones.
+4. **Sidebar wordmark**:
+   - Update `/app/frontend/src/components/Sidebar.js` to display “Kurdynowski” with a subtle orange accent (dot/mark) and a small descriptor line.
+5. **Page polish pass**:
+   - Dashboard KPI cards and table headers.
+   - Generator card + progress overlay.
+   - Editor panels and tab styles (SEO/AI/FAQ/Images/Export).
+6. Accessibility regression check: focus rings, contrast.
+
+### Success criteria
+- The entire app visually reads as “Kurdynowski” brand: deep blue actions, warm neutral surfaces, subtle orange highlights.
+- No regressions in existing flows.
+
+---
+
+## Phase 7 — Advanced Content Creation (Templates + Sources + Blocks) ⏳ PLANNED (P1)
+> Goal: add specialized, higher-value content creation beyond basic article generation.
+
+### Scope (confirmed by user)
+- “Wszystko plus”:
+  - Content templates (poradnik, case study, porównanie, lista, FAQ-heavy, local SEO, pillar page).
+  - Multi‑part article series.
+  - Advanced formatting blocks (tables, callout boxes, checklists).
+  - Generation from sources (URL / pasted text; optional file upload later).
+  - More specialized content: e.g., compliance updates, deadlines calendars, step-by-step procedures, segment-specific variants.
+
+### Implementation steps (planned)
+1. **Template system**
+   - Extend generator UI with template selection (shadcn Select).
+   - Add backend prompt variants per template and enforce output JSON schema.
+2. **Advanced blocks**
+   - Define allowed HTML blocks (table, callouts, checklist) and extend editor styling.
+   - Add “Insert block” actions (optional) in editor.
+3. **Series generation**
+   - Backend: generate outline for N-part series + generate per-part article drafts.
+   - Frontend: series view with list of parts and navigation.
+4. **Sources-driven generation**
+   - UI: input for URLs / pasted sources.
+   - Backend: fetch/parse text (safe allowlist) and use as context.
+5. **Quality controls**
+   - More strict factuality prompts + citation enforcement.
+
+### Success criteria
+- User can generate specialized content reliably with consistent structure and reusable blocks.
+
+---
+
+## Phase 8 — JWT Authentication (Email/Password) + Workspaces ⏳ PLANNED (P1)
+> Goal: introduce basic auth and user-scoped data, with workspace concept for multiple clients/brands.
+
+### Requirements (confirmed)
+- **Email + password** registration/login.
+- JWT-based auth.
+- Protected routes.
+- User-specific articles and images.
+
+### Implementation steps (planned)
+1. Backend:
+   - Users collection (hashed passwords).
+   - JWT issuance + refresh strategy (simple MVP: access token only).
+   - Middleware/dependency to enforce auth.
+2. Workspaces:
+   - Workspace collection + membership.
+   - Add `workspace_id` to articles/images.
+   - Update endpoints to scope by user/workspace.
+3. Frontend:
+   - Login + Register pages.
+   - Auth state storage + axios interceptor.
+   - Route guards.
+
+### Success criteria
+- Each user sees only their content; can switch workspace.
 
 ---
 
 ## Next Actions (updated)
-1. **Hardening follow-ups for AI Assistant (optional, recommended):**
-   - Improve patching for `html_content` (insert/replace vs append).
-   - Add persistence for chat history (DB) per article.
-   - Add “Apply all” and filtering by category/impact.
-   - Add server-side validation/sanitization of assistant-produced HTML.
-2. If you want to continue with productization:
-   - Phase 6: Auth + workspaces + templates + audit trail.
-   - Optional: One-click internal-link insertion and competitor comparison.
-   - Optional: Add image insertion directly into Visual editor (not only copy HTML).
+1. **Start Phase 6 (now): UI redesign to Kurdynowski branding**.
+2. Phase 7: Advanced content creation feature set.
+3. Phase 8: JWT auth + workspaces.
+4. Then:
+   - P2: Improve image generator (prompting, styles, variations, consistency).
+   - P3 (optional): Insert images directly in visual editor.
 
 ---
 
 ## Success Criteria (updated)
-- POC: ✅ Valid JSON generation + scoring proven.
-- V1: ✅ User can generate → edit (Visual/HTML) → score → export (FB/GBP + HTML + PDF).
-- Phase 3: ✅ UX improvements + autosave + regeneration delivered.
-- Phase 4: ✅ AI image generation integrated (styles + gallery + preview + copy HTML + download + delete).
-- Phase 5: ✅ AI SEO Assistant delivered:
-  - ✅ Panel (suggestions + chat) available in editor.
-  - ✅ Uses **`gpt-5.2`**.
-  - ✅ Suggestions can be applied to meta/HTML/FAQ and trigger unsaved indicator.
-- Reliability:
+- Phase 1–5: ✅ delivered as documented.
+- Phase 6: Brand-consistent premium UI across all pages.
+- Phase 7: Advanced, specialized content generation with templates + blocks + sources.
+- Phase 8: Authenticated, user-scoped workspaces and data isolation.
+- Reliability preserved:
   - No broken anchors.
-  - Correct UTF‑8 Polish UI.
-  - Stable LLM generation using **`gpt-4.1-mini`** with retries/fallback (generation/regeneration).
-  - Exports work (copy-ready FB/GBP + HTML + PDF).
-  - Image workflow works end-to-end (generate/list/retrieve/manage).
+  - Correct UTF‑8.
+  - Exports and image workflows continue to work end-to-end.

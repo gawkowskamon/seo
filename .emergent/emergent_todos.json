@@ -1,26 +1,38 @@
 [
   {
-    "content": "Backend: Implement POST /api/articles/{id}/seo-assistant endpoint with GPT-5.2",
-    "status": "completed"
+    "content": "Phase 6: Update index.css tokens + fonts (brand blue, orange, Instrument Serif)",
+    "status": "in_progress"
   },
   {
-    "content": "Frontend: Create SEOAssistantPanel.js component (suggestions list + chat)",
-    "status": "completed"
+    "content": "Phase 6: Update App.css with brand colors throughout",
+    "status": "pending"
   },
   {
-    "content": "Frontend: Add 'Asystent AI' tab in ArticleEditor right panel",
-    "status": "completed"
+    "content": "Phase 6: Restyle Sidebar with Kurdynowski wordmark",
+    "status": "pending"
   },
   {
-    "content": "Frontend: Implement apply-suggestion logic (meta/html/faq state updates)",
-    "status": "completed"
+    "content": "Phase 6: Verify redesign with screenshots",
+    "status": "pending"
   },
   {
-    "content": "Build verification: lint + screenshot + service logs",
-    "status": "completed"
+    "content": "Phase 7: Advanced Content - Templates + blocks backend",
+    "status": "pending"
   },
   {
-    "content": "Testing: Run testing agent for full validation",
-    "status": "completed"
+    "content": "Phase 7: Advanced Content - Frontend template UI",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 8: JWT Auth backend (users, login, register)",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 8: JWT Auth frontend (login/register pages, route guards)",
+    "status": "pending"
+  },
+  {
+    "content": "Final testing of all features",
+    "status": "pending"
   }
 ]
