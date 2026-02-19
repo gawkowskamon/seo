@@ -558,6 +558,20 @@ async def list_image_styles():
 async def generate_image_endpoint(request: ImageGenerateRequest, user: dict = Depends(get_current_user)):
     """Generate an image using Gemini Nano Banana model."""
     try:
+        # Validate reference image if provided
+        ref_image_data = None
+        if request.reference_image:
+            allowed_mime = ["image/png", "image/jpeg", "image/jpg", "image/webp"]
+            if request.reference_image.mime_type not in allowed_mime:
+                raise HTTPException(status_code=400, detail="Nieobslugiwany format pliku. Dozwolone: PNG, JPG, WEBP")
+            # Check size (base64 is ~4/3 of original, limit to ~5MB original = ~6.7MB base64)
+            if len(request.reference_image.data) > 7_000_000:
+                raise HTTPException(status_code=400, detail="Plik jest zbyt duzy. Maksymalny rozmiar: 5MB")
+            ref_image_data = {
+                "data": request.reference_image.data,
+                "mime_type": request.reference_image.mime_type
+            }
+
         # Get article context if article_id provided
         article_context = None
         if request.article_id:
@@ -571,13 +585,15 @@ async def generate_image_endpoint(request: ImageGenerateRequest, user: dict = De
                 original_prompt=request.prompt,
                 style=request.style,
                 variation_type=request.variation_type,
-                article_context=article_context
+                article_context=article_context,
+                reference_image=ref_image_data
             )
         else:
             result = await generate_image(
                 prompt=request.prompt,
                 style=request.style,
-                article_context=article_context
+                article_context=article_context,
+                reference_image=ref_image_data
             )
         
         # Save image to DB
@@ -591,6 +607,7 @@ async def generate_image_endpoint(request: ImageGenerateRequest, user: dict = De
             "variation_type": request.variation_type,
             "mime_type": result["mime_type"],
             "data": result["data"],
+            "has_reference": ref_image_data is not None,
             "created_at": datetime.now(timezone.utc).isoformat()
         }
         
@@ -605,6 +622,8 @@ async def generate_image_endpoint(request: ImageGenerateRequest, user: dict = De
             "created_at": image_doc["created_at"]
         }
         
+    except HTTPException:
+        raise
     except Exception as e:
         logging.error(f"Image generation error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
