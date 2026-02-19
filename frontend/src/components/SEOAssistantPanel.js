@@ -175,13 +175,13 @@ const SEOAssistantPanel = ({ articleId, article, onApplySuggestion }) => {
             padding: '8px 12px',
             fontSize: 12,
             fontWeight: 600,
-            color: activeView === 'suggestions' ? 'hsl(209, 88%, 36%)' : 'hsl(215, 16%, 45%)',
-            borderBottom: activeView === 'suggestions' ? '2px solid hsl(209, 88%, 36%)' : '2px solid transparent',
+            color: activeView === 'suggestions' ? '#04389E' : 'hsl(215, 16%, 45%)',
+            borderBottom: activeView === 'suggestions' ? '2px solid #04389E' : '2px solid transparent',
             background: 'none',
             border: 'none',
             borderBottomWidth: 2,
             borderBottomStyle: 'solid',
-            borderBottomColor: activeView === 'suggestions' ? 'hsl(209, 88%, 36%)' : 'transparent',
+            borderBottomColor: activeView === 'suggestions' ? '#04389E' : 'transparent',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
@@ -201,12 +201,12 @@ const SEOAssistantPanel = ({ articleId, article, onApplySuggestion }) => {
             padding: '8px 12px',
             fontSize: 12,
             fontWeight: 600,
-            color: activeView === 'chat' ? 'hsl(209, 88%, 36%)' : 'hsl(215, 16%, 45%)',
+            color: activeView === 'chat' ? '#04389E' : 'hsl(215, 16%, 45%)',
             background: 'none',
             border: 'none',
             borderBottomWidth: 2,
             borderBottomStyle: 'solid',
-            borderBottomColor: activeView === 'chat' ? 'hsl(209, 88%, 36%)' : 'transparent',
+            borderBottomColor: activeView === 'chat' ? '#04389E' : 'transparent',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
@@ -234,7 +234,7 @@ const SEOAssistantPanel = ({ articleId, article, onApplySuggestion }) => {
               </div>
             ) : analyzing ? (
               <div style={{ padding: '32px 20px', textAlign: 'center' }}>
-                <Loader2 size={28} className="animate-spin" style={{ color: 'hsl(209, 88%, 36%)', margin: '0 auto 12px', display: 'block' }} />
+                <Loader2 size={28} className="animate-spin" style={{ color: '#04389E', margin: '0 auto 12px', display: 'block' }} />
                 <p style={{ fontSize: 13, color: 'hsl(215, 16%, 45%)' }}>GPT-5.2 analizuje Twoj artykul...</p>
                 <p style={{ fontSize: 11, color: 'hsl(215, 16%, 65%)', marginTop: 4 }}>To moze potrwac 15-30 sekund</p>
               </div>
@@ -375,7 +375,7 @@ const SEOAssistantPanel = ({ articleId, article, onApplySuggestion }) => {
                           borderRadius: 8,
                           border: '1px solid hsl(214, 18%, 88%)',
                           background: 'hsl(210, 22%, 98%)',
-                          color: 'hsl(209, 88%, 36%)',
+                          color: '#04389E',
                           cursor: 'pointer',
                           textAlign: 'left',
                           transition: 'background-color 0.15s'
@@ -415,7 +415,7 @@ const SEOAssistantPanel = ({ articleId, article, onApplySuggestion }) => {
                       borderRadius: 10,
                       maxWidth: '90%',
                       ...(msg.role === 'user' ? {
-                        background: 'hsl(209, 88%, 36%)',
+                        background: '#04389E',
                         color: 'white',
                         borderBottomRightRadius: 4
                       } : {
@@ -432,7 +432,7 @@ const SEOAssistantPanel = ({ articleId, article, onApplySuggestion }) => {
               )}
               {chatLoading && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 0' }}>
-                  <Loader2 size={14} className="animate-spin" style={{ color: 'hsl(209, 88%, 36%)' }} />
+                  <Loader2 size={14} className="animate-spin" style={{ color: '#04389E' }} />
                   <span style={{ fontSize: 12, color: 'hsl(215, 16%, 55%)' }}>Asystent pisze...</span>
                 </div>
               )}
