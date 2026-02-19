@@ -1006,7 +1006,7 @@ async def download_wordpress_plugin(user: dict = Depends(get_current_user)):
     api_base = os.environ.get("API_BASE_URL", "")
     if not api_base:
         # Try to construct from request context
-        api_base = "https://accounting-blog-ai.preview.emergentagent.com/api"
+        api_base = "https://blog-optimizer-kit.preview.emergentagent.com/api"
     
     plugin_code = generate_wordpress_plugin(api_base)
     
@@ -1114,7 +1114,7 @@ async def create_checkout(request: SubscriptionCheckoutRequest, user: dict = Dep
         raise HTTPException(status_code=400, detail="Nieznany plan subskrypcji")
     
     # Get base URL for callbacks
-    base_url = os.environ.get("APP_BASE_URL", "https://accounting-blog-ai.preview.emergentagent.com")
+    base_url = os.environ.get("APP_BASE_URL", "https://blog-optimizer-kit.preview.emergentagent.com")
     callback_url = f"{base_url}/api/subscription/webhook"
     return_url = f"{base_url}/cennik"
     

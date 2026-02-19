@@ -134,7 +134,7 @@ def generate_wordpress_plugin(api_base_url: str) -> str:
     Generate a WordPress plugin PHP file that integrates with the Kurdynowski API.
     
     Args:
-        api_base_url: The base URL of the Kurdynowski API (e.g. https://accounting-blog-ai.preview.emergentagent.com/api)
+        api_base_url: The base URL of the Kurdynowski API (e.g. https://blog-optimizer-kit.preview.emergentagent.com/api)
     
     Returns:
         PHP code as string
