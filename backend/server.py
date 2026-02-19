@@ -449,6 +449,38 @@ async def delete_image(image_id: str):
     return {"message": "Image deleted", "id": image_id}
 
 
+# --- SEO Assistant ---
+
+class SEOAssistantRequest(BaseModel):
+    mode: str = "analyze"  # "analyze" or "chat"
+    message: Optional[str] = None
+    history: Optional[List[Dict[str, str]]] = None
+
+@api_router.post("/articles/{article_id}/seo-assistant")
+async def seo_assistant_endpoint(article_id: str, request: SEOAssistantRequest):
+    """AI SEO Assistant - analyze article or chat about improvements."""
+    article = await db.articles.find_one({"id": article_id}, {"_id": 0})
+    if not article:
+        raise HTTPException(status_code=404, detail="Article not found")
+    
+    try:
+        if request.mode == "chat" and request.message:
+            result = await chat_about_seo(
+                article=article,
+                user_message=request.message,
+                conversation_history=request.history or []
+            )
+        else:
+            result = await analyze_article_seo(article=article)
+        
+        return result
+        
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=500, detail=f"AI returned invalid JSON: {str(e)}")
+    except Exception as e:
+        logging.error(f"SEO Assistant error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 # Include the router in the main app
 app.include_router(api_router)
