@@ -12,6 +12,7 @@ import AdminUsers from './pages/AdminUsers';
 import AdminSettings from './pages/AdminSettings';
 import ImageLibrary from './pages/ImageLibrary';
 import ImageGeneratorPage from './pages/ImageGeneratorPage';
+import PricingPage from './pages/PricingPage';
 import AuthPage from './pages/AuthPage';
 import './App.css';
 
