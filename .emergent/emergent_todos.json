@@ -1,18 +1,34 @@
 [
   {
-    "content": "Phase 6: Redesign UI",
-    "status": "completed"
+    "content": "Phase 9: Add user_id/workspace_id to auth + users schema + admin flag",
+    "status": "in_progress"
   },
   {
-    "content": "Phase 7: Advanced Content - Templates + blocks",
-    "status": "completed"
+    "content": "Phase 9: Scope articles/images by user_id, admin bypasses",
+    "status": "pending"
   },
   {
-    "content": "Phase 8: JWT Auth backend + frontend",
-    "status": "completed"
+    "content": "Phase 9: Migrate existing articles to Monika, frontend admin badge",
+    "status": "pending"
   },
   {
-    "content": "Final testing of all features",
-    "status": "completed"
+    "content": "Phase 10: Enhanced image generator - presets, context, variants backend",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 10: Enhanced image generator - frontend UI updates",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 11: Insert images in visual editor",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 12: Series generation + sources-driven content",
+    "status": "pending"
+  },
+  {
+    "content": "Full testing of all new features",
+    "status": "pending"
   }
 ]
