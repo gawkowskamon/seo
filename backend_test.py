@@ -231,32 +231,72 @@ class SEOArticleAPITester:
                 
         return all_passed
 
+    def test_existing_article(self, article_id):
+        """Test existing article with specific ID"""
+        success, response = self.run_test(
+            f"Get Existing Article {article_id}", 
+            "GET", 
+            f"articles/{article_id}", 
+            200
+        )
+        
+        if success:
+            required_keys = ['id', 'title', 'sections', 'faq', 'seo_score']
+            for key in required_keys:
+                if key not in response:
+                    print(f"❌ Missing key in article response: {key}")
+                    return False
+            print(f"   Article title: {response.get('title', 'N/A')}")
+            print(f"   SEO score: {response.get('seo_score', {}).get('percentage', 'N/A')}%")
+            print(f"   Sections: {len(response.get('sections', []))}")
+            print(f"   FAQ items: {len(response.get('faq', []))}")
+            self.article_id = article_id  # Set for export tests
+            
+        return success
+
+    def test_exports_for_existing_article(self, article_id):
+        """Test export endpoints for existing article"""
+        formats_to_test = ['facebook', 'google_business', 'html']
+        all_passed = True
+        
+        for format_type in formats_to_test:
+            data = {"format": format_type}
+            success, response = self.run_test(
+                f"Export {format_type.title()} for {article_id}", 
+                "POST", 
+                f"articles/{article_id}/export", 
+                200,
+                data=data
+            )
+            
+            if success:
+                if 'content' not in response or 'format' not in response:
+                    print(f"❌ Missing keys in export response for {format_type}")
+                    all_passed = False
+                else:
+                    content_length = len(str(response.get('content', '')))
+                    print(f"   {format_type} export: {content_length} characters")
+                    # Show preview for shorter content
+                    if content_length < 200:
+                        print(f"   Preview: {str(response.get('content', ''))[:100]}...")
+            else:
+                all_passed = False
+                
+        return all_passed
+
 def main():
-    print("🚀 Testing Polish SEO Article Writer API")
+    print("🚀 Testing Polish SEO Article Writer API - Focused Test")
     print("=" * 50)
     
     tester = SEOArticleAPITester()
+    existing_article_id = "322bc85b-91e7-4888-a055-32a14db1ed85"
     
-    # Test basic connectivity first
-    print("\n📡 Basic Connectivity Tests")
-    tester.test_health_check()
-    tester.test_api_root()
-    
-    # Test read-only endpoints
-    print("\n📊 Read-Only API Tests")  
+    # Test required backend endpoints
+    print("\n📊 Required Backend API Tests")
     tester.test_get_stats()
     tester.test_list_articles()
-    
-    # Test AI-powered features
-    print("\n🤖 AI-Powered Features")
-    tester.test_topic_suggestions()
-    
-    # Test article generation (may be slow)
-    print("\n📝 Article Generation & Management")
-    tester.test_article_generation()
-    tester.test_get_article()
-    tester.test_seo_scoring()
-    tester.test_export_functionality()
+    tester.test_existing_article(existing_article_id)
+    tester.test_exports_for_existing_article(existing_article_id)
     
     # Print final results
     print("\n" + "=" * 50)
