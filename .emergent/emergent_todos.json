@@ -1,30 +1,30 @@
 [
   {
     "content": "Fix PDF Polish font - register DejaVu Sans in ReportLab",
-    "status": "in_progress"
+    "status": "completed"
   },
   {
     "content": "Backend: WordPress settings endpoints (admin configures WP URL + credentials)",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "content": "Backend: Publish-to-WordPress endpoint (WP REST API)",
-    "status": "pending"
+    "status": "completed"
   },
   {
-    "content": "Frontend: WordPress config in admin/settings or export panel",
-    "status": "pending"
+    "content": "Frontend: WordPress config in admin settings page",
+    "status": "completed"
   },
   {
     "content": "Frontend: 'Opublikuj na WordPress' button in ExportPanel",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "content": "Generate downloadable WordPress plugin (PHP)",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "content": "Testing",
-    "status": "pending"
+    "status": "in_progress"
   }
 ]
