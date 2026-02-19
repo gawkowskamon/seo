@@ -888,6 +888,272 @@ class SEOArticleAPITester:
         
         return success
 
+    # ============ ADMIN USER MANAGEMENT TESTS ============
+    
+    def test_admin_list_users(self):
+        """Test GET /api/admin/users returns user list for admin"""
+        if not self.token:
+            print("❌ Skipping - no token available")
+            return False
+        
+        success, response = self.run_test("Admin List Users", "GET", "admin/users", 200, use_auth=True)
+        if success:
+            if not isinstance(response, list):
+                print(f"❌ Admin users response should be a list, got: {type(response)}")
+                return False
+            
+            print(f"   ✅ Found {len(response)} users in system")
+            
+            # Check user structure
+            if len(response) > 0:
+                user = response[0]
+                required_keys = ['id', 'email', 'full_name', 'is_admin', 'article_count']
+                for key in required_keys:
+                    if key not in user:
+                        print(f"❌ Missing key in user response: {key}")
+                        return False
+                
+                print(f"   First user: {user.get('email')} (admin: {user.get('is_admin')}, articles: {user.get('article_count')})")
+        
+        return success
+
+    def test_admin_create_user(self):
+        """Test POST /api/admin/users creates a new user"""
+        if not self.token:
+            print("❌ Skipping - no token available")
+            return False
+        
+        timestamp = int(datetime.now().timestamp())
+        test_email = f"admin_created_{timestamp}@kurdynowski.pl"
+        
+        data = {
+            "email": test_email,
+            "password": "AdminTest123!",
+            "full_name": f"Admin Created User {timestamp}",
+            "is_admin": False
+        }
+        
+        success, response = self.run_test("Admin Create User", "POST", "admin/users", 200, data=data, use_auth=True)
+        if success:
+            required_keys = ['id', 'email', 'full_name', 'is_admin']
+            for key in required_keys:
+                if key not in response:
+                    print(f"❌ Missing key in admin create user response: {key}")
+                    return False
+            
+            print(f"   ✅ Created user: {response.get('email')}")
+            print(f"   Admin status: {response.get('is_admin')}")
+            
+            # Store created user ID for further tests
+            self.created_user_id = response.get('id')
+        
+        return success
+
+    def test_admin_update_user(self):
+        """Test PUT /api/admin/users/{user_id} updates user role"""
+        if not self.token or not hasattr(self, 'created_user_id'):
+            print("❌ Skipping - no token or created user available")
+            return False
+        
+        # Toggle admin status
+        data = {
+            "is_admin": True
+        }
+        
+        success, response = self.run_test(
+            "Admin Update User Role", 
+            "PUT", 
+            f"admin/users/{self.created_user_id}", 
+            200, 
+            data=data, 
+            use_auth=True
+        )
+        if success:
+            if response.get('is_admin') != True:
+                print(f"❌ User admin status not updated. Expected True, got: {response.get('is_admin')}")
+                return False
+            
+            print(f"   ✅ Updated user to admin: {response.get('email')}")
+        
+        return success
+
+    def test_admin_deactivate_user(self):
+        """Test DELETE /api/admin/users/{user_id} deactivates user"""
+        if not self.token or not hasattr(self, 'created_user_id'):
+            print("❌ Skipping - no token or created user available")
+            return False
+        
+        success, response = self.run_test(
+            "Admin Deactivate User", 
+            "DELETE", 
+            f"admin/users/{self.created_user_id}", 
+            200, 
+            use_auth=True
+        )
+        if success:
+            if 'message' not in response or 'id' not in response:
+                print(f"❌ Missing keys in deactivate response")
+                return False
+            
+            print(f"   ✅ Deactivated user: {response.get('id')}")
+            print(f"   Message: {response.get('message')}")
+        
+        return success
+
+    def test_non_admin_access_admin_endpoints(self):
+        """Test non-admin user gets 403 when accessing admin endpoints"""
+        # First create a non-admin user and get their token
+        timestamp = int(datetime.now().timestamp())
+        test_email = f"nonadmin_{timestamp}@kurdynowski.pl"
+        
+        # Register non-admin user
+        data = {
+            "email": test_email,
+            "password": "NonAdmin123!",
+            "full_name": f"Non Admin User {timestamp}"
+        }
+        
+        success, response = self.run_test("Register Non-Admin User", "POST", "auth/register", 200, data=data)
+        if not success:
+            return False
+        
+        non_admin_token = response.get('token')
+        if not non_admin_token:
+            print("❌ No token received for non-admin user")
+            return False
+        
+        # Temporarily switch token
+        original_token = self.token
+        self.token = non_admin_token
+        
+        # Try to access admin endpoints (should fail with 403)
+        success, response = self.run_test("Non-Admin Access Admin Users", "GET", "admin/users", 403, use_auth=True)
+        
+        # Restore original admin token
+        self.token = original_token
+        
+        if success:
+            print(f"   ✅ Non-admin correctly denied access to admin endpoints")
+        
+        return success
+
+    # ============ IMAGE GENERATOR WITH REFERENCE FILE TESTS ============
+    
+    def test_image_generation_with_reference(self):
+        """Test POST /api/images/generate with reference_image field"""
+        if not self.token:
+            print("❌ Skipping - no token available")
+            return False
+        
+        # Create a small base64 image (1x1 PNG)
+        import base64
+        # Minimal PNG: 1x1 transparent pixel
+        png_data = base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==')
+        png_base64 = base64.b64encode(png_data).decode('utf-8')
+        
+        data = {
+            "prompt": "Test image generation with reference",
+            "style": "hero",
+            "reference_image": {
+                "data": png_base64,
+                "mime_type": "image/png",
+                "name": "test-reference.png"
+            }
+        }
+        
+        print(f"\n🔍 Testing Image Generation with Reference...")
+        print(f"   ⚠️  This may take 15-30 seconds (calling Gemini image model)")
+        
+        success, response = self.run_test(
+            "Image Generation with Reference", 
+            "POST", 
+            "images/generate", 
+            200, 
+            data=data,
+            timeout=120,  # Longer timeout for image generation
+            use_auth=True
+        )
+        
+        if success:
+            required_keys = ['id', 'prompt', 'style', 'mime_type', 'data']
+            for key in required_keys:
+                if key not in response:
+                    print(f"❌ Missing key in image generation response: {key}")
+                    return False
+            
+            print(f"   ✅ Generated image with reference: {response.get('id')}")
+            print(f"   Style: {response.get('style')}")
+            print(f"   MIME type: {response.get('mime_type')}")
+            print(f"   Data length: {len(response.get('data', ''))} chars (base64)")
+        
+        return success
+
+    def test_image_generation_invalid_mime_type(self):
+        """Test POST /api/images/generate rejects invalid mime types"""
+        if not self.token:
+            print("❌ Skipping - no token available")
+            return False
+        
+        data = {
+            "prompt": "Test image generation with invalid reference",
+            "style": "hero",
+            "reference_image": {
+                "data": "invalid_base64_data",
+                "mime_type": "application/pdf",  # Invalid mime type
+                "name": "test.pdf"
+            }
+        }
+        
+        success, response = self.run_test(
+            "Image Generation Invalid MIME", 
+            "POST", 
+            "images/generate", 
+            400,  # Should fail with 400
+            data=data,
+            use_auth=True
+        )
+        
+        if success:
+            print(f"   ✅ Correctly rejected invalid MIME type")
+        
+        return success
+
+    def test_image_generation_without_reference(self):
+        """Test POST /api/images/generate works without reference_image (backward compatibility)"""
+        if not self.token:
+            print("❌ Skipping - no token available")
+            return False
+        
+        data = {
+            "prompt": "Test image generation without reference",
+            "style": "ilustracja"
+        }
+        
+        print(f"\n🔍 Testing Image Generation without Reference...")
+        print(f"   ⚠️  This may take 15-30 seconds (calling Gemini image model)")
+        
+        success, response = self.run_test(
+            "Image Generation No Reference", 
+            "POST", 
+            "images/generate", 
+            200, 
+            data=data,
+            timeout=120,
+            use_auth=True
+        )
+        
+        if success:
+            required_keys = ['id', 'prompt', 'style', 'mime_type', 'data']
+            for key in required_keys:
+                if key not in response:
+                    print(f"❌ Missing key in image generation response: {key}")
+                    return False
+            
+            print(f"   ✅ Generated image without reference: {response.get('id')}")
+            print(f"   Style: {response.get('style')}")
+        
+        return success
+
 def main():
     print("🚀 Testing SEO Article Builder API - Enhanced Features")
     print("=" * 70)
