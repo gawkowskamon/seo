@@ -1,18 +1,26 @@
 [
   {
-    "content": "Phase 4: Add Gemini Nano Banana image generation - backend endpoint",
-    "status": "completed"
+    "content": "Backend: Implement POST /api/articles/{id}/seo-assistant endpoint with GPT-5.2",
+    "status": "in_progress"
   },
   {
-    "content": "Phase 4: Add image generation UI to article editor",
-    "status": "completed"
+    "content": "Frontend: Create SEOAssistantPanel.js component (suggestions list + chat)",
+    "status": "pending"
   },
   {
-    "content": "Phase 4: Add image gallery/management in editor",
-    "status": "completed"
+    "content": "Frontend: Add 'Asystent AI' tab in ArticleEditor right panel",
+    "status": "pending"
   },
   {
-    "content": "Phase 4: Test image generation E2E",
-    "status": "completed"
+    "content": "Frontend: Implement apply-suggestion logic (meta/html/faq state updates)",
+    "status": "pending"
+  },
+  {
+    "content": "Build verification: lint + screenshot + service logs",
+    "status": "pending"
+  },
+  {
+    "content": "Testing: Run testing agent for full validation",
+    "status": "pending"
   }
 ]
