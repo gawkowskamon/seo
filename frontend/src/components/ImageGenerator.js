@@ -35,6 +35,46 @@ const ImageGenerator = ({ articleId, article, onInsertImage }) => {
   const [loadingGallery, setLoadingGallery] = useState(true);
   const [showVariants, setShowVariants] = useState(false);
   const [generatingVariant, setGeneratingVariant] = useState(null);
+  const [referenceFile, setReferenceFile] = useState(null); // { file, preview, base64, mime_type }
+  const fileInputRef = useRef(null);
+
+  const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+  const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      toast.error('Nieobslugiwany format. Dozwolone: PNG, JPG, WEBP');
+      return;
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error('Plik jest zbyt duzy. Maksymalny rozmiar: 5MB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const base64Full = ev.target.result;
+      // base64Full is like "data:image/png;base64,iVBOR..."
+      const base64Data = base64Full.split(',')[1];
+      setReferenceFile({
+        file,
+        preview: base64Full,
+        base64: base64Data,
+        mime_type: file.type,
+        name: file.name
+      });
+    };
+    reader.readAsDataURL(file);
+    // Reset input so same file can be re-selected
+    e.target.value = '';
+  };
+
+  const removeReferenceFile = () => {
+    setReferenceFile(null);
+  };
 
   useEffect(() => {
     const fetchStyles = async () => {
