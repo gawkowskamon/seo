@@ -446,6 +446,14 @@ const ArticleEditor = () => {
             SEO
           </button>
           <button 
+            className={`right-panel-tab ${rightTab === 'assistant' ? 'active' : ''}`}
+            onClick={() => setRightTab('assistant')}
+            data-testid="article-ai-assistant-tab"
+          >
+            <Sparkles size={14} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
+            AI
+          </button>
+          <button 
             className={`right-panel-tab ${rightTab === 'faq' ? 'active' : ''}`}
             onClick={() => setRightTab('faq')}
           >
