@@ -1,30 +1,42 @@
 [
   {
-    "content": "Phase 2A: Add /admin/users route in App.js with admin guard",
-    "status": "completed"
+    "content": "Phase 4: Backend - GET /api/library/images (user-scoped, admin all) + PUT /api/images/{id}/tags",
+    "status": "in_progress"
   },
   {
-    "content": "Phase 2A: Add admin link in Sidebar.js (visible only for admins)",
-    "status": "completed"
+    "content": "Phase 4: Frontend - ImageLibrary page (/biblioteka) with grid, search, filters, tags",
+    "status": "pending"
   },
   {
-    "content": "Phase 2A: Verify AdminUsers.js works end-to-end with backend",
-    "status": "completed"
+    "content": "Phase 4: Frontend - Lightbox modal with full preview + prev/next navigation",
+    "status": "pending"
   },
   {
-    "content": "Phase 2B: Update backend - add reference_image support to ImageGenerateRequest + image_generator.py",
-    "status": "completed"
+    "content": "Phase 4: Sidebar - Add 'Biblioteka' link for all users",
+    "status": "pending"
   },
   {
-    "content": "Phase 2B: Update frontend ImageGenerator.js - add file upload UI",
-    "status": "completed"
+    "content": "Phase 4: App.js - Add /biblioteka route",
+    "status": "pending"
   },
   {
-    "content": "Phase 3: Comprehensive testing with testing agent",
-    "status": "completed"
+    "content": "Phase 5: Backend - Multi-variant generation (4 at once)",
+    "status": "pending"
   },
   {
-    "content": "Phase 3: Fix all bugs from test results",
-    "status": "completed"
+    "content": "Phase 5: Backend - AI edit endpoint (inpaint/background/style transfer)",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 5: Frontend - Multi-variant UI (2x2 grid) in generator",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 5: Frontend - Image editing panel (crop, filters, AI edits)",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 6: Testing with testing agent",
+    "status": "pending"
   }
 ]
