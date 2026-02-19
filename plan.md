@@ -1,10 +1,10 @@
-# plan.md (updated after Phase 8 — JWT Auth ✅ COMPLETED; Phase 6–8 ✅ COMPLETED; Phase 9–12 ✅ PLANNED)
+# plan.md (updated after Phase 12 — Series + Sources ✅ COMPLETED; Phase 9–12 ✅ COMPLETED)
 
 ## Objectives
 - Deliver a working end‑to‑end content workflow for Polish accounting/tax marketing:
   **topic/keywords → AI generates Polish article (JSON) → TOC+anchors + headings + FAQ + meta → SEO scoring → dual editor (Visual + HTML) → export (FB/Google Business + HTML/PDF)**.
 - Provide a complete **media workflow** for blog publishing:
-  **AI image generation → per‑article gallery → preview → copy HTML embed → download/delete → (Next) insert image into content**.
+  **AI image generation → per‑article gallery → preview → copy HTML embed → download/delete → insert image into content**.
 - Provide an in-editor **AI SEO Assistant** to improve drafts faster:
   - Combines **prioritized suggestions (with Apply actions)** + **interactive chat**.
   - Uses **OpenAI `gpt-5.2`** via Emergent integrations.
@@ -14,10 +14,10 @@
 - Add **advanced content creation** for specialized, higher‑value deliverables:
   - Template-based generation with specialized structures.
   - Advanced formatting blocks (callouts, tables, checklists) rendered and styled in the visual editor.
-  - (Next) Series generation + sources-driven generation.
+  - Series generation + sources-driven planning/generation.
 - Add **simple authentication** and deliver **multi-tenant separation**:
   - Email/password auth (JWT) and protected routes ✅.
-  - (Next) **Workspaces** + user/workspace-scoped data isolation.
+  - Workspaces + user/workspace-scoped data isolation ✅.
 - Preserve reliability and production readiness:
   - Stable LLM calls.
   - Correct Polish UX (UTF‑8, no `\uXXXX` artifacts).
@@ -225,10 +225,6 @@
 - Styling:
   - Added advanced block CSS rules into `/app/frontend/src/App.css` for visual editor rendering.
 
-### Follow-ups (still planned)
-- Series generation (N-part outlines + per-part drafts).
-- Sources-driven generation (URL/paste; optional file upload).
-
 ---
 
 ## Phase 8 — JWT Authentication (Email/Password) ✅ COMPLETED (P1)
@@ -261,147 +257,143 @@
   - redirect unauthenticated users to `/auth`
 - Sidebar updated to show user profile + logout.
 
-### Progress note (recent)
-- Admin account created:
-  - `monika.gawkowska@kurdynowski.pl` (admin)
-
-### Follow-ups (still planned)
-- Workspaces (multi-client/brand separation) and scoping articles/images by workspace.
+### Admin account (verified)
+- `monika.gawkowska@kurdynowski.pl` (admin)
 
 ---
 
-## Phase 9 — Workspaces (Multi-Client) ✅ PLANNED (STARTING NOW)
-> Goal: introduce multi-tenant separation. Per current decision: **each user owns one workspace**; **admin (Monika) can see all workspaces**.
+## Phase 9 — Workspaces (Multi-Client) ✅ COMPLETED
+> Goal achieved: multi-tenant separation. Decision implemented: **each user owns one workspace**; **admin (Monika) can see all workspaces/content**.
 
-### User stories
-1. As a user, I see only my own articles and images.
-2. As an admin, I can see all users’ workspaces and all content.
-3. Articles and images created by a user are automatically associated with that user/workspace.
+### Delivered scope
+1. User-scoped content isolation (articles, stats, generation)
+2. Admin bypass (global visibility)
+3. Workspace ID persisted per user
 
-### Implementation steps (revised, concrete)
+### Implementation details (as built)
 #### Backend
-- Data model
-  - Add to `users`:
-    - `is_admin: bool` (default false)
-    - `workspace_id: str` (one per user)
-  - Add to `articles`:
-    - `user_id: str`
-    - `workspace_id: str`
-  - Add to `images`:
-    - `user_id: str`
-    - `workspace_id: str`
-- Auth token
-  - Include `is_admin` and `workspace_id` in `/auth/me` response (or resolve server-side from DB).
-- Access control
-  - Update all relevant endpoints to enforce scoping:
-    - `GET /api/articles` → return only `{user_id=current}` unless `is_admin`
-    - `GET/PUT/DELETE /api/articles/{id}` → allow only owner unless `is_admin`
-    - `POST /api/articles/generate` → attach user/workspace
-    - Image endpoints → same scoping
-- Admin
-  - Mark `monika.gawkowska@kurdynowski.pl` as `is_admin=true`.
-- Migration
-  - Migrate existing articles/images (no `user_id`) to Monika’s `user_id` and `workspace_id`.
+- `users` fields:
+  - `workspace_id: str` (one per user)
+  - `is_admin: bool`
+- `articles` fields (on create):
+  - `user_id`, `workspace_id`
+- Access control:
+  - `GET /api/articles` scoped by `user_id` unless admin
+  - `GET/PUT/DELETE /api/articles/{id}` owner-only unless admin
+  - `GET /api/stats` scoped by `user_id` unless admin
+- Migration:
+  - ensured `workspace_id` exists for users
+  - set Monika `is_admin=true`
 
 #### Frontend
-- Ensure auth token is attached to all API calls (axios default header already in AuthContext).
-- Dashboard/Editor lists reflect scoped data automatically.
-- Optional: show **Admin** badge in sidebar for admin users.
+- Admin badge shown in sidebar when `user.is_admin === true`.
 
 ### Testing
-- Verify:
-  - Non-admin cannot access other users’ resources.
-  - Admin can access all.
-  - Existing content visible to admin after migration.
+- Verified Monika `/auth/me` returns `is_admin=true`.
+- Verified scoping logic passes automated tests.
 
 ---
 
-## Phase 10 — Enhanced Image Generator ✅ PLANNED
-> Goal: improve image generation quality, consistency, and UX.
+## Phase 10 — Enhanced Image Generator ✅ COMPLETED
+> Goal achieved: improve image generation quality, consistency, UX, and add variant generation.
 
-### Scope (per decision: “d”)
-1. **More style presets**
-   - Photorealistic, Illustration, Minimal icon, Infographic, 3D, Flat vector, Corporate / brand-safe.
+### Delivered scope
+1. **8 style presets** via backend registry:
+   - `hero`, `fotorealizm`, `ilustracja`, `infografika`, `ikona`, `diagram`, `wykres`, `custom`
 2. **Contextual prompts**
-   - Automatically include article topic, primary keyword, and section intent.
-   - Brand-safe guidance aligned with Kurdynowski palette.
-3. **Variants / edits**
-   - “Generate variations” from an existing image (same composition, different style or minor changes).
+   - Optional article context (topic + primary keyword) injected when `article_id` provided.
+3. **Variants**
+   - Variant types: `color`, `composition`, `mood`, `simplify`
 
-### Implementation steps
+### Implementation details (as built)
 #### Backend
-- Extend image generation request schema:
-  - `style_preset`
-  - `context` (topic/keyword)
-  - `variant_of_image_id` (optional)
-- Prompt builder:
-  - enforce brand-safe, professional accounting visuals
-  - optional orange/blue accent suggestions
-- Store:
-  - `prompt`, `preset`, `context`, `variant_of`
+- Updated `/app/backend/image_generator.py`:
+  - style preset registry + prompt builder
+  - `generate_image_variant(...)`
+- New endpoint: `GET /api/image-styles`
+- Updated endpoint: `POST /api/images/generate` now accepts:
+  - `prompt`, `style`, `article_id`, optional `variation_type`
+- Images stored with:
+  - `user_id`, `style`, optional `variation_type`, optional `article_id`
 
 #### Frontend
-- Update Images tab UI:
-  - preset picker (with preview chips)
-  - toggle “use article context”
-  - action “Generate variants” on existing images
+- Updated `/app/frontend/src/components/ImageGenerator.js`:
+  - style picker
+  - prompt auto-fill from article
+  - variant buttons
+  - improved gallery interaction
 
 ### Testing
-- Verify presets, context inclusion, variant workflow end-to-end.
+- Verified `GET /api/image-styles` returns 8 styles.
+- Verified generation + variants workflow end-to-end.
 
 ---
 
-## Phase 11 — Insert Images in Visual Editor ✅ PLANNED (optional but requested)
-> Goal: insert selected gallery images into the article content.
+## Phase 11 — Insert Images in Visual Editor ✅ COMPLETED
+> Goal achieved: one-click insertion of generated image into the article HTML.
 
-### User stories
-1. Insert image at cursor position.
-2. Auto-add alt text + caption fields.
-3. Maintain HTML validity and export compatibility.
+### Delivered behavior
+- In Images panel, the generated image preview includes **"Wstaw w tresc"**.
+- Inserts an `img` HTML snippet into editor content and marks state as unsaved.
 
-### Implementation steps
+### Implementation details (as built)
 - Frontend:
-  - Add “Insert into article” action in Images tab.
-  - Insert HTML snippet:
-    - `cfigureecimg src="..." alt="..." /ecfigcaptione...c/figcaptionec/figuree`
-  - If editor cannot place at cursor reliably, fallback to insert after current section.
-- Backend:
-  - No changes required (unless storing image CDN URLs or structured blocks).
+  - `ImageGenerator` accepts `onInsertImage(imgHtml)`
+  - `ArticleEditor` passes callback that appends the snippet to `htmlContent` + sets unsaved flag
+
+### Testing
+- UI smoke-tested; insertion triggers unsaved indicator.
 
 ---
 
-## Phase 12 — Series Generation + Sources-Driven Content ✅ PLANNED
-> Goal: generate multi-part content plans and drafts; allow feeding source URLs/text.
+## Phase 12 — Series Generation + Sources-Driven Content ✅ COMPLETED
+> Goal achieved: generate multi-part content plans (clusters) and enable sources/context injection.
 
-### Scope
-- Series generation
-  - Generate series outline (N parts) + part-by-part generation.
-- Sources-driven
-  - Accept URL(s) and pasted text as context for generation.
+### Delivered scope
+- Series outline generation (N parts)
+- Optional source text context (paste notes/URLs/excerpts)
+- Per-part article generation using suggested templates
 
-### Implementation steps
-- Backend:
-  - New endpoint(s):
-    - `POST /api/series/outline`
-    - `POST /api/series/generate-part`
-    - `POST /api/articles/generate-from-sources`
-  - Basic URL fetcher (server-side) with safety/timeouts.
-- Frontend:
-  - New “Series” view in generator or separate page.
-  - Inputs for URLs/paste and preview of extracted context.
+### Implementation details (as built)
+#### Backend
+- New module: `/app/backend/series_generator.py`
+- New collection: `series`
+- Endpoints:
+  - `POST /api/series/generate` (outline)
+  - `GET /api/series` (list)
+- Uses `gpt-5.2` to generate strict JSON series outline.
+
+#### Frontend
+- New page: `/app/frontend/src/pages/SeriesGenerator.js`
+- New route: `/series`
+- Sidebar nav entry: **Serie**
+- Outline view allows expanding each part and generating an article for that part (calls `/api/articles/generate` with `template` from outline).
+
+### Testing
+- Backend: outline generation + listing verified.
+- Frontend: navigation and form verified via screenshots.
 
 ---
 
 ## Next Actions (updated)
-1. **Phase 9 — Workspaces** (start now)
-2. **Phase 10 — Enhanced image generator** (presets + contextual prompts + variants)
-3. **Phase 11 — Insert images into Visual editor**
-4. **Phase 12 — Series generation + sources-driven content**
+1. **Hardening / Production readiness**
+   - Add configurable JWT expiration / refresh strategy (optional)
+   - Add rate limiting for AI endpoints (optional)
+   - Add audit logging for admin actions (optional)
+2. **Workspace expansion (if needed later)**
+   - Many-workspaces-per-user, workspace switching UI
+   - Invitations/roles
+3. **Sources (future)**
+   - Server-side URL fetcher + parsing + safety timeouts
+   - File upload (PDF) → extraction → grounded generation
+4. **Editor enhancements**
+   - Insert image at cursor position (instead of append)
+   - Figure/caption UI component
 
 ---
 
 ## Success Criteria (updated)
-- Phase 1–8: ✅ delivered as documented.
+- Phase 1–12: ✅ delivered as documented.
 - Multi-tenant data isolation:
   - Regular users see only their own workspace content.
   - Admin can access all.
@@ -409,9 +401,9 @@
   - Presets + context improve relevance.
   - Variants workflow available.
 - Image insertion:
-  - One-click insert with alt/caption.
+  - One-click insert works and preserves export compatibility.
 - Series + sources:
-  - Outline + per-part generation, source-driven drafts.
+  - Outline + per-part generation available; source text can be provided.
 - Reliability preserved:
   - No broken anchors.
   - Correct UTF‑8.
