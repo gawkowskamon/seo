@@ -25,7 +25,7 @@ const VARIATION_TYPES = [
   { id: 'simplify', label: 'Uproszczona', icon: Minimize2, desc: 'Prostsza wersja' },
 ];
 
-const ImageGenerator = ({ articleId, article }) => {
+const ImageGenerator = ({ articleId, article, onInsertImage }) => {
   const [prompt, setPrompt] = useState('');
   const [styles, setStyles] = useState([]);
   const [selectedStyle, setSelectedStyle] = useState('hero');
