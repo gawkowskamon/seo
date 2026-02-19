@@ -665,6 +665,254 @@ async def delete_image(image_id: str):
     return {"message": "Image deleted", "id": image_id}
 
 
+# --- Image Library ---
+
+@api_router.get("/library/images")
+async def library_list_images(
+    q: Optional[str] = None,
+    style: Optional[str] = None,
+    tag: Optional[str] = None,
+    article_id: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0,
+    user: dict = Depends(get_current_user)
+):
+    """List all images for current user (admin sees all). Supports filtering."""
+    query = {} if user.get("is_admin") else {"user_id": user["id"]}
+    
+    if q:
+        query["prompt"] = {"$regex": q, "$options": "i"}
+    if style:
+        query["style"] = style
+    if tag:
+        query["tags"] = tag
+    if article_id:
+        query["article_id"] = article_id
+    
+    # Get total count
+    total = await db.images.count_documents(query)
+    
+    # Fetch images without heavy data field for listing
+    images = await db.images.find(
+        query,
+        {"_id": 0, "data": 0}
+    ).sort("created_at", -1).skip(offset).limit(limit).to_list(limit)
+    
+    # Fetch thumbnail data separately (small version)
+    for img in images:
+        full = await db.images.find_one({"id": img["id"]}, {"_id": 0, "data": 1, "mime_type": 1})
+        if full and full.get("data"):
+            img["thumbnail"] = full["data"][:200]  # Just a flag that data exists
+            img["has_data"] = True
+        else:
+            img["has_data"] = False
+    
+    return {
+        "images": images,
+        "total": total,
+        "limit": limit,
+        "offset": offset
+    }
+
+
+class ImageTagsRequest(BaseModel):
+    tags: List[str] = []
+
+@api_router.put("/images/{image_id}/tags")
+async def update_image_tags(image_id: str, request: ImageTagsRequest, user: dict = Depends(get_current_user)):
+    """Update tags on an image."""
+    image = await db.images.find_one({"id": image_id})
+    if not image:
+        raise HTTPException(status_code=404, detail="Image not found")
+    if not user.get("is_admin") and image.get("user_id") != user["id"]:
+        raise HTTPException(status_code=403, detail="Brak dostepu")
+    
+    # Clean tags
+    clean_tags = [t.strip().lower() for t in request.tags if t.strip()]
+    await db.images.update_one(
+        {"id": image_id},
+        {"$set": {"tags": clean_tags, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    return {"id": image_id, "tags": clean_tags}
+
+
+@api_router.get("/library/tags")
+async def library_list_tags(user: dict = Depends(get_current_user)):
+    """List all unique tags for current user's images."""
+    query = {} if user.get("is_admin") else {"user_id": user["id"]}
+    pipeline = [
+        {"$match": {**query, "tags": {"$exists": True, "$ne": []}}},
+        {"$unwind": "$tags"},
+        {"$group": {"_id": "$tags", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}},
+        {"$limit": 50}
+    ]
+    tags = await db.images.aggregate(pipeline).to_list(50)
+    return [{"tag": t["_id"], "count": t["count"]} for t in tags]
+
+
+# --- AI Image Editing ---
+
+class ImageEditRequest(BaseModel):
+    mode: str  # "inpaint", "background", "style_transfer", "enhance"
+    prompt: str
+    image_id: Optional[str] = None  # existing image to edit
+    source_image: Optional[ReferenceImageData] = None  # or send directly
+
+@api_router.post("/images/edit")
+async def edit_image_endpoint(request: ImageEditRequest, user: dict = Depends(get_current_user)):
+    """AI-powered image editing: inpaint, background change, style transfer."""
+    try:
+        # Get source image
+        source_data = None
+        if request.image_id:
+            img_doc = await db.images.find_one({"id": request.image_id})
+            if not img_doc:
+                raise HTTPException(status_code=404, detail="Obraz zrodlowy nie znaleziony")
+            source_data = {"data": img_doc["data"], "mime_type": img_doc["mime_type"]}
+        elif request.source_image:
+            source_data = {"data": request.source_image.data, "mime_type": request.source_image.mime_type}
+        
+        if not source_data:
+            raise HTTPException(status_code=400, detail="Wymagany obraz zrodlowy (image_id lub source_image)")
+        
+        # Build edit prompt based on mode
+        mode_instructions = {
+            "inpaint": f"Modify this image based on the following instruction: {request.prompt}. Keep the overall composition but make the requested changes. Maintain professional quality.",
+            "background": f"Change the background of this image: {request.prompt}. Keep the main subject/foreground elements intact but replace the background as described.",
+            "style_transfer": f"Transform the style of this image: {request.prompt}. Keep the content and composition but apply the described artistic style.",
+            "enhance": f"Enhance this image: {request.prompt}. Improve quality, colors, and details while maintaining the original content."
+        }
+        
+        edit_prompt = mode_instructions.get(request.mode, mode_instructions["enhance"])
+        
+        result = await generate_image(
+            prompt=edit_prompt,
+            style="custom",
+            reference_image=source_data
+        )
+        
+        # Save edited image
+        image_id = str(uuid.uuid4())
+        image_doc = {
+            "id": image_id,
+            "user_id": user["id"],
+            "prompt": request.prompt,
+            "style": f"edit_{request.mode}",
+            "article_id": None,
+            "variation_type": None,
+            "edit_mode": request.mode,
+            "source_image_id": request.image_id,
+            "mime_type": result["mime_type"],
+            "data": result["data"],
+            "tags": [request.mode, "edycja"],
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.images.insert_one(image_doc)
+        
+        return {
+            "id": image_id,
+            "prompt": request.prompt,
+            "mode": request.mode,
+            "mime_type": result["mime_type"],
+            "data": result["data"],
+            "created_at": image_doc["created_at"]
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Image edit error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- Multi-variant Generation ---
+
+class MultiVariantRequest(BaseModel):
+    prompt: str
+    style: str = "hero"
+    article_id: Optional[str] = None
+    num_variants: int = 4
+    reference_image: Optional[ReferenceImageData] = None
+
+@api_router.post("/images/generate-batch")
+async def generate_batch_endpoint(request: MultiVariantRequest, user: dict = Depends(get_current_user)):
+    """Generate multiple image variants at once."""
+    import asyncio
+    
+    if request.num_variants < 1 or request.num_variants > 4:
+        raise HTTPException(status_code=400, detail="Liczba wariantow musi byc od 1 do 4")
+    
+    try:
+        ref_image_data = None
+        if request.reference_image:
+            allowed_mime = ["image/png", "image/jpeg", "image/jpg", "image/webp"]
+            if request.reference_image.mime_type not in allowed_mime:
+                raise HTTPException(status_code=400, detail="Nieobslugiwany format pliku")
+            ref_image_data = {"data": request.reference_image.data, "mime_type": request.reference_image.mime_type}
+        
+        article_context = None
+        if request.article_id:
+            article = await db.articles.find_one({"id": request.article_id}, {"_id": 0, "topic": 1, "primary_keyword": 1})
+            if article:
+                article_context = article
+        
+        # Generate variants with slight prompt modifications
+        variant_suffixes = [
+            "",
+            " Create a different composition with alternative layout.",
+            " Use a warmer, more inviting color palette.",
+            " Make it more minimalist and clean with extra white space."
+        ]
+        
+        async def gen_one(suffix):
+            modified_prompt = request.prompt + suffix
+            return await generate_image(
+                prompt=modified_prompt,
+                style=request.style,
+                article_context=article_context,
+                reference_image=ref_image_data
+            )
+        
+        tasks = [gen_one(variant_suffixes[i]) for i in range(request.num_variants)]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        saved = []
+        for i, result in enumerate(results):
+            if isinstance(result, Exception):
+                saved.append({"error": str(result), "variant_index": i})
+                continue
+            image_id = str(uuid.uuid4())
+            image_doc = {
+                "id": image_id,
+                "user_id": user["id"],
+                "prompt": request.prompt,
+                "style": request.style,
+                "article_id": request.article_id,
+                "variation_type": f"batch_{i}",
+                "mime_type": result["mime_type"],
+                "data": result["data"],
+                "tags": ["batch"],
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            await db.images.insert_one(image_doc)
+            saved.append({
+                "id": image_id,
+                "prompt": request.prompt,
+                "style": request.style,
+                "variant_index": i,
+                "mime_type": result["mime_type"],
+                "data": result["data"],
+                "created_at": image_doc["created_at"]
+            })
+        
+        return {"variants": saved, "total": len(saved)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Batch generation error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # --- Content Templates ---
 
 @api_router.get("/templates")
