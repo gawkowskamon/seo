@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Save, RotateCcw, Eye, Code, BarChart3, Share2, ChevronLeft, Loader2, Copy, Download, RefreshCw, Plus, Trash2 } from 'lucide-react';
+import { Save, Eye, Code, BarChart3, Share2, ChevronLeft, Loader2, RefreshCw, Wand2, Cloud, CloudOff } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { toast } from 'sonner';
@@ -19,20 +19,46 @@ const ArticleEditor = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [scoring, setScoring] = useState(false);
+  const [regenerating, setRegenerating] = useState(null); // null, 'faq', 'meta'
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const autosaveTimerRef = useRef(null);
   
-  // Editor state
   const [editorTab, setEditorTab] = useState('visual');
   const [rightTab, setRightTab] = useState('seo');
   const [htmlContent, setHtmlContent] = useState('');
   
-  // Meta editing
   const [metaTitle, setMetaTitle] = useState('');
   const [metaDescription, setMetaDescription] = useState('');
 
   useEffect(() => {
     fetchArticle();
+    return () => {
+      if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [articleId]);
+
+  // Autosave with debounce
+  useEffect(() => {
+    if (!article || !hasUnsavedChanges) return;
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    autosaveTimerRef.current = setTimeout(() => {
+      performAutosave();
+    }, 10000); // 10 second debounce
+    return () => {
+      if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [metaTitle, metaDescription, article?.faq, hasUnsavedChanges]);
+
+  const performAutosave = async () => {
+    if (!article || saving) return;
+    try {
+      await saveArticle(true);
+    } catch (e) {
+      // Silent fail for autosave
+    }
+  };
 
   const fetchArticle = async () => {
     try {
@@ -42,6 +68,7 @@ const ArticleEditor = () => {
       setHtmlContent(buildHtmlFromArticle(response.data));
       setMetaTitle(response.data.meta_title || '');
       setMetaDescription(response.data.meta_description || '');
+      setHasUnsavedChanges(false);
     } catch (error) {
       toast.error('Błąd podczas ładowania artykułu');
       navigate('/');
@@ -53,18 +80,14 @@ const ArticleEditor = () => {
   const buildHtmlFromArticle = (art) => {
     if (!art) return '';
     let html = `<h1>${art.title || ''}</h1>\n\n`;
-    
     for (const section of (art.sections || [])) {
       html += `<h2 id="${section.anchor}">${section.heading}</h2>\n`;
       html += `${section.content || ''}\n\n`;
-      
       for (const sub of (section.subsections || [])) {
         html += `<h3 id="${sub.anchor}">${sub.heading}</h3>\n`;
         html += `${sub.content || ''}\n\n`;
       }
     }
-    
-    // FAQ
     if (art.faq && art.faq.length > 0) {
       html += `<h2>FAQ</h2>\n`;
       for (const faq of art.faq) {
@@ -72,11 +95,10 @@ const ArticleEditor = () => {
         html += `<p>${faq.answer}</p>\n\n`;
       }
     }
-    
     return html;
   };
 
-  const handleSave = async () => {
+  const saveArticle = async (isAutosave = false) => {
     if (!article) return;
     setSaving(true);
     try {
@@ -92,16 +114,22 @@ const ArticleEditor = () => {
         sources: article.sources,
         html_content: htmlContent
       };
-      
       const response = await axios.put(`${BACKEND_URL}/api/articles/${articleId}`, updateData);
       setArticle(response.data);
-      toast.success('Artykuł zapisany');
+      setHasUnsavedChanges(false);
+      if (!isAutosave) {
+        toast.success('Artykuł zapisany');
+      }
     } catch (error) {
-      toast.error('Błąd podczas zapisywania');
+      if (!isAutosave) {
+        toast.error('Błąd podczas zapisywania');
+      }
     } finally {
       setSaving(false);
     }
   };
+
+  const handleSave = () => saveArticle(false);
 
   const handleRescore = async () => {
     if (!article) return;
@@ -120,8 +148,68 @@ const ArticleEditor = () => {
     }
   };
 
+  const handleRegenerateFAQ = async () => {
+    if (!article) return;
+    setRegenerating('faq');
+    try {
+      const response = await axios.post(`${BACKEND_URL}/api/articles/${articleId}/regenerate`, {
+        section: 'faq'
+      }, { timeout: 60000 });
+      if (response.data.faq) {
+        setArticle(prev => ({ ...prev, faq: response.data.faq }));
+        setHasUnsavedChanges(true);
+        toast.success('FAQ zregenerowane');
+      }
+    } catch (error) {
+      toast.error('Błąd regeneracji FAQ');
+    } finally {
+      setRegenerating(null);
+    }
+  };
+
+  const handleRegenerateMeta = async () => {
+    if (!article) return;
+    setRegenerating('meta');
+    try {
+      const response = await axios.post(`${BACKEND_URL}/api/articles/${articleId}/regenerate`, {
+        section: 'meta'
+      }, { timeout: 60000 });
+      if (response.data.meta_title) {
+        setMetaTitle(response.data.meta_title);
+        setMetaDescription(response.data.meta_description || '');
+        setHasUnsavedChanges(true);
+        toast.success('Meta dane zregenerowane');
+      }
+    } catch (error) {
+      toast.error('Błąd regeneracji meta danych');
+    } finally {
+      setRegenerating(null);
+    }
+  };
+
   const updateFAQ = (newFaq) => {
     setArticle(prev => ({ ...prev, faq: newFaq }));
+    setHasUnsavedChanges(true);
+  };
+
+  const handleMetaTitleChange = (e) => {
+    setMetaTitle(e.target.value);
+    setHasUnsavedChanges(true);
+  };
+
+  const handleMetaDescChange = (e) => {
+    setMetaDescription(e.target.value);
+    setHasUnsavedChanges(true);
+  };
+
+  const handleHtmlChange = (e) => {
+    setHtmlContent(e.target.value);
+    setHasUnsavedChanges(true);
+  };
+
+  const handleVisualBlur = (e) => {
+    setHtmlContent(e.target.innerHTML);
+    setHasUnsavedChanges(true);
   };
 
   if (loading) {
@@ -173,13 +261,24 @@ const ArticleEditor = () => {
 
       {/* Center - Editor */}
       <div className="editor-center">
-        {/* Toolbar */}
         <div className="editor-toolbar">
           <div className="editor-toolbar-group">
             <button className="btn-icon" onClick={() => navigate('/')} title="Powrót">
               <ChevronLeft size={18} />
             </button>
             <h2>{article.title}</h2>
+            {/* Autosave indicator */}
+            {hasUnsavedChanges ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 8 }}>
+                <CloudOff size={14} style={{ color: 'hsl(38, 92%, 45%)' }} />
+                <span style={{ fontSize: 11, color: 'hsl(38, 92%, 45%)', fontWeight: 500 }}>Niezapisane</span>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 8 }}>
+                <Cloud size={14} style={{ color: 'hsl(158, 55%, 34%)' }} />
+                <span style={{ fontSize: 11, color: 'hsl(158, 55%, 34%)', fontWeight: 500 }}>Zapisano</span>
+              </div>
+            )}
           </div>
           <div className="editor-toolbar-group">
             <Button 
@@ -209,20 +308,33 @@ const ArticleEditor = () => {
         <div style={{ padding: '12px 20px', background: 'white', borderBottom: '1px solid hsl(214, 18%, 88%)' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: 'hsl(215, 16%, 45%)', display: 'block', marginBottom: 4 }}>Meta tytuł <span style={{ color: 'hsl(215, 16%, 65%)' }}>({metaTitle.length}/60)</span></label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: 'hsl(215, 16%, 45%)' }}>Meta tytuł <span style={{ color: metaTitle.length > 60 ? 'hsl(0, 72%, 51%)' : 'hsl(215, 16%, 65%)' }}>({metaTitle.length}/60)</span></label>
+                <button 
+                  onClick={handleRegenerateMeta}
+                  disabled={regenerating === 'meta'}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'hsl(209, 88%, 36%)' }}
+                  title="Regeneruj meta dane"
+                >
+                  {regenerating === 'meta' ? <Loader2 size={12} className="animate-spin" /> : <Wand2 size={12} />}
+                  Regeneruj
+                </button>
+              </div>
               <Input
                 value={metaTitle}
-                onChange={(e) => setMetaTitle(e.target.value)}
+                onChange={handleMetaTitleChange}
                 placeholder="Meta tytuł SEO"
                 data-testid="meta-title-input"
                 style={{ fontSize: 13 }}
               />
             </div>
             <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: 'hsl(215, 16%, 45%)', display: 'block', marginBottom: 4 }}>Meta opis <span style={{ color: 'hsl(215, 16%, 65%)' }}>({metaDescription.length}/160)</span></label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: 'hsl(215, 16%, 45%)' }}>Meta opis <span style={{ color: metaDescription.length > 160 ? 'hsl(0, 72%, 51%)' : 'hsl(215, 16%, 65%)' }}>({metaDescription.length}/160)</span></label>
+              </div>
               <Input
                 value={metaDescription}
-                onChange={(e) => setMetaDescription(e.target.value)}
+                onChange={handleMetaDescChange}
                 placeholder="Meta opis SEO"
                 data-testid="meta-description-textarea"
                 style={{ fontSize: 13 }}
@@ -249,7 +361,6 @@ const ArticleEditor = () => {
           </button>
         </div>
 
-        {/* Editor content */}
         <div className="editor-content-area">
           {editorTab === 'visual' ? (
             <div 
@@ -257,7 +368,7 @@ const ArticleEditor = () => {
               contentEditable
               suppressContentEditableWarning
               dangerouslySetInnerHTML={{ __html: htmlContent }}
-              onBlur={(e) => setHtmlContent(e.target.innerHTML)}
+              onBlur={handleVisualBlur}
               data-testid="article-visual-editor"
             />
           ) : (
@@ -265,7 +376,7 @@ const ArticleEditor = () => {
               <textarea
                 className="html-editor-textarea"
                 value={htmlContent}
-                onChange={(e) => setHtmlContent(e.target.value)}
+                onChange={handleHtmlChange}
                 data-testid="article-html-editor"
                 spellCheck={false}
               />
@@ -313,7 +424,9 @@ const ArticleEditor = () => {
             <div data-testid="faq-accordion">
               <FAQEditor 
                 faq={article.faq || []} 
-                onChange={updateFAQ} 
+                onChange={updateFAQ}
+                onRegenerate={handleRegenerateFAQ}
+                regenerating={regenerating === 'faq'}
               />
             </div>
           )}

@@ -1,8 +1,8 @@
 import React from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Wand2, Loader2 } from 'lucide-react';
 import { Button } from './ui/button';
 
-const FAQEditor = ({ faq, onChange }) => {
+const FAQEditor = ({ faq, onChange, onRegenerate, regenerating }) => {
   const addFAQ = () => {
     onChange([...faq, { question: '', answer: '' }]);
   };
@@ -23,14 +23,29 @@ const FAQEditor = ({ faq, onChange }) => {
       <div className="panel-section">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <div className="panel-section-title" style={{ marginBottom: 0 }}>Pytania i odpowiedzi ({faq.length})</div>
-          <Button variant="outline" size="sm" onClick={addFAQ} className="gap-1" data-testid="faq-add-button">
-            <Plus size={14} /> Dodaj
-          </Button>
+          <div style={{ display: 'flex', gap: 4 }}>
+            {onRegenerate && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={onRegenerate} 
+                disabled={regenerating}
+                className="gap-1"
+                title="Regeneruj FAQ za pomocą AI"
+              >
+                {regenerating ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />}
+                AI
+              </Button>
+            )}
+            <Button variant="outline" size="sm" onClick={addFAQ} className="gap-1" data-testid="faq-add-button">
+              <Plus size={14} /> Dodaj
+            </Button>
+          </div>
         </div>
 
         {faq.length === 0 ? (
           <p style={{ fontSize: 13, color: 'hsl(215, 16%, 45%)', textAlign: 'center', padding: '16px 0' }}>
-            Brak pytań FAQ. Kliknij "Dodaj" aby utworzyć nowe.
+            Brak pytań FAQ. Kliknij "Dodaj" aby utworzyć nowe lub "AI" aby wygenerować.
           </p>
         ) : (
           faq.map((item, idx) => (
