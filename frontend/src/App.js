@@ -12,8 +12,8 @@ import AdminUsers from './pages/AdminUsers';
 import AuthPage from './pages/AuthPage';
 import './App.css';
 
-const ProtectedLayout = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
+const ProtectedLayout = ({ children, requireAdmin = false }) => {
+  const { isAuthenticated, loading, user } = useAuth();
 
   if (loading) {
     return (
@@ -39,6 +39,10 @@ const ProtectedLayout = ({ children }) => {
 
   if (!isAuthenticated) {
     return <Navigate to="/auth" replace />;
+  }
+
+  if (requireAdmin && !user?.is_admin) {
+    return <Navigate to="/" replace />;
   }
 
   return (
