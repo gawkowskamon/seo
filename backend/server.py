@@ -22,6 +22,7 @@ from export_service import (
 )
 from image_generator import generate_image
 from seo_assistant import analyze_article_seo, chat_about_seo
+from content_templates import get_all_templates
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
