@@ -14,6 +14,10 @@ const Sidebar = () => {
     { path: '/topics', label: 'Tematy', icon: Lightbulb, testId: 'sidebar-nav-topics' },
   ];
 
+  const adminItems = [
+    { path: '/admin/users', label: 'Uzytkownicy', icon: Users, testId: 'sidebar-nav-admin-users' },
+  ];
+
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
