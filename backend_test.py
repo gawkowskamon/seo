@@ -319,6 +319,73 @@ class SEOArticleAPITester:
                 
         return success
 
+    def test_get_article_images(self, article_id):
+        """Test get images for article endpoint"""
+        success, response = self.run_test(
+            f"Get Article Images for {article_id}", 
+            "GET", 
+            f"articles/{article_id}/images", 
+            200
+        )
+        
+        if success:
+            if not isinstance(response, list):
+                print(f"❌ Images response should be a list, got: {type(response)}")
+                return False
+            print(f"   Found {len(response)} images for article")
+            if len(response) > 0:
+                # Check first image structure (without data field in list)
+                img = response[0]
+                required_keys = ['id', 'prompt', 'style', 'mime_type', 'created_at']
+                for key in required_keys:
+                    if key not in img:
+                        print(f"❌ Missing key in image list response: {key}")
+                        return False
+                print(f"   First image: style={img.get('style')}, prompt={img.get('prompt', '')[:50]}...")
+                # Store image ID for full image test
+                self.image_id = img.get('id')
+                
+        return success
+
+    def test_get_single_image(self):
+        """Test get single image endpoint"""
+        if not hasattr(self, 'image_id') or not self.image_id:
+            print("❌ Skipping - no image_id available")
+            return False
+            
+        success, response = self.run_test(
+            f"Get Single Image {self.image_id}", 
+            "GET", 
+            f"images/{self.image_id}", 
+            200
+        )
+        
+        if success:
+            required_keys = ['id', 'prompt', 'style', 'mime_type', 'data', 'created_at']
+            for key in required_keys:
+                if key not in response:
+                    print(f"❌ Missing key in single image response: {key}")
+                    return False
+            
+            data_length = len(response.get('data', ''))
+            print(f"   Image data length: {data_length} characters (base64)")
+            print(f"   MIME type: {response.get('mime_type')}")
+            print(f"   Style: {response.get('style')}")
+            
+            # Validate base64 data
+            if data_length < 100:
+                print(f"⚠️  Image data seems too small: {data_length} chars")
+                return False
+                
+        return success
+
+    def test_image_generation_skip(self):
+        """Skip image generation test as instructed (takes 15-30s)"""
+        print(f"\n🔍 Skipping Image Generation Test...")
+        print(f"   ⚠️  Skipped as per instructions (takes 15-30s with AI model)")
+        print(f"   ✅ Would test: POST /api/images/generate with prompt and style")
+        return True
+
 def main():
     print("🚀 Testing Polish SEO Article Writer API - Focused Test")
     print("=" * 50)
