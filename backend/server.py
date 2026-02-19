@@ -1239,6 +1239,36 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+from auth import hash_password
+
+@app.on_event("startup")
+async def seed_admin_user():
+    """Ensure admin user exists on every startup."""
+    admin_email = "monika.gawkowska@kurdynowski.pl"
+    admin_password = "MonZuz8180!"
+    existing = await db.users.find_one({"email": admin_email})
+    if not existing:
+        admin_doc = {
+            "id": str(uuid.uuid4()),
+            "email": admin_email,
+            "password_hash": hash_password(admin_password),
+            "full_name": "Monika Gawkowska",
+            "workspace_id": str(uuid.uuid4()),
+            "is_admin": True,
+            "is_active": True,
+            "created_at": datetime.now(timezone.utc),
+        }
+        await db.users.insert_one(admin_doc)
+        logger.info(f"Admin user created: {admin_email}")
+    else:
+        # Ensure admin flag and active status are set correctly
+        if not existing.get("is_admin") or not existing.get("is_active", True):
+            await db.users.update_one(
+                {"email": admin_email},
+                {"$set": {"is_admin": True, "is_active": True}}
+            )
+            logger.info(f"Admin user flags updated: {admin_email}")
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
