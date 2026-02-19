@@ -438,6 +438,15 @@ const ArticleEditor = () => {
               />
             </div>
           )}
+          {rightTab === 'images' && (
+            <div data-testid="article-images-panel">
+              <ImageGenerator
+                articleId={articleId}
+                articleTitle={article.title || ''}
+                articleTopic={article.topic || ''}
+              />
+            </div>
+          )}
           {rightTab === 'export' && (
             <div data-testid="article-export-panel">
               <ExportPanel articleId={articleId} />
