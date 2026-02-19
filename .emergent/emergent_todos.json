@@ -12,11 +12,11 @@
     "status": "completed"
   },
   {
-    "content": "Phase 2: Backend implementation (FastAPI endpoints, models, article generation)",
+    "content": "Phase 2: Backend implementation",
     "status": "completed"
   },
   {
-    "content": "Phase 2: Frontend implementation (React UI, editor, SEO panel, export)",
+    "content": "Phase 2: Frontend implementation",
     "status": "completed"
   },
   {
@@ -25,6 +25,30 @@
   },
   {
     "content": "Phase 2: End to End Testing using Testing Agent",
+    "status": "completed"
+  },
+  {
+    "content": "Phase 3: Replace native select with shadcn Select (fix console warnings)",
     "status": "in_progress"
+  },
+  {
+    "content": "Phase 3: Add autosave with unsaved changes indicator",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 3: Add regenerate actions (meta/FAQ/section only)",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 3: Improve internal linking - one-click insert from article library",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 3: Upgrade topic suggestions engine",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 3: End to End Testing using Testing Agent",
+    "status": "pending"
   }
 ]

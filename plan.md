@@ -1,115 +1,146 @@
-# plan.md
+# plan.md (updated)
 
 ## Objectives
-- Prove the **core flow** works end-to-end: topic/keywords → OpenAI GPT generates Polish accounting article → structured output (TOC+anchors, headings, FAQ, meta) → SEO scoring → editable dual-view → export (FB/Google Business + HTML/PDF) with **credible-source constraints**.
-- Ship an MVP (v1) with a clean UX for creating, editing, scoring and exporting articles.
+- Deliver a working MVP that supports the full flow end‑to‑end:
+  **topic/keywords → AI generates Polish accounting article (JSON) → TOC+anchors + headings + FAQ + meta → SEO scoring → dual editor (Visual + HTML) → export (FB/Google Business + HTML/PDF)**.
+- Ensure reliability and production readiness:
+  - Stable LLM generation (model fallback/retries).
+  - Consistent Polish UX (UTF‑8 chars, no escaped sequences).
+  - Credible sources included in every draft.
+  - Robust export formats.
+- Move into **Phase 3** to expand topic engine, internal linking, and stronger SEO analysis.
 
 ---
 
-## Phase 1 — Core POC (LLM + structured article + SEO score) 
-> Goal: validate OpenAI (Emergent key) integration + prompt/output contract + scoring in isolation. Do not proceed until stable.
+## Phase 1 — Core POC (LLM + structured article + SEO score) ✅ COMPLETED
+> Goal achieved: validate OpenAI (Emergent key) integration + prompt/output contract + scoring in isolation.
 
-### User stories
-1. As a user, I can enter a topic + target keyword and get a full Polish article draft.
-2. As a user, I receive a ready meta title + meta description within SEO length limits.
-3. As a user, I get an auto-generated TOC with working anchors matching headings.
-4. As a user, I get an FAQ section with concise Q/A aligned to the article.
-5. As a user, I see an SEO score breakdown (readability, headings, keyword placement, links, length).
+### User stories (delivered)
+1. Generate a full Polish article draft from topic + keywords.
+2. Produce meta title + meta description within SEO limits.
+3. Auto-generate TOC with working anchors matching headings.
+4. Auto-generate an FAQ section aligned to the article.
+5. Produce advanced SEO score breakdown (readability, headings, keyword placement, links, length, etc.).
 
-### Implementation steps
-- Websearch best practices:
-  - OpenAI structured outputs / JSON schema patterns.
-  - Polish readability metrics (e.g., FOG-PL / Jasnopis-like heuristics) and practical approximations.
-  - SEO checks: meta length, heading hierarchy, keyword placement.
-- Create `scripts/poc_generate.py` (no DB, no UI):
-  - Input: topic, primary keyword, secondary keywords, audience, desired length.
-  - Call OpenAI GPT via Emergent.
-  - Enforce **strict JSON output** schema: 
-    - `title, slug, meta_title, meta_description, outline[], sections[{h2,h3[],html}], toc[{label,anchor}], faq[{q,a}], internal_link_suggestions[{anchor_text, target_slug, reason}], sources[{name,url,type}]`.
-  - Validate JSON (schema + required fields) and sanitize anchors (ASCII/slug).
-- Create `scripts/poc_score.py`:
-  - Compute advanced SEO score (0–100) + breakdown:
-    - Length vs target, heading structure (H2/H3), TOC/anchors consistency.
-    - Keyword usage: first 150 words, at least 1 H2, density range.
-    - Readability (simple heuristic: avg sentence length, syllable/word proxy, FOG-like).
-    - Internal linking presence + suggested anchors.
-    - Meta title/description character counts.
-- Iterate prompt + validation until:
-  - 10 consecutive runs produce valid JSON and acceptable score output.
+### Implementation (done)
+- Implemented POC script (`/app/tests/poc_core.py`) that:
+  - Calls OpenAI via Emergent integration.
+  - Enforces strict JSON structure and validates required fields.
+  - Computes SEO scoring across 10 dimensions.
 
-### Deliverables
-- Working POC scripts + prompt templates.
-- Final JSON schema + scoring rubric.
+### Deliverables (done)
+- Working POC generation + scoring.
+- JSON output contract proven.
+- Scoring rubric implemented.
 
 ---
 
-## Phase 2 — V1 App Development (React + FastAPI + MongoDB)
-> Build the app around the proven POC contracts. No auth in v1.
+## Phase 2 — V1 App Development (React + FastAPI + MongoDB) ✅ COMPLETED
+> Goal achieved: build the app around the proven POC contracts. No auth in v1.
 
-### User stories
-1. As a user, I can generate a new article by filling a short form (topic, keywords, tone, length).
-2. As a user, I can edit content in **visual WYSIWYG** and **HTML source** modes.
-3. As a user, I can run SEO scoring anytime and see actionable recommendations.
-4. As a user, I can export copy-ready versions for Facebook and Google Business.
-5. As a user, I can download the article as HTML and PDF.
+### User stories (delivered)
+1. Generate a new article by filling a short form (topic, keywords, tone, length).
+2. Edit content in **visual WYSIWYG** and **HTML source** modes.
+3. Run SEO scoring anytime and see actionable recommendations.
+4. Export copy-ready versions for Facebook and Google Business.
+5. Download the article as HTML and PDF.
+6. Browse topic suggestions (AI-powered).
+7. See dashboard stats (total, avg SEO score, needs improvement).
 
-### Implementation steps
-- Backend (FastAPI):
-  - Models/collections: `articles`, `topics`, `source_whitelist`.
-  - Endpoints:
-    - `POST /generate` (calls OpenAI, stores draft)
-    - `GET/PUT /articles/{id}` (load/update)
-    - `POST /articles/{id}/score`
-    - `POST /articles/{id}/export` (fb/google, html, pdf)
-    - `GET /topic-suggestions` (stubbed v1: curated + simple keyword-based)
-  - Implement credible-sources constraint:
-    - Maintain whitelist (gov/legal/standards domains) + require `sources[]` returned.
-    - Server-side validation: reject drafts lacking sources; request regeneration.
-  - PDF generation: server-side (WeasyPrint or Playwright print-to-pdf) from sanitized HTML.
-- Frontend (React + shadcn/ui):
-  - Screens:
-    - Article generator form + history list.
-    - Editor page with tabs: Visual | HTML | SEO | Export.
-  - Editor: TipTap/Quill for WYSIWYG + raw HTML textarea; keep single source of truth.
-  - SEO panel: score gauge + checklist + highlighted issues (meta length, missing H2, etc.).
-  - Export panel: platform-specific copy blocks + download buttons.
-- Data flow + states:
-  - Loading/streaming status for generation.
-  - Regenerate sections (optional v1: regenerate FAQ/meta only).
-  - Autosave on edit with debounce.
+### Implementation details (as built)
+#### Backend (FastAPI)
+- Implemented endpoints under `/api`:
+  - `POST /api/articles/generate`
+  - `GET /api/articles` | `GET /api/articles/{id}` | `PUT /api/articles/{id}` | `DELETE /api/articles/{id}`
+  - `POST /api/articles/{id}/score`
+  - `POST /api/articles/{id}/export` (facebook, google_business, html, pdf)
+  - `POST /api/topics/suggest`
+  - `GET /api/stats`
+- Services:
+  - `article_generator.py`: AI generation + strict JSON parsing
+    - **Model updated for reliability:** switched from `gpt-4.1` to **`gpt-4.1-mini`** with retry/fallback logic.
+  - `seo_scorer.py`: advanced scoring engine.
+  - `export_service.py`: FB/GBP copy + full HTML + server-side PDF generation.
+- Persistence: MongoDB collection `articles`.
 
-### Testing (end of Phase 2)
-- 1 round end-to-end testing:
-  - Generate → edit → score → export copy → download HTML/PDF.
-  - Validate anchors work in preview and exported HTML.
-  - Confirm sources appear and are from whitelist.
+#### Frontend (React)
+- Pages:
+  - Dashboard (stats + article list + search + delete).
+  - Generator (topic + keywords + tone + length + staged loading UI).
+  - Topics (AI topic suggestions; “use in generator” deep-linking).
+  - Editor (3-panel layout):
+    - Left: TOC + anchor copy, internal link suggestions, sources.
+    - Center: Visual editor + HTML editor tabs.
+    - Right: SEO score panel + FAQ editor + Export panel tabs.
+- Polish UI and correct UTF‑8 rendering fixed (no `\uXXXX` artifacts).
+
+### Testing (done)
+- Backend tests: **100% pass** (articles, stats, export, scoring).
+- Frontend E2E: **functional flow verified** (dashboard → editor → tabs → export).
+- Remaining minor issues:
+  - **Low priority:** console warnings related to native `select/option` hydration/structure on Generator/Topics.
 
 ---
 
-## Phase 3 — Feature Expansion (Topic engine + linking + stronger SEO)
+## Phase 3 — Feature Expansion (Topic engine + linking + stronger SEO) 🚧 NEXT
+
+### Goals
+- Improve topic discovery and planning.
+- Upgrade internal linking from “suggestions only” to one-click insertion.
+- Strengthen SEO analysis (Polish readability, competitor comparisons, structured data checks).
+- Tighten “credible sources” enforcement and traceability.
 
 ### User stories
 1. As a user, I can browse topic suggestions based on trends for Polish accounting/taxes.
 2. As a user, I can get keyword suggestions (primary/secondary) and intent classification.
 3. As a user, I can insert internal links from my article library with one click.
-4. As a user, I can compare my draft SEO score against competitor heuristics (SERP-based signals).
+4. As a user, I can compare my draft SEO score against competitor heuristics (based on user-provided URLs).
 5. As a user, I can lock a “company profile” (services, city) to tailor local SEO outputs.
 
 ### Implementation steps
-- Topic suggestions:
-  - Trending: ingest from curated RSS/official announcements (MVP list + periodic fetch).
-  - Keyword analysis: simple integrations first (autocomplete/suggestions) + store results.
-  - Manual: saved prompts/templates.
-- Internal linking:
-  - Build site/article index (Mongo) + suggest links based on keyword overlap/embeddings.
-- SEO scoring upgrades:
-  - Better Polish readability metric implementation.
-  - Competitor analysis MVP: user-provided URLs → extract headings/meta and compare (no scraping beyond provided URLs).
-- Source reliability:
-  - Expand whitelist + add “citation required” checks for legal/tax claims.
+#### 3.1 Topic suggestions engine (upgrade)
+- Add multi-source topic pipeline:
+  - Trending: curated RSS feeds (MF, ZUS, GOV, Sejm/ISAP updates), plus manual “hot topics”.
+  - Keyword ideas: autocomplete-style suggestions + clustering.
+  - Saveable “topic lists” (collections) per category.
+- Persist suggestions/history in MongoDB (`topic_suggestions`).
+
+#### 3.2 Internal linking (upgrade)
+- Build an internal article index (title, slug, keywords, embeddings/overlap scores).
+- Add “Insert link” action in the editor:
+  - choose target article,
+  - auto-suggest anchor text,
+  - insert `<a href="/slug#anchor">` into Visual editor and HTML.
+
+#### 3.3 SEO scoring upgrades
+- Improve Polish readability:
+  - Add syllable/word proxy + FOG-PL-like heuristic.
+  - Add paragraph length distribution and passive voice heuristics (approx).
+- Add structured SEO checks:
+  - H1 uniqueness, missing H2/H3 gaps, image alt placeholders.
+  - FAQ schema validity checks.
+  - Anchor uniqueness and collision detection.
+- Competitor comparison MVP (user-provided URLs only):
+  - Extract headings/meta length and compare to draft.
+
+#### 3.4 Source reliability hardening
+- Add server-side whitelist validation for source domains.
+- Add “missing citation” heuristics for legal/tax claims (rule-based triggers).
+- Store sources separately (`article_sources`) and surface in UI with “credibility” badges.
+
+#### 3.5 UX improvements
+- Fix low-priority console warnings:
+  - replace native `select` with shadcn/ui `Select` components.
+- Add autosave with debounce + “unsaved changes” indicator.
+- Add “Regenerate” actions (meta only / FAQ only / section only) with change diff preview.
 
 ### Testing (end of Phase 3)
-- End-to-end run including topic suggestion → generation → internal link insert → export.
+- E2E:
+  - Topic suggestion → open in generator → generate → insert internal link → rescore → export.
+- Validation:
+  - No broken anchors; links inserted correctly in both Visual and HTML views.
+  - Export outputs match editor content.
+  - Sources pass whitelist checks.
 
 ---
 
@@ -129,16 +160,25 @@
 
 ---
 
-## Next Actions
-1. Implement Phase 1 POC scripts with strict JSON schema and run 10-sample validation.
-2. Finalize scoring rubric + thresholds for “publish-ready”.
-3. Start Phase 2 with backend endpoints mirroring the POC contract.
-4. Build the React editor (dual view) and wire generation/score/export.
+## Next Actions (updated)
+1. Phase 3.5 quick win: replace native `select` with shadcn `Select` to remove console warnings.
+2. Implement internal linking index + one-click insertion in editor.
+3. Upgrade topic engine (RSS/trending + saved lists).
+4. Improve readability metrics and add competitor comparison (user-provided URLs).
+5. Expand and enforce source whitelist validation server-side.
 
 ---
 
-## Success Criteria
-- POC: 10/10 generations return valid JSON with TOC+anchors, FAQ, meta, and sources passing whitelist.
-- V1: user can generate → edit → score → export (FB/Google + HTML/PDF) without manual fixes.
-- SEO: scoring provides actionable items and improves after edits; meta and headings consistently valid.
-- Reliability: no broken anchors, sanitized HTML, PDF export matches preview.
+## Success Criteria (updated)
+- POC: ✅ Valid JSON generation + scoring proven.
+- V1: ✅ User can generate → edit → score → export (FB/Google + HTML/PDF) without manual fixes.
+- Phase 3:
+  - Topic suggestions provide actionable, trend-aware ideas.
+  - Internal linking can be inserted reliably from library.
+  - SEO scoring includes stronger Polish readability + structured checks.
+  - Source reliability enforced via whitelist + UI indicators.
+- Reliability:
+  - No broken anchors.
+  - Sanitized HTML.
+  - PDF export matches preview.
+  - Stable LLM generation using `gpt-4.1-mini` with fallback/retries.
