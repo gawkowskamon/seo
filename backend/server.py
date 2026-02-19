@@ -563,6 +563,50 @@ async def list_templates():
     return get_all_templates()
 
 
+# --- Article Series ---
+
+class SeriesRequest(BaseModel):
+    topic: str
+    primary_keyword: str
+    num_parts: int = 4
+    source_text: str = ""
+
+@api_router.post("/series/generate")
+async def generate_series(request: SeriesRequest, user: dict = Depends(get_current_user)):
+    """Generate a multi-part article series outline."""
+    try:
+        result = await generate_series_outline(
+            topic=request.topic,
+            primary_keyword=request.primary_keyword,
+            num_parts=request.num_parts,
+            source_text=request.source_text
+        )
+        
+        # Save series to DB
+        series_doc = {
+            **result,
+            "user_id": user["id"],
+            "workspace_id": user.get("workspace_id", user["id"]),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "status": "outline"
+        }
+        await db.series.insert_one(series_doc)
+        
+        return result
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=500, detail=f"AI zwrocilo nieprawidlowy JSON: {str(e)}")
+    except Exception as e:
+        logging.error(f"Series generation error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/series")
+async def list_series(user: dict = Depends(get_current_user)):
+    """List all series for current user."""
+    query = {} if user.get("is_admin") else {"user_id": user["id"]}
+    series = await db.series.find(query, {"_id": 0}).sort("created_at", -1).to_list(50)
+    return series
+
+
 # --- SEO Assistant ---
 
 class SEOAssistantRequest(BaseModel):
