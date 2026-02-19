@@ -232,7 +232,23 @@ const ImageGenerator = ({ articleId, article, onInsertImage }) => {
               data-testid="generated-image-preview"
             />
           </div>
-          <div style={{ display: 'flex', gap: 6 }}>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {onInsertImage && (
+              <Button
+                size="sm"
+                onClick={() => {
+                  const imgHtml = `<img src="data:${generatedImage.mime_type};base64,${generatedImage.data}" alt="${generatedImage.prompt || ''}" style="max-width: 100%; height: auto; border-radius: 8px; margin: 16px 0;" />`;
+                  onInsertImage(imgHtml);
+                  toast.success('Obraz wstawiony do edytora');
+                }}
+                className="gap-1 flex-1"
+                style={{ fontSize: 11 }}
+                data-testid="image-insert-editor-button"
+              >
+                <ImageIcon size={12} />
+                Wstaw w tresc
+              </Button>
+            )}
             <Button
               size="sm"
               variant="outline"
