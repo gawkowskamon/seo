@@ -1,18 +1,18 @@
 [
   {
     "content": "Phase 4: Add Gemini Nano Banana image generation - backend endpoint",
-    "status": "in_progress"
+    "status": "completed"
   },
   {
     "content": "Phase 4: Add image generation UI to article editor",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "content": "Phase 4: Add image gallery/management in editor",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "content": "Phase 4: Test image generation E2E",
-    "status": "pending"
+    "status": "in_progress"
   }
 ]
