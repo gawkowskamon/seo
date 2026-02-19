@@ -1,30 +1,30 @@
 [
   {
-    "content": "Fix PDF Polish font - register DejaVu Sans in ReportLab",
-    "status": "completed"
+    "content": "Visual editor toolbar (bold, italic, headings, lists, links, undo/redo)",
+    "status": "in_progress"
   },
   {
-    "content": "Backend: WordPress settings endpoints (admin configures WP URL + credentials)",
-    "status": "completed"
+    "content": "1:1 export styling - embed Kurdynowski CSS/fonts in HTML export",
+    "status": "pending"
   },
   {
-    "content": "Backend: Publish-to-WordPress endpoint (WP REST API)",
-    "status": "completed"
+    "content": "1:1 export styling - update PDF export with matching visual styles",
+    "status": "pending"
   },
   {
-    "content": "Frontend: WordPress config in admin settings page",
-    "status": "completed"
+    "content": "Backend: Subscription plans + tpay integration endpoints",
+    "status": "pending"
   },
   {
-    "content": "Frontend: 'Opublikuj na WordPress' button in ExportPanel",
-    "status": "completed"
+    "content": "Frontend: Pricing page (/cennik) with 3 tiers + tpay checkout",
+    "status": "pending"
   },
   {
-    "content": "Generate downloadable WordPress plugin (PHP)",
-    "status": "completed"
+    "content": "Frontend: Subscription status in user profile/sidebar",
+    "status": "pending"
   },
   {
     "content": "Testing",
-    "status": "completed"
+    "status": "pending"
   }
 ]
