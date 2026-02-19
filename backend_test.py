@@ -493,28 +493,28 @@ class SEOArticleAPITester:
         return success
 
 def main():
-    print("🚀 Testing Polish SEO Article Writer API - Image Features Test")
+    print("🚀 Testing Polish SEO Article Writer API - SEO Assistant Feature Test")
     print("=" * 60)
     
     tester = SEOArticleAPITester()
-    existing_article_id = "322bc85b-91e7-4888-a055-32a14db1ed85"
+    test_article_id = "d09f7616-782a-4ae6-b385-27cdc4f24a56"  # Article ID for testing
     
     # Test required backend endpoints
     print("\n📊 Required Backend API Tests")
     tester.test_get_stats()
     tester.test_list_articles()
-    tester.test_existing_article(existing_article_id)
+    tester.test_existing_article(test_article_id)
     
-    # Test new image-related endpoints
-    print("\n🖼️ Image API Tests")
-    tester.test_get_article_images(existing_article_id)
-    tester.test_get_single_image()
-    tester.test_image_generation_skip()  # Skip actual generation as instructed
+    # Test new SEO Assistant endpoints
+    print("\n🤖 SEO Assistant AI Tests")
+    tester.test_seo_assistant_analyze(test_article_id)
+    tester.test_seo_assistant_chat(test_article_id)
+    tester.test_seo_assistant_invalid_article()
     
     # Test existing functionality
     print("\n📤 Export & Regeneration Tests")
-    tester.test_exports_for_existing_article(existing_article_id)
-    tester.test_regenerate_meta_for_existing_article(existing_article_id)
+    tester.test_exports_for_existing_article(test_article_id)
+    tester.test_regenerate_meta_for_existing_article(test_article_id)
     
     # Print final results
     print("\n" + "=" * 60)
