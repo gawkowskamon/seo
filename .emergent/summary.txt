@@ -1,0 +1,179 @@
+<analysis>**original_problem_statement:**
+The user wants to build an application for writing accounting-related blog articles.
+
+**PRODUCT REQUIREMENTS:**
+-   Generate articles perfectly optimized for SEO AI.
+-   Include features like FAQ, table of contents, internal linking, anchor texts, and meta descriptions.
+-   Ability to export content for Facebook and Google Business.
+-   Provide both a visual editor and an HTML view.
+-   Allow for editing generated content.
+-   Include a feature to check and score the article's SEO compliance.
+-   Use only reliable and credible sources for content generation.
+-   Suggest article topics.
+-   Add an image generator (using Nano Banana) for article content.
+-   Add an AI assistant to help improve the SEO of a generated article.
+-   **Future:** Implement JWT authentication and multi-client workspaces.
+-   **Future:** Enhance the image generation module, as the current version is considered too primitive.
+-   **Future (Optional):** Allow inserting images directly into the visual editor.
+
+**User's preferred language**:
+The user communicates in **Polish**. All responses to the user MUST be in Polish.
+
+**what currently exists?**
+A full-stack FARM (FastAPI, React, MongoDB) application that serves as an SEO Article Builder. The application is fully functional and includes the following features:
+-   **Dashboard**: Displays statistics like the total number of articles, average SEO score, and a list of existing articles.
+-   **Article Generation**: Users can provide a topic and keywords to generate a complete, SEO-optimized article using .
+-   **Topic Suggestions**: An AI-powered feature to suggest new article topics.
+-   **Article Editor**: A comprehensive editor with both a rich-text (visual) and an HTML view.
+-   **SEO Analysis Panel**: Shows a detailed breakdown of the SEO score (e.g., word count, keyword density, meta descriptions).
+-   **Editor Features**: Includes panels for Table of Contents (with anchor links), FAQs, Internal Links, Sources, and Export options (Facebook, Google Business, HTML).
+-   **Autosave & Regeneration**: The editor automatically saves changes, and users can regenerate specific sections like the meta title or FAQs.
+-   **Image Generation**: A dedicated Images tab in the editor allows users to generate images using the Nano Banana model, view them in a gallery, and copy their HTML code.
+
+**Last working item**:
+-   **Last item agent was working**: The agent just completed the implementation of the image generation feature using the Gemini Nano Banana model. This involved creating a backend endpoint to handle image generation and storage, and a new Obrazy (Images) tab in the frontend editor UI. Users can select an image style, provide a prompt, generate an image, and manage it in a gallery.
+-   **Status**: COMPLETED
+-   **Agent Testing Done**: Y
+-   **Which testing method agent to use?**: NA
+-   **User Testing Done**: N (User acknowledged the work by providing a new set of feature requests.)
+
+**All Pending/In progress Issue list**:
+There are no pending or in-progress issues. The application is stable, and all tests passed in the last run.
+
+**In progress Task List**:
+There are no tasks currently in progress.
+
+**Upcoming and Future Tasks**
+The user has provided a clear list of the next features to be implemented.
+
+**Upcoming Tasks:**
+-   **P0: AI SEO Assistant:** Add an AI assistant that, after an article is generated, helps the user improve its SEO score through guided suggestions and edits. This is the immediate next priority.
+    -   **Where to start:** This will likely require a new component in the  page and a new backend endpoint in  that takes the article content and returns SEO improvement suggestions.
+
+**Future Tasks:**
+-   **P1: JWT Authentication & Workspaces:** Implement user authentication using JWT and create a multi-tenant workspace structure to separate articles and data for different clients/users.
+-   **P2: Enhance Image Generation Module:** The user finds the current image generator too primitive and wants it improved to generate better quality images. This may involve refining the prompts sent to the Nano Banana model or exploring more advanced image generation options.
+-   **P3 (Optional): Insert Images in Visual Editor:** Add functionality to insert generated images directly into the rich-text editor at the cursor's position, rather than just providing the HTML code to copy.
+
+**Completed work in this session**
+-   **Phase 1: Core Functionality POC**:
+    -   Successfully tested article generation and SEO scoring in an isolated Python script ().
+-   **Phase 2: Full Application Build**:
+    -   Constructed the entire full-stack application with a FastAPI backend and React frontend.
+    -   Implemented all core backend endpoints for article management, generation, and topic suggestions ().
+    -   Built the complete frontend UI, including the Dashboard, Article Generator, and a feature-rich Article Editor ().
+    -   Fixed Unicode character rendering for the Polish language.
+-   **Phase 3: UX Improvements**:
+    -   Implemented an autosave feature in the editor to prevent data loss.
+    -   Added a content regeneration feature for specific article sections.
+    -   Upgraded native HTML select elements to  components to resolve console warnings.
+-   **Phase 4: Image Generation**:
+    -   Integrated Gemini's Nano Banana model for AI image generation.
+    -   Added a backend endpoint for generating and storing images associated with an article.
+    -   Created a new Images panel in the editor to manage article images.
+
+**Earlier issues found/mentioned but not fixed**
+None. All identified issues, including Unicode rendering problems and frontend console warnings, were resolved.
+
+**Known issue recurrence from previous fork**
+-   Issue recurrence in previous fork: None
+-   Recurrence count: 0
+-   Status: NA
+
+**Code Architecture**
+
+
+**Key Technical Concepts**
+-   **Stack**: FARM (FastAPI, React, MongoDB)
+-   **AI Integration**:  library for LLM text generation () and image generation ().
+-   **Backend**: Asynchronous API endpoints using FastAPI.
+-   **Frontend**: Component-based architecture using React, with client-side routing via .
+-   **State Management**: React hooks (, , ) for managing component state and side effects.
+-   **UI Library**:  for modern, accessible UI components.
+-   **Editing**:  for the rich-text editor.
+
+**key DB schema**
+-   ** collection**:
+    -   : ObjectId
+    -   : String
+    -   : String
+    -   : String (HTML from the editor)
+    -   : Object (contains breakdown of score)
+    -   : String
+    -   : Array of Objects 
+    -   : Array of Objects 
+    -   : Array of Objects 
+    -   : Array of Objects 
+    -   : DateTime
+    -   : Array of Objects 
+
+**changes in tech stack**
+None.
+
+**All files of reference**
+-   : The heart of the backend, defines all API logic.
+-   : The most complex frontend page, containing the editor and all its associated panels.
+-   : The starting point for users to create content.
+-   : Crucial for defining the AI's behavior for both article and image generation.
+-   : The component for the recently added image generation feature.
+-   : Contains the overall project plan and phase status.
+
+**Areas that need refactoring**:
+-   The user has requested an enhancement of the image generation module, suggesting the current implementation is too primitive. This is more of a feature upgrade than a code refactor.
+
+**key api endpoints**
+-   : Creates a new article using AI.
+-   : Generates article topic ideas.
+-   : Retrieves a list of all articles for the dashboard.
+-   : Retrieves a single article for editing.
+-   : Updates an article (used for autosave).
+-   : Regenerates a specific part of an article (e.g., meta title).
+-   : Generates a new image for an article.
+-   : Lists images for an article.
+-   : Deletes an image.
+
+**Critical Info for New Agent**
+-   **Speak Polish**: You must communicate with the user exclusively in Polish.
+-   **LLM Model**: The application was switched from  to  for text generation due to persistent timeout errors. Do not switch back unless necessary.
+-   **Next Task is P0**: The user's highest priority is the AI SEO Assistant. You should start with this task.
+-   **No Auth**: The application currently has no authentication or user management. This is planned for a future phase.
+
+**documents and test reports created in this job**
+-   /app/plan.md
+-   /app/todos.md
+-   /app/poc.py
+
+**Last 10 User Messages and any pending HUMAN messages**
+-   ** (PENDING)**: The user's most recent message, which lays out all the upcoming and future tasks:
+    1.  Add an AI assistant for SEO improvement.
+    2.  Add JWT auth and workspaces.
+    3.  Improve the image generator.
+    4.  (Optional) Allow direct image insertion in the visual editor.
+-   ****: Agent reports that all tests passed and it will update the plan and deliver.
+-   ****: User prompts the agent to continue.
+-   ****: Agent initiates end-to-end testing for the image generator feature.
+-   ****: Agent confirms the image generator UI is working and shows a screenshot.
+-   ****: Agent confirms the generated image is visible in the UI panel.
+-   ****: User requests the image generator feature.
+-   The preceding messages relate to the completion and testing of Phase 3 (UX improvements).
+
+**Project Health Check:**
+-   **Broken**: None. The application is stable and functional.
+-   **Mocked**: None. All features use live AI services and a real database.
+
+**3rd Party Integrations**
+-   **OpenAI ** (Text Generation) — uses Emergent LLM Key.
+-   **Gemini ** (Image Generation) — uses Emergent LLM Key.
+-   **MongoDB**: Database for storing application data.
+
+**Testing status**
+-   **Testing agent used after significant changes**: YES. The  was used multiple times, with the final run showing a 100% pass rate for both backend and frontend.
+-   **Troubleshoot agent used after agent stuck in loop**: NO. The agent did not get stuck.
+-   **Test files created**: None.
+-   **Known regressions**: None.
+
+**Credentials to test flow:**
+No credentials are required as there is no authentication system in place yet. The application is open.
+
+**What agent forgot to execute**
+The agent did not forget to execute anything. It successfully completed all tasks up to the user's latest request. The new tasks provided by the user in the final message () are the starting point for the next session.</analysis>

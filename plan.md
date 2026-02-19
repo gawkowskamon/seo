@@ -1,8 +1,10 @@
-# plan.md (final update)
+# plan.md (updated after Phase 4 — AI Image Generation)
 
 ## Objectives
 - Deliver a working MVP that supports the full flow end‑to‑end:
   **topic/keywords → AI generates Polish accounting article (JSON) → TOC+anchors + headings + FAQ + meta → SEO scoring → dual editor (Visual + HTML) → export (FB/Google Business + HTML/PDF)**.
+- Provide a complete **media workflow** for blog publishing:
+  **AI image generation (Gemini “Nano Banana”) → gallery per article → preview → copy HTML embed → download**.
 - Ensure reliability and production readiness:
   - Stable LLM generation (model fallback/retries).
   - Consistent Polish UX (UTF‑8 chars, no escaped sequences).
@@ -84,7 +86,7 @@
 ---
 
 ## Phase 3 — Feature Expansion (UX + regeneration + stability) ✅ COMPLETED
-> Goal achieved: implement planned Phase 3.5 UX improvements and AI regeneration capabilities.
+> Goal achieved: implement planned UX improvements and AI regeneration capabilities.
 
 ### Goals (completed)
 - Remove low-priority console warnings by replacing native selects.
@@ -127,7 +129,61 @@
 
 ---
 
-## Phase 4 — Hardening + Auth (only after approval)
+## Phase 4 — AI Image Generation (Gemini “Nano Banana”) ✅ COMPLETED
+> Goal achieved: add an image generation workflow for article illustrations, integrated into the editor.
+
+### Goals (completed)
+- Add AI image generation using Gemini image model (“Nano Banana”).
+- Allow generating multiple image types/styles for blog publishing.
+- Provide per-article image management (gallery, preview, download, delete).
+- Make it easy to embed images into the article HTML.
+
+### User stories (delivered)
+1. As a user, I can generate an image for an article with a selected style (Hero/Sekcja/Infografika/Własny prompt).
+2. As a user, I can view all images generated for a specific article.
+3. As a user, I can open a full preview of an image.
+4. As a user, I can **copy HTML** for an image (data URI) and paste it into the HTML editor.
+5. As a user, I can download an image file.
+6. As a user, I can delete images I don’t want.
+
+### Implementation details (as built)
+#### Backend (FastAPI)
+- New service:
+  - `image_generator.py`: Gemini image generation via Emergent:
+    - Model: **`gemini-3-pro-image-preview`**
+    - Modalities: `["image", "text"]`
+    - Supported styles: `hero`, `section`, `infographic`, `custom`
+- New persistence:
+  - MongoDB collection `images` storing:
+    - `id`, `article_id`, `prompt`, `style`, `mime_type`, `data` (base64), `created_at`
+- New endpoints under `/api`:
+  - `POST /api/images/generate` (returns base64 image + metadata)
+  - `GET /api/images/{image_id}` (fetch full base64)
+  - `GET /api/articles/{article_id}/images` (list images for an article; excludes `data` for performance)
+  - `DELETE /api/images/{image_id}`
+
+#### Frontend (React)
+- New component:
+  - `ImageGenerator.js` embedded into the editor.
+- Editor updates:
+  - Added new right-panel tab: **Obrazy**.
+  - Image panel includes:
+    - Style selector
+    - Prompt input (auto-filled from article topic/title)
+    - Generate action (loading state)
+    - Gallery grid per article
+    - Full preview with:
+      - Copy HTML
+      - Download
+      - Delete
+
+### Testing (done)
+- Backend: **100%** (images list + retrieval tested; generation validated via POC and direct endpoint test).
+- Frontend: **100%** (Obrazy tab verified, gallery/preview/actions verified; existing flows preserved).
+
+---
+
+## Phase 5 — Hardening + Auth + Workspaces (only after approval)
 
 ### User stories
 1. As a user, I can sign in and see only my articles.
@@ -135,19 +191,24 @@
 3. As a user, I can set default templates and SEO rules per workspace.
 4. As a user, I can audit generation history (prompt, model, time, cost estimate).
 5. As a user, I can collaborate via shareable review links (view/comment).
+6. As a user, I can manage media assets per workspace (quotas, tagging, reuse across articles).
 
 ### Implementation steps
 - Add JWT auth + workspace isolation.
 - Rate limiting, caching, cost tracking.
 - Robust HTML sanitization + export consistency.
+- Media storage improvements:
+  - Optionally store images in object storage (S3/GCS) instead of base64 in MongoDB.
+  - CDN delivery + resizing/optimization.
 
 ---
 
 ## Next Actions (updated)
-1. **Deliver / handoff** V1 app (Phases 1–3 complete) as ready-to-use.
+1. **Deliver / handoff** V1 app (Phases 1–4 complete) as ready-to-use.
 2. If you want to continue:
-   - Phase 4: Auth + workspaces + templates.
-   - Optional: Internal-link insertion (one-click) and competitor comparison.
+   - Phase 5: Auth + workspaces + templates + audit trail.
+   - Optional: One-click internal-link insertion and competitor comparison.
+   - Optional: Add image insertion directly into Visual editor (not only copy HTML).
 
 ---
 
@@ -155,8 +216,10 @@
 - POC: ✅ Valid JSON generation + scoring proven.
 - V1: ✅ User can generate → edit (Visual/HTML) → score → export (FB/Google + HTML/PDF).
 - Phase 3: ✅ UX improvements + autosave + regeneration delivered.
+- Phase 4: ✅ AI image generation integrated (styles + gallery + preview + copy HTML + download + delete).
 - Reliability:
   - No broken anchors.
   - Correct UTF‑8 Polish UI.
   - Stable LLM generation using **`gpt-4.1-mini`** with retries/fallback.
   - Exports work (copy-ready FB/GBP + HTML + PDF).
+  - Image workflow works end-to-end (generate/list/retrieve/manage). 
