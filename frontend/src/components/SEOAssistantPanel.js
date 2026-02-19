@@ -141,7 +141,7 @@ const SEOAssistantPanel = ({ articleId, article, onApplySuggestion }) => {
       {/* Header */}
       <div className="panel-section" style={{ paddingBottom: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-          <Sparkles size={16} style={{ color: 'hsl(209, 88%, 36%)' }} />
+          <Sparkles size={16} style={{ color: '#04389E' }} />
           <span style={{ fontSize: 13, fontWeight: 700, color: 'hsl(222, 47%, 11%)' }}>Asystent SEO AI</span>
           <Badge variant="outline" style={{ fontSize: 10, padding: '1px 6px', marginLeft: 'auto' }}>GPT-5.2</Badge>
         </div>
