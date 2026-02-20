@@ -531,6 +531,20 @@ const ArticleEditor = () => {
             <Share2 size={14} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
             Eksport
           </button>
+          <button 
+            className={`right-panel-tab ${rightTab === 'links' ? 'active' : ''}`}
+            onClick={() => setRightTab('links')}
+          >
+            <Link2 size={14} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
+            Linki
+          </button>
+          <button 
+            className={`right-panel-tab ${rightTab === 'schedule' ? 'active' : ''}`}
+            onClick={() => setRightTab('schedule')}
+          >
+            <CalendarClock size={14} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
+            Plan
+          </button>
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto' }}>
