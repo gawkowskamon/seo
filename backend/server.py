@@ -1359,16 +1359,6 @@ async def cancel_scheduled_publish(article_id: str, user: dict = Depends(get_cur
     )
     return {"message": "Planowana publikacja anulowana"}
 
-@api_router.get("/articles/scheduled")
-async def list_scheduled_articles(user: dict = Depends(get_current_user)):
-    """List all scheduled articles."""
-    articles = await db.articles.find(
-        {"user_id": user["id"], "schedule_status": "scheduled"},
-        {"_id": 0, "id": 1, "title": 1, "scheduled_at": 1, "scheduled_wp": 1}
-    ).sort("scheduled_at", 1).to_list(50)
-    return articles
-
-
 # --- Subscriptions & Payments ---
 
 @api_router.get("/subscription/plans")
