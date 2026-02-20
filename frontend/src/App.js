@@ -15,6 +15,8 @@ import ImageGeneratorPage from './pages/ImageGeneratorPage';
 import PricingPage from './pages/PricingPage';
 import ContentCalendar from './pages/ContentCalendar';
 import ImportArticles from './pages/ImportArticles';
+import SEOAuditPage from './pages/SEOAuditPage';
+import AutoUpdatePage from './pages/AutoUpdatePage';
 import AuthPage from './pages/AuthPage';
 import './App.css';
 
@@ -102,6 +104,12 @@ function AppRoutes() {
       } />
       <Route path="/import" element={
         <ProtectedLayout><ImportArticles /></ProtectedLayout>
+      } />
+      <Route path="/audyt-seo" element={
+        <ProtectedLayout><SEOAuditPage /></ProtectedLayout>
+      } />
+      <Route path="/aktualizacje" element={
+        <ProtectedLayout><AutoUpdatePage /></ProtectedLayout>
       } />
       <Route path="/admin/users" element={
         <ProtectedLayout requireAdmin><AdminUsers /></ProtectedLayout>
