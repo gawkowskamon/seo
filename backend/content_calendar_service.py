@@ -87,9 +87,10 @@ async def generate_content_calendar(period: str, current_month: int, current_yea
     
     chat = LlmChat(
         api_key=emergent_key,
-        model="gpt-4.1-mini",
+        session_id=f"calendar-{current_month}-{current_year}",
         system_message=CALENDAR_SYSTEM_PROMPT
     )
+    chat.with_model("openai", "gpt-4.1-mini")
     
     response = await chat.send_async(UserMessage(text=prompt))
     
