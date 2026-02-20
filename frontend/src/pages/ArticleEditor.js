@@ -264,6 +264,55 @@ const ArticleEditor = () => {
     setHasUnsavedChanges(true);
   };
 
+  // --- Scheduling ---
+  const [scheduleDate, setScheduleDate] = useState('');
+  const [scheduleWp, setScheduleWp] = useState(true);
+  const [scheduling, setScheduling] = useState(false);
+
+  const handleSchedule = async () => {
+    if (!scheduleDate) { toast.error('Wybierz date publikacji'); return; }
+    setScheduling(true);
+    try {
+      await axios.post(`${BACKEND_URL}/api/articles/${articleId}/schedule`, {
+        scheduled_at: new Date(scheduleDate).toISOString(),
+        publish_to_wordpress: scheduleWp
+      });
+      setArticle(prev => ({ ...prev, scheduled_at: new Date(scheduleDate).toISOString(), schedule_status: 'scheduled' }));
+      toast.success('Publikacja zaplanowana');
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Blad planowania');
+    } finally {
+      setScheduling(false);
+    }
+  };
+
+  const handleCancelSchedule = async () => {
+    try {
+      await axios.delete(`${BACKEND_URL}/api/articles/${articleId}/schedule`);
+      setArticle(prev => ({ ...prev, scheduled_at: null, schedule_status: null }));
+      toast.success('Planowanie anulowane');
+    } catch (err) {
+      toast.error('Blad anulowania');
+    }
+  };
+
+  // --- Linkbuilding ---
+  const [linkSuggestions, setLinkSuggestions] = useState(null);
+  const [linkLoading, setLinkLoading] = useState(false);
+
+  const handleAnalyzeLinks = async () => {
+    setLinkLoading(true);
+    try {
+      const res = await axios.post(`${BACKEND_URL}/api/articles/${articleId}/linkbuilding`);
+      setLinkSuggestions(res.data);
+      toast.success('Analiza linkowania zakonczona');
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Blad analizy linkowania');
+    } finally {
+      setLinkLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="editor-layout">
