@@ -54,8 +54,8 @@ export default function ContentCalendar() {
   const handleCreateArticle = (item) => {
     navigate('/generator', { state: {
       topic: item.title,
-      primary_keyword: item.primary_keyword,
-      secondary_keywords: item.secondary_keywords || []
+      primaryKeyword: item.primary_keyword,
+      secondaryKeywords: item.secondary_keywords || []
     }});
   };
 
