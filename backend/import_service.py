@@ -151,7 +151,7 @@ async def optimize_imported_article(title: str, content_html: str, emergent_key:
     )
     chat.with_model("openai", "gpt-4.1-mini")
     
-    response = await chat.send_async(UserMessage(text=prompt))
+    response = await chat.send_message(UserMessage(text=prompt))
     
     text = response.text.strip()
     if text.startswith("```"):

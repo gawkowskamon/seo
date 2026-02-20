@@ -84,7 +84,7 @@ async def analyze_internal_links(current_article: dict, all_articles: list, emer
     )
     chat.with_model("openai", "gpt-4.1-mini")
     
-    response = await chat.send_async(UserMessage(text=prompt))
+    response = await chat.send_message(UserMessage(text=prompt))
     
     text = response.text.strip()
     if text.startswith("```"):
