@@ -33,6 +33,9 @@ from series_generator import generate_series_outline
 from content_calendar_service import generate_content_calendar
 from import_service import scrape_article_from_url, import_from_wordpress, optimize_imported_article
 from linkbuilding_service import analyze_internal_links
+from seo_audit_service import run_seo_audit
+from competition_service import analyze_competition
+from auto_update_service import check_articles_for_updates
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
