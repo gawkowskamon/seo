@@ -316,6 +316,22 @@ const ArticleEditor = () => {
     }
   };
 
+  const handleCompetitionAnalysis = async () => {
+    if (!compUrl) { toast.error('Podaj URL konkurencji'); return; }
+    setCompLoading(true);
+    try {
+      const res = await axios.post(`${BACKEND_URL}/api/competition/analyze`, {
+        article_id: articleId, competitor_url: compUrl
+      }, { timeout: 90000 });
+      setCompResult(res.data);
+      toast.success('Analiza konkurencji zakonczona');
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Blad analizy');
+    } finally {
+      setCompLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="editor-layout">
