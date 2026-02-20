@@ -171,13 +171,15 @@ async def run_seo_audit(url: str, emergent_key: str) -> dict:
         content_sample=data["content_sample"][:1500]
     )
 
-    chat = LlmChat(api_key=emergent_key)
-    chat = chat.with_model("gpt-4.1-mini")
-    chat = chat.with_system_message("Jestes ekspertem SEO. Przeprowadzasz audyty stron. Odpowiadaj WYLACZNIE JSON-em.")
+    chat = LlmChat(
+        api_key=emergent_key,
+        session_id=f"seo-audit-{url[:30]}",
+        system_message="Jestes ekspertem SEO. Przeprowadzasz audyty stron. Odpowiadaj WYLACZNIE JSON-em."
+    )
+    chat.with_model("openai", "gpt-4.1-mini")
 
-    response = await chat.send_async(UserMessage(text=prompt))
-    text = response if isinstance(response, str) else response.text
-    text = text.strip()
+    response = await chat.send_message(UserMessage(text=prompt))
+    text = response.strip() if isinstance(response, str) else str(response)
     if text.startswith("```"):
         text = text.split("\n", 1)[1] if "\n" in text else text[3:]
         if text.endswith("```"):
