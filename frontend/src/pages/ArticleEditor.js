@@ -299,6 +299,9 @@ const ArticleEditor = () => {
   // --- Linkbuilding ---
   const [linkSuggestions, setLinkSuggestions] = useState(null);
   const [linkLoading, setLinkLoading] = useState(false);
+  const [compUrl, setCompUrl] = useState('');
+  const [compResult, setCompResult] = useState(null);
+  const [compLoading, setCompLoading] = useState(false);
 
   const handleAnalyzeLinks = async () => {
     setLinkLoading(true);
