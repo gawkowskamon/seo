@@ -13,6 +13,8 @@ import AdminSettings from './pages/AdminSettings';
 import ImageLibrary from './pages/ImageLibrary';
 import ImageGeneratorPage from './pages/ImageGeneratorPage';
 import PricingPage from './pages/PricingPage';
+import ContentCalendar from './pages/ContentCalendar';
+import ImportArticles from './pages/ImportArticles';
 import AuthPage from './pages/AuthPage';
 import './App.css';
 
@@ -94,6 +96,12 @@ function AppRoutes() {
       } />
       <Route path="/cennik" element={
         <ProtectedLayout><PricingPage /></ProtectedLayout>
+      } />
+      <Route path="/kalendarz" element={
+        <ProtectedLayout><ContentCalendar /></ProtectedLayout>
+      } />
+      <Route path="/import" element={
+        <ProtectedLayout><ImportArticles /></ProtectedLayout>
       } />
       <Route path="/admin/users" element={
         <ProtectedLayout requireAdmin><AdminUsers /></ProtectedLayout>
