@@ -1362,6 +1362,106 @@ async def cancel_scheduled_publish(article_id: str, user: dict = Depends(get_cur
     )
     return {"message": "Planowana publikacja anulowana"}
 
+
+
+# --- SEO Audit ---
+
+class SEOAuditRequest(BaseModel):
+    url: str
+
+@api_router.post("/seo-audit")
+async def run_audit(request: SEOAuditRequest, user: dict = Depends(get_current_user)):
+    """Run SEO audit on a URL."""
+    emergent_key = os.environ.get("EMERGENT_LLM_KEY")
+    if not emergent_key:
+        raise HTTPException(status_code=500, detail="Brak klucza AI")
+    
+    try:
+        result = await run_seo_audit(request.url, emergent_key)
+        
+        audit_id = str(uuid.uuid4())
+        audit_doc = {
+            "id": audit_id,
+            "user_id": user["id"],
+            "url": request.url,
+            "result": result,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.seo_audits.insert_one(audit_doc)
+        
+        return {"id": audit_id, **result}
+    except Exception as e:
+        logging.error(f"SEO audit error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/seo-audit/history")
+async def get_audit_history(user: dict = Depends(get_current_user)):
+    """Get user's audit history."""
+    audits = await db.seo_audits.find(
+        {"user_id": user["id"]},
+        {"_id": 0, "id": 1, "url": 1, "created_at": 1, "result.overall_score": 1, "result.grade": 1}
+    ).sort("created_at", -1).to_list(20)
+    return audits
+
+
+# --- Competition Analysis ---
+
+class CompetitionRequest(BaseModel):
+    article_id: str
+    competitor_url: str
+
+@api_router.post("/competition/analyze")
+async def analyze_comp(request: CompetitionRequest, user: dict = Depends(get_current_user)):
+    """Analyze competition for an article."""
+    emergent_key = os.environ.get("EMERGENT_LLM_KEY")
+    if not emergent_key:
+        raise HTTPException(status_code=500, detail="Brak klucza AI")
+    
+    article = await db.articles.find_one({"id": request.article_id}, {"_id": 0})
+    if not article:
+        raise HTTPException(status_code=404, detail="Artykul nie znaleziony")
+    
+    try:
+        result = await analyze_competition(article, request.competitor_url, emergent_key)
+        return result
+    except Exception as e:
+        logging.error(f"Competition analysis error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- Auto-Update Check ---
+
+@api_router.post("/articles/check-updates")
+async def check_updates(user: dict = Depends(get_current_user)):
+    """Check all articles for needed updates."""
+    emergent_key = os.environ.get("EMERGENT_LLM_KEY")
+    if not emergent_key:
+        raise HTTPException(status_code=500, detail="Brak klucza AI")
+    
+    articles = await db.articles.find(
+        {"user_id": user["id"]},
+        {"_id": 0}
+    ).to_list(20)
+    
+    if not articles:
+        return {"articles_needing_update": [], "up_to_date_articles": [], "summary": "Brak artykulow do sprawdzenia."}
+    
+    try:
+        result = await check_articles_for_updates(articles, emergent_key)
+        
+        await db.update_checks.insert_one({
+            "id": str(uuid.uuid4()),
+            "user_id": user["id"],
+            "result": result,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+        
+        return result
+    except Exception as e:
+        logging.error(f"Auto-update check error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # --- Subscriptions & Payments ---
 
 @api_router.get("/subscription/plans")
