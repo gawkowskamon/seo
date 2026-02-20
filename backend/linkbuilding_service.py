@@ -86,7 +86,7 @@ async def analyze_internal_links(current_article: dict, all_articles: list, emer
     
     response = await chat.send_message(UserMessage(text=prompt))
     
-    text = response.text.strip()
+    text = response.strip()
     if text.startswith("```"):
         text = text.split("\n", 1)[1] if "\n" in text else text[3:]
         if text.endswith("```"):
