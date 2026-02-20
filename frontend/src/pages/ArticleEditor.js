@@ -663,6 +663,50 @@ const ArticleEditor = () => {
                   )}
                 </div>
               )}
+              {/* Competition Analysis */}
+              <div style={{ marginTop: 20, borderTop: '1px solid hsl(214, 18%, 90%)', paddingTop: 16 }}>
+                <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Analiza konkurencji</h3>
+                <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+                  <input value={compUrl} onChange={(e) => setCompUrl(e.target.value)}
+                    placeholder="URL konkurenta"
+                    data-testid="competition-url-input"
+                    style={{ flex: 1, padding: '6px 10px', borderRadius: 6, border: '1px solid hsl(214, 18%, 85%)', fontSize: 12 }} />
+                  <Button onClick={handleCompetitionAnalysis} disabled={compLoading} size="sm" style={{ flexShrink: 0 }}>
+                    {compLoading ? <Loader2 size={12} className="animate-spin" /> : 'Porownaj'}
+                  </Button>
+                </div>
+                {compResult && (
+                  <div>
+                    <div style={{
+                      display: 'flex', gap: 8, marginBottom: 8
+                    }}>
+                      <div style={{
+                        flex: 1, textAlign: 'center', padding: '8px', borderRadius: 8,
+                        background: 'hsl(220, 95%, 96%)', fontSize: 12
+                      }}>
+                        <div style={{ fontWeight: 700, color: '#04389E', fontSize: 16 }}>{compResult.my_score || '?'}</div>
+                        <div style={{ color: 'hsl(215, 16%, 50%)' }}>Twoj</div>
+                      </div>
+                      <div style={{
+                        flex: 1, textAlign: 'center', padding: '8px', borderRadius: 8,
+                        background: 'hsl(0, 0%, 96%)', fontSize: 12
+                      }}>
+                        <div style={{ fontWeight: 700, color: 'hsl(215, 16%, 35%)', fontSize: 16 }}>{compResult.competitor_score || '?'}</div>
+                        <div style={{ color: 'hsl(215, 16%, 50%)' }}>Konkurent</div>
+                      </div>
+                    </div>
+                    {compResult.summary && (
+                      <p style={{ fontSize: 11, color: 'hsl(215, 16%, 40%)', marginBottom: 8, lineHeight: 1.4 }}>{compResult.summary}</p>
+                    )}
+                    {(compResult.action_plan || []).slice(0, 3).map((a, i) => (
+                      <div key={i} style={{ fontSize: 11, padding: '4px 0', borderBottom: '1px solid hsl(214, 18%, 93%)' }}>
+                        <span style={{ fontWeight: 700, color: '#04389E', marginRight: 4 }}>#{a.priority}</span>
+                        {a.action}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
           {rightTab === 'schedule' && (
