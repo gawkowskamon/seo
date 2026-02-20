@@ -593,6 +593,108 @@ const ArticleEditor = () => {
               <ExportPanel articleId={articleId} />
             </div>
           )}
+          {rightTab === 'links' && (
+            <div data-testid="article-links-panel" style={{ padding: 16 }}>
+              <div style={{ marginBottom: 16 }}>
+                <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Linkowanie wewnetrzne</h3>
+                <p style={{ fontSize: 12, color: 'hsl(215, 16%, 50%)', marginBottom: 12 }}>
+                  AI przeanalizuje wszystkie artykuly i zasugeruje linki wewnetrzne.
+                </p>
+                <Button onClick={handleAnalyzeLinks} disabled={linkLoading} className="gap-2 w-full" size="sm">
+                  {linkLoading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                  Analizuj linkowanie
+                </Button>
+              </div>
+              {linkSuggestions && (
+                <div>
+                  {linkSuggestions.summary && (
+                    <p style={{ fontSize: 12, color: '#04389E', background: 'hsl(220, 95%, 96%)', padding: '8px 12px', borderRadius: 8, marginBottom: 12 }}>
+                      {linkSuggestions.summary}
+                    </p>
+                  )}
+                  {(linkSuggestions.outgoing_links || []).length > 0 && (
+                    <div style={{ marginBottom: 16 }}>
+                      <h4 style={{ fontSize: 12, fontWeight: 700, color: 'hsl(215, 16%, 40%)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        Linki wychodzace ({linkSuggestions.outgoing_links.length})
+                      </h4>
+                      {linkSuggestions.outgoing_links.map((link, i) => (
+                        <div key={i} style={{ padding: '8px 0', borderBottom: '1px solid hsl(214, 18%, 93%)', fontSize: 12 }}>
+                          <div style={{ fontWeight: 600, color: '#04389E' }}>{link.anchor_text}</div>
+                          <div style={{ color: 'hsl(215, 16%, 45%)', marginTop: 2 }}>{link.target_title}</div>
+                          {link.context_sentence && (
+                            <div style={{ color: 'hsl(215, 16%, 55%)', marginTop: 4, fontStyle: 'italic', fontSize: 11 }}
+                              dangerouslySetInnerHTML={{ __html: link.context_sentence }} />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {(linkSuggestions.incoming_links || []).length > 0 && (
+                    <div>
+                      <h4 style={{ fontSize: 12, fontWeight: 700, color: 'hsl(215, 16%, 40%)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        Linki przychodzace ({linkSuggestions.incoming_links.length})
+                      </h4>
+                      {linkSuggestions.incoming_links.map((link, i) => (
+                        <div key={i} style={{ padding: '8px 0', borderBottom: '1px solid hsl(214, 18%, 93%)', fontSize: 12 }}>
+                          <div style={{ fontWeight: 600, color: 'hsl(142, 60%, 30%)' }}>{link.anchor_text}</div>
+                          <div style={{ color: 'hsl(215, 16%, 45%)', marginTop: 2 }}>Z: {link.source_title}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+          {rightTab === 'schedule' && (
+            <div data-testid="article-schedule-panel" style={{ padding: 16 }}>
+              <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>Zaplanuj publikacje</h3>
+              {article.schedule_status === 'scheduled' ? (
+                <div style={{ background: 'hsl(220, 95%, 96%)', borderRadius: 10, padding: 16, marginBottom: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <CalendarClock size={16} style={{ color: '#04389E' }} />
+                    <span style={{ fontWeight: 600, color: '#04389E', fontSize: 13 }}>Zaplanowano</span>
+                  </div>
+                  <p style={{ fontSize: 13, color: 'hsl(222, 47%, 25%)', marginBottom: 4 }}>
+                    {article.scheduled_at ? new Date(article.scheduled_at).toLocaleString('pl-PL') : ''}
+                  </p>
+                  <p style={{ fontSize: 11, color: 'hsl(215, 16%, 50%)', marginBottom: 12 }}>
+                    {article.scheduled_wp !== false ? 'Publikacja na WordPress' : 'Bez WordPress'}
+                  </p>
+                  <Button variant="outline" size="sm" onClick={handleCancelSchedule} className="w-full"
+                    data-testid="cancel-schedule-btn">
+                    Anuluj planowanie
+                  </Button>
+                </div>
+              ) : (
+                <div>
+                  <div style={{ marginBottom: 16 }}>
+                    <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 6 }}>Data i godzina</label>
+                    <input
+                      type="datetime-local"
+                      value={scheduleDate}
+                      onChange={(e) => setScheduleDate(e.target.value)}
+                      data-testid="schedule-datetime-input"
+                      style={{
+                        width: '100%', padding: '8px 12px', borderRadius: 8,
+                        border: '1px solid hsl(214, 18%, 85%)', fontSize: 13
+                      }}
+                    />
+                  </div>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, marginBottom: 16 }}>
+                    <input type="checkbox" checked={scheduleWp} onChange={(e) => setScheduleWp(e.target.checked)}
+                      data-testid="schedule-wp-checkbox" />
+                    Publikuj rowniez na WordPress
+                  </label>
+                  <Button onClick={handleSchedule} disabled={scheduling} className="gap-2 w-full"
+                    data-testid="schedule-publish-btn">
+                    {scheduling ? <Loader2 size={14} className="animate-spin" /> : <CalendarClock size={14} />}
+                    Zaplanuj publikacje
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
