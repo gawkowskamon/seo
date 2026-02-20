@@ -79,9 +79,10 @@ async def analyze_internal_links(current_article: dict, all_articles: list, emer
     
     chat = LlmChat(
         api_key=emergent_key,
-        model="gpt-4.1-mini",
+        session_id=f"linkbuild-{current_article.get('id', 'unknown')}",
         system_message="Jestes ekspertem SEO specjalizujacym sie w linkowaniu wewnetrznym. Odpowiadaj WYLACZNIE JSON-em."
     )
+    chat.with_model("openai", "gpt-4.1-mini")
     
     response = await chat.send_async(UserMessage(text=prompt))
     
