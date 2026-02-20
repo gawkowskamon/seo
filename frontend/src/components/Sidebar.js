@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, PenTool, Lightbulb, LogOut, User, Layers, Users, Image as ImageIcon, Sparkles, Settings, CreditCard } from 'lucide-react';
+import { LayoutDashboard, PenTool, Lightbulb, LogOut, User, Layers, Users, Image as ImageIcon, Sparkles, Settings, CreditCard, Calendar, Download } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 const Sidebar = () => {
@@ -14,6 +14,8 @@ const Sidebar = () => {
     { path: '/generator-obrazow', label: 'Generator obrazow', icon: Sparkles, testId: 'sidebar-nav-image-generator' },
     { path: '/biblioteka', label: 'Biblioteka', icon: ImageIcon, testId: 'sidebar-nav-library' },
     { path: '/topics', label: 'Tematy', icon: Lightbulb, testId: 'sidebar-nav-topics' },
+    { path: '/kalendarz', label: 'Kalendarz', icon: Calendar, testId: 'sidebar-nav-calendar' },
+    { path: '/import', label: 'Import', icon: Download, testId: 'sidebar-nav-import' },
     { path: '/cennik', label: 'Cennik', icon: CreditCard, testId: 'sidebar-nav-pricing' },
   ];
 
