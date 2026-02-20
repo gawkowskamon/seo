@@ -1099,6 +1099,264 @@ async def seo_assistant_endpoint(article_id: str, request: SEOAssistantRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# --- Content Calendar ---
+
+class CalendarRequest(BaseModel):
+    period: str = "miesiac"  # miesiac, kwartal, polrocze
+
+@api_router.post("/content-calendar/generate")
+async def generate_calendar(request: CalendarRequest, user: dict = Depends(get_current_user)):
+    """Generate AI content calendar."""
+    emergent_key = os.environ.get("EMERGENT_LLM_KEY")
+    if not emergent_key:
+        raise HTTPException(status_code=500, detail="Brak klucza AI")
+    
+    # Get existing article titles to avoid duplicates
+    existing = await db.articles.find(
+        {"user_id": user["id"]}, {"_id": 0, "title": 1}
+    ).to_list(50)
+    existing_titles = [a.get("title", "") for a in existing]
+    
+    now = datetime.now(timezone.utc)
+    
+    try:
+        result = await generate_content_calendar(
+            period=request.period,
+            current_month=now.month,
+            current_year=now.year,
+            existing_titles=existing_titles,
+            emergent_key=emergent_key
+        )
+        
+        # Save calendar
+        cal_id = str(uuid.uuid4())
+        cal_doc = {
+            "id": cal_id,
+            "user_id": user["id"],
+            "period": request.period,
+            "plan": result,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.content_calendars.insert_one(cal_doc)
+        
+        return {"id": cal_id, **result}
+    except Exception as e:
+        logging.error(f"Content calendar error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/content-calendar/latest")
+async def get_latest_calendar(user: dict = Depends(get_current_user)):
+    """Get the most recent content calendar."""
+    cal = await db.content_calendars.find_one(
+        {"user_id": user["id"]},
+        {"_id": 0},
+        sort=[("created_at", -1)]
+    )
+    if not cal:
+        return None
+    return cal
+
+@api_router.get("/content-calendar/list")
+async def list_calendars(user: dict = Depends(get_current_user)):
+    """List all content calendars."""
+    cals = await db.content_calendars.find(
+        {"user_id": user["id"]}, {"_id": 0, "id": 1, "period": 1, "created_at": 1}
+    ).sort("created_at", -1).to_list(20)
+    return cals
+
+
+# --- Article Import ---
+
+class ImportUrlRequest(BaseModel):
+    url: str
+    optimize: bool = True
+
+@api_router.post("/import/url")
+async def import_article_from_url(request: ImportUrlRequest, user: dict = Depends(get_current_user)):
+    """Import and optionally optimize an article from a URL."""
+    try:
+        scraped = await scrape_article_from_url(request.url)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Nie udalo sie pobrac artykulu: {str(e)}")
+    
+    if request.optimize:
+        emergent_key = os.environ.get("EMERGENT_LLM_KEY")
+        if not emergent_key:
+            raise HTTPException(status_code=500, detail="Brak klucza AI")
+        
+        try:
+            optimized = await optimize_imported_article(
+                title=scraped["title"],
+                content_html=scraped["content_html"],
+                emergent_key=emergent_key
+            )
+        except Exception as e:
+            logging.error(f"Import optimization error: {e}")
+            # Fall back to raw import
+            optimized = {
+                "title": scraped["title"],
+                "sections": [{"heading": "Tresc", "anchor": "tresc", "content": scraped["content_html"][:5000], "subsections": []}],
+                "primary_keyword": "",
+                "secondary_keywords": [],
+                "meta_title": scraped["title"][:60],
+                "meta_description": scraped.get("meta_description", "")[:160],
+                "faq": [],
+                "toc": [],
+                "sources": [],
+                "internal_link_suggestions": []
+            }
+    else:
+        optimized = {
+            "title": scraped["title"],
+            "sections": [{"heading": "Tresc", "anchor": "tresc", "content": scraped["content_html"][:5000], "subsections": []}],
+            "primary_keyword": "",
+            "secondary_keywords": [],
+            "meta_title": scraped["title"][:60],
+            "meta_description": scraped.get("meta_description", "")[:160],
+            "faq": [],
+            "toc": [],
+            "sources": [],
+            "internal_link_suggestions": []
+        }
+    
+    # Save as article
+    article_id = str(uuid.uuid4())
+    article_doc = {
+        "id": article_id,
+        "user_id": user["id"],
+        "workspace_id": user.get("workspace_id", user["id"]),
+        "title": optimized.get("title", scraped["title"]),
+        "slug": optimized.get("slug", ""),
+        "primary_keyword": optimized.get("primary_keyword", ""),
+        "secondary_keywords": optimized.get("secondary_keywords", []),
+        "meta_title": optimized.get("meta_title", ""),
+        "meta_description": optimized.get("meta_description", ""),
+        "sections": optimized.get("sections", []),
+        "faq": optimized.get("faq", []),
+        "toc": optimized.get("toc", []),
+        "sources": optimized.get("sources", []),
+        "internal_link_suggestions": optimized.get("internal_link_suggestions", []),
+        "source_url": request.url,
+        "imported": True,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "seo_score": {"percentage": 0}
+    }
+    
+    await db.articles.insert_one(article_doc)
+    article_doc.pop("_id", None)
+    
+    return article_doc
+
+class ImportWordPressRequest(BaseModel):
+    wp_url: str
+    wp_user: str = ""
+    wp_password: str = ""
+    limit: int = 20
+
+@api_router.post("/import/wordpress")
+async def import_from_wp(request: ImportWordPressRequest, user: dict = Depends(get_current_user)):
+    """List available articles from WordPress for import."""
+    try:
+        articles = await import_from_wordpress(
+            wp_url=request.wp_url,
+            wp_user=request.wp_user or None,
+            wp_password=request.wp_password or None,
+            limit=request.limit
+        )
+        return {"articles": articles, "count": len(articles)}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Blad importu z WordPress: {str(e)}")
+
+
+# --- Internal Linkbuilding ---
+
+@api_router.post("/articles/{article_id}/linkbuilding")
+async def suggest_internal_links(article_id: str, user: dict = Depends(get_current_user)):
+    """AI-powered internal linkbuilding suggestions."""
+    emergent_key = os.environ.get("EMERGENT_LLM_KEY")
+    if not emergent_key:
+        raise HTTPException(status_code=500, detail="Brak klucza AI")
+    
+    # Get current article
+    article = await db.articles.find_one({"id": article_id}, {"_id": 0})
+    if not article:
+        raise HTTPException(status_code=404, detail="Artykul nie znaleziony")
+    
+    # Get all user's articles
+    all_articles = await db.articles.find(
+        {"user_id": user["id"]},
+        {"_id": 0, "id": 1, "title": 1, "primary_keyword": 1, "sections": 1}
+    ).to_list(50)
+    
+    if len(all_articles) < 2:
+        return {"outgoing_links": [], "incoming_links": [], "summary": "Potrzebujesz minimum 2 artykulow do linkowania wewnetrznego."}
+    
+    try:
+        result = await analyze_internal_links(article, all_articles, emergent_key)
+        
+        # Save suggestions to article
+        await db.articles.update_one(
+            {"id": article_id},
+            {"$set": {"linkbuilding_suggestions": result}}
+        )
+        
+        return result
+    except Exception as e:
+        logging.error(f"Linkbuilding error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- Scheduled Publishing ---
+
+class SchedulePublishRequest(BaseModel):
+    scheduled_at: str  # ISO datetime string
+    publish_to_wordpress: bool = True
+
+@api_router.post("/articles/{article_id}/schedule")
+async def schedule_article_publish(article_id: str, request: SchedulePublishRequest, user: dict = Depends(get_current_user)):
+    """Schedule an article for future WordPress publishing."""
+    article = await db.articles.find_one({"id": article_id}, {"_id": 0})
+    if not article:
+        raise HTTPException(status_code=404, detail="Artykul nie znaleziony")
+    
+    if not user.get("is_admin") and article.get("user_id") != user["id"]:
+        raise HTTPException(status_code=403, detail="Brak dostepu")
+    
+    await db.articles.update_one(
+        {"id": article_id},
+        {"$set": {
+            "scheduled_at": request.scheduled_at,
+            "scheduled_wp": request.publish_to_wordpress,
+            "schedule_status": "scheduled"
+        }}
+    )
+    
+    return {
+        "message": f"Artykul zaplanowany na {request.scheduled_at}",
+        "article_id": article_id,
+        "scheduled_at": request.scheduled_at,
+        "publish_to_wordpress": request.publish_to_wordpress
+    }
+
+@api_router.delete("/articles/{article_id}/schedule")
+async def cancel_scheduled_publish(article_id: str, user: dict = Depends(get_current_user)):
+    """Cancel a scheduled publication."""
+    await db.articles.update_one(
+        {"id": article_id},
+        {"$unset": {"scheduled_at": "", "scheduled_wp": "", "schedule_status": ""}}
+    )
+    return {"message": "Planowana publikacja anulowana"}
+
+@api_router.get("/articles/scheduled")
+async def list_scheduled_articles(user: dict = Depends(get_current_user)):
+    """List all scheduled articles."""
+    articles = await db.articles.find(
+        {"user_id": user["id"], "schedule_status": "scheduled"},
+        {"_id": 0, "id": 1, "title": 1, "scheduled_at": 1, "scheduled_wp": 1}
+    ).sort("scheduled_at", 1).to_list(50)
+    return articles
+
+
 # --- Subscriptions & Payments ---
 
 @api_router.get("/subscription/plans")
