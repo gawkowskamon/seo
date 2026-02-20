@@ -334,6 +334,36 @@ async def list_scheduled_articles(user: dict = Depends(get_current_user)):
     ).sort("scheduled_at", 1).to_list(50)
     return articles
 
+@api_router.post("/articles/check-updates")
+async def check_updates(user: dict = Depends(get_current_user)):
+    """Check all articles for needed updates."""
+    emergent_key = os.environ.get("EMERGENT_LLM_KEY")
+    if not emergent_key:
+        raise HTTPException(status_code=500, detail="Brak klucza AI")
+    
+    articles = await db.articles.find(
+        {"user_id": user["id"]},
+        {"_id": 0}
+    ).to_list(20)
+    
+    if not articles:
+        return {"articles_needing_update": [], "up_to_date_articles": [], "summary": "Brak artykulow do sprawdzenia."}
+    
+    try:
+        result = await check_articles_for_updates(articles, emergent_key)
+        
+        await db.update_checks.insert_one({
+            "id": str(uuid.uuid4()),
+            "user_id": user["id"],
+            "result": result,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+        
+        return result
+    except Exception as e:
+        logging.error(f"Auto-update check error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 # --- Article CRUD ---
 
