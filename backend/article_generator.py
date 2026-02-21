@@ -141,46 +141,50 @@ async def generate_article(topic: str, primary_keyword: str, secondary_keywords:
             tone=tone
         )
     
-    # Try with retries - first try gpt-4.1-mini (faster, more reliable), fallback to gpt-4o
-    models_to_try = [("openai", "gpt-4.1-mini"), ("openai", "gpt-4o")]
+    # Try with retries - use gpt-4.1-mini (fast), single attempt per model
+    models_to_try = [("openai", "gpt-4.1-mini")]
     last_error = None
     
     for provider, model in models_to_try:
-        for attempt in range(2):
-            try:
-                logger.info(f"Attempting article generation with {model} (attempt {attempt+1})")
-                chat = LlmChat(
-                    api_key=api_key,
-                    session_id=f"article-gen-{hash(topic) % 100000}-{attempt}",
-                    system_message=ARTICLE_SYSTEM_PROMPT
-                )
-                chat.with_model(provider, model)
-                
-                response = await chat.send_message(UserMessage(text=prompt))
-                
-                # Clean and parse JSON response
-                clean_response = response.strip()
-                if clean_response.startswith("```"):
-                    clean_response = re.sub(r'^```(?:json)?\s*', '', clean_response)
-                    clean_response = re.sub(r'\s*```$', '', clean_response)
-                
-                article = json.loads(clean_response)
-                
-                # Validate required fields
-                required_fields = ["title", "slug", "meta_title", "meta_description", "toc", "sections", "faq", "sources"]
-                missing = [f for f in required_fields if f not in article]
-                if missing:
-                    raise ValueError(f"Article missing required fields: {missing}")
-                
-                logger.info(f"Article generated successfully with {model}")
-                return article
-                
-            except Exception as e:
-                last_error = e
-                logger.warning(f"Attempt {attempt+1} with {model} failed: {e}")
-                continue
+        try:
+            logger.info(f"Attempting article generation with {model}")
+            chat = LlmChat(
+                api_key=api_key,
+                session_id=f"article-gen-{hash(topic) % 100000}",
+                system_message=ARTICLE_SYSTEM_PROMPT
+            )
+            chat.with_model(provider, model)
+            
+            response = await chat.send_message(UserMessage(text=prompt))
+            
+            # Clean and parse JSON response
+            clean_response = response.strip()
+            if clean_response.startswith("```"):
+                clean_response = re.sub(r'^```(?:json)?\s*', '', clean_response)
+                clean_response = re.sub(r'\s*```$', '', clean_response)
+            
+            article = json.loads(clean_response)
+            
+            # Validate required fields
+            required_fields = ["title", "slug", "meta_title", "meta_description", "toc", "sections"]
+            missing = [f for f in required_fields if f not in article]
+            if missing:
+                raise ValueError(f"Article missing required fields: {missing}")
+            
+            # Add defaults for optional fields
+            article.setdefault("faq", [])
+            article.setdefault("sources", [])
+            article.setdefault("internal_link_suggestions", [])
+            
+            logger.info(f"Article generated successfully with {model}")
+            return article
+            
+        except Exception as e:
+            last_error = e
+            logger.warning(f"Attempt with {model} failed: {e}")
+            continue
     
-    raise last_error or ValueError("Article generation failed after all retries")
+    raise last_error or ValueError("Article generation failed")
 
 
 async def suggest_topics(category: str = "ogólne", context: str = "aktualne tematy podatkowe") -> dict:
