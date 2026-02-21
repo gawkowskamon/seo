@@ -5,7 +5,7 @@ import base64
 from datetime import datetime
 
 class AdminFeaturesAPITester:
-    def __init__(self, base_url="https://content-craft-ai-4.preview.emergentagent.com"):
+    def __init__(self, base_url="https://seo-article-builder-2.preview.emergentagent.com"):
         self.base_url = base_url
         self.tests_run = 0
         self.tests_passed = 0

@@ -6,7 +6,7 @@ import requests
 import time
 import os
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://content-craft-ai-4.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://seo-article-builder-2.preview.emergentagent.com')
 
 # Test credentials
 ADMIN_EMAIL = "monika.gawkowska@kurdynowski.pl"
