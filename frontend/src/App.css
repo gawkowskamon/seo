@@ -1,3 +1,47 @@
+/* CSS Variables for theming */
+:root {
+  --bg-app: #F7F8FA;
+  --bg-card: white;
+  --bg-sidebar: white;
+  --bg-input: white;
+  --bg-hover: #F1F5F9;
+  --bg-active: #E6F0FF;
+  --bg-muted: #F8FAFC;
+  --border: #E2E8F0;
+  --border-light: #F1F5F9;
+  --text-primary: #0B1220;
+  --text-secondary: #64748B;
+  --text-muted: #94A3B8;
+  --accent: #04389E;
+  --accent-hover: #0652D0;
+  --accent-light: #E6F0FF;
+  --orange: #F28C28;
+  --shadow-card: 0 1px 3px rgba(15, 23, 42, 0.03);
+  --shadow-hover: 0 8px 32px rgba(4, 56, 158, 0.08);
+}
+
+[data-theme="dark"] {
+  --bg-app: #0F1117;
+  --bg-card: #1A1D27;
+  --bg-sidebar: #14161E;
+  --bg-input: #1E2130;
+  --bg-hover: #232637;
+  --bg-active: #1C2444;
+  --bg-muted: #1A1D27;
+  --border: #2A2D3A;
+  --border-light: #232637;
+  --text-primary: #E8EAF0;
+  --text-secondary: #8B8FA4;
+  --text-muted: #5A5E74;
+  --accent: #4B83F0;
+  --accent-hover: #6B9BF7;
+  --accent-light: #1C2444;
+  --orange: #F5A050;
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.2);
+  --shadow-hover: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+
 .app-layout {
   display: flex;
   min-height: 100vh;
