@@ -689,13 +689,13 @@ function kurdynowski_ajax_import_article() {
     
     $api_url = rtrim(get_option('kurdynowski_api_url', ''), '/');
     
-    // Get full article with export
+    // Get full article with styled export (inline styles for WordPress)
     $response = wp_remote_post($api_url . '/articles/' . $article_id . '/export', array(
         'headers' => array(
             'Authorization' => 'Bearer ' . $token,
             'Content-Type' => 'application/json'
         ),
-        'body' => json_encode(array('format' => 'html')),
+        'body' => json_encode(array('format' => 'wordpress')),
         'timeout' => 30
     ));
     
@@ -714,16 +714,7 @@ function kurdynowski_ajax_import_article() {
     
     $article = json_decode(wp_remote_retrieve_body($meta_response), true);
     
-    // Extract body content from full HTML (strip html/head/body tags)
-    if (preg_match('/<body[^>]*>(.*)<\\/body>/is', $html_content, $matches)) {
-        $html_content = $matches[1];
-    }
-    // Strip article wrapper
-    if (preg_match('/<article[^>]*>(.*)<\\/article>/is', $html_content, $matches)) {
-        $html_content = $matches[1];
-    }
-    // Remove the h1 title (WP handles it)
-    $html_content = preg_replace('/<h1[^>]*>.*?<\\/h1>/is', '', $html_content, 1);
+    // Content from wordpress format is already ready for WP (inline styles, no html/body wrapper)
     
     // Create WP post
     $post_data = array(
