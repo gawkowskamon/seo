@@ -264,38 +264,45 @@ async def health():
 
 # --- Article Generation ---
 
-@api_router.post("/articles/generate")
-async def generate_article_endpoint(request: ArticleGenerateRequest, user: dict = Depends(get_current_user)):
-    """Generate a new SEO-optimized article."""
+import asyncio
+
+# Background job storage
+_generation_jobs = {}
+
+async def _run_generation_job(job_id: str, request_data: dict, user: dict):
+    """Background task for article generation."""
     try:
+        _generation_jobs[job_id]["status"] = "generating"
+        _generation_jobs[job_id]["stage"] = 1
+        
         article_data = await generate_article(
-            topic=request.topic,
-            primary_keyword=request.primary_keyword,
-            secondary_keywords=request.secondary_keywords,
-            target_length=request.target_length,
-            tone=request.tone,
-            template=request.template
+            topic=request_data["topic"],
+            primary_keyword=request_data["primary_keyword"],
+            secondary_keywords=request_data["secondary_keywords"],
+            target_length=request_data["target_length"],
+            tone=request_data["tone"],
+            template=request_data["template"]
         )
         
-        # Compute initial SEO score
+        _generation_jobs[job_id]["stage"] = 3
+        
         seo_score = compute_seo_score(
-            article_data, 
-            request.primary_keyword, 
-            request.secondary_keywords
+            article_data,
+            request_data["primary_keyword"],
+            request_data["secondary_keywords"]
         )
         
-        # Create article document
         article_id = str(uuid.uuid4())
         article_doc = {
             "id": article_id,
             "user_id": user["id"],
             "workspace_id": user.get("workspace_id", user["id"]),
-            "topic": request.topic,
-            "primary_keyword": request.primary_keyword,
-            "secondary_keywords": request.secondary_keywords,
-            "target_length": request.target_length,
-            "tone": request.tone,
-            "template": request.template,
+            "topic": request_data["topic"],
+            "primary_keyword": request_data["primary_keyword"],
+            "secondary_keywords": request_data["secondary_keywords"],
+            "target_length": request_data["target_length"],
+            "tone": request_data["tone"],
+            "template": request_data["template"],
             "title": article_data.get("title", ""),
             "slug": article_data.get("slug", ""),
             "meta_title": article_data.get("meta_title", ""),
@@ -311,16 +318,73 @@ async def generate_article_endpoint(request: ArticleGenerateRequest, user: dict 
             "updated_at": datetime.now(timezone.utc).isoformat()
         }
         
-        # Save to MongoDB
         await db.articles.insert_one(article_doc)
         
-        return serialize_doc(article_doc)
+        _generation_jobs[job_id]["status"] = "completed"
+        _generation_jobs[job_id]["stage"] = 4
+        _generation_jobs[job_id]["article_id"] = article_id
+        _generation_jobs[job_id]["article"] = serialize_doc(article_doc)
         
-    except json.JSONDecodeError as e:
-        raise HTTPException(status_code=500, detail=f"AI returned invalid JSON: {str(e)}")
     except Exception as e:
-        logging.error(f"Article generation error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logging.error(f"Background generation error: {e}")
+        _generation_jobs[job_id]["status"] = "failed"
+        _generation_jobs[job_id]["error"] = str(e)
+
+
+@api_router.post("/articles/generate")
+async def generate_article_endpoint(request: ArticleGenerateRequest, user: dict = Depends(get_current_user)):
+    """Start async article generation - returns job ID immediately."""
+    job_id = str(uuid.uuid4())
+    
+    _generation_jobs[job_id] = {
+        "status": "queued",
+        "stage": 0,
+        "article_id": None,
+        "article": None,
+        "error": None,
+        "user_id": user["id"],
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    request_data = {
+        "topic": request.topic,
+        "primary_keyword": request.primary_keyword,
+        "secondary_keywords": request.secondary_keywords,
+        "target_length": request.target_length,
+        "tone": request.tone,
+        "template": request.template
+    }
+    
+    asyncio.create_task(_run_generation_job(job_id, request_data, user))
+    
+    return {"job_id": job_id, "status": "queued"}
+
+
+@api_router.get("/articles/generate/status/{job_id}")
+async def get_generation_status(job_id: str, user: dict = Depends(get_current_user)):
+    """Check article generation job status."""
+    job = _generation_jobs.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job nie znaleziony")
+    if job["user_id"] != user["id"]:
+        raise HTTPException(status_code=403, detail="Brak dostepu")
+    
+    result = {
+        "job_id": job_id,
+        "status": job["status"],
+        "stage": job["stage"]
+    }
+    
+    if job["status"] == "completed":
+        result["article_id"] = job["article_id"]
+        result["article"] = job["article"]
+        # Cleanup
+        del _generation_jobs[job_id]
+    elif job["status"] == "failed":
+        result["error"] = job["error"]
+        del _generation_jobs[job_id]
+    
+    return result
 
 
 # --- Scheduled Articles (must be before /articles/{article_id}) ---
