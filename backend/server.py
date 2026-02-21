@@ -1113,13 +1113,12 @@ async def publish_article_to_wordpress(article_id: str, user: dict = Depends(get
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.get("/wordpress/plugin")
-async def download_wordpress_plugin(user: dict = Depends(get_current_user)):
+async def download_wordpress_plugin(user: dict = Depends(get_current_user), request: object = None):
     """Generate and download the WordPress plugin file."""
-    # Use the current API base URL
+    from starlette.requests import Request
     api_base = os.environ.get("API_BASE_URL", "")
     if not api_base:
-        # Try to construct from request context
-        api_base = "https://content-craft-ai-4.preview.emergentagent.com/api"
+        api_base = os.environ.get("REACT_APP_BACKEND_URL", "") + "/api"
     
     plugin_code = generate_wordpress_plugin(api_base)
     
