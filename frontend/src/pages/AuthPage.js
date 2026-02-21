@@ -69,7 +69,7 @@ const AuthPage = () => {
           <img 
             src="https://static.prod-images.emergentagent.com/jobs/03a9d366-f1af-4aca-be22-7750e2cedcf9/images/d0d934dc57a3eeae9c2f153104d1f3e94b5ebbbf83e571a8f1bebe771ffb8f14.png"
             alt="Kurdynowski"
-            style={{ width: 56, height: 56, borderRadius: 14, marginBottom: 12, objectFit: 'contain' }}
+            style={{ width: 56, height: 56, borderRadius: 14, marginBottom: 12, objectFit: 'contain', display: 'block', margin: '0 auto 12px' }}
           />
           <h1 style={{
             fontFamily: "'Instrument Serif', Georgia, serif",
