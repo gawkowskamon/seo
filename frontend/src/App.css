@@ -235,8 +235,8 @@
 }
 
 .stat-card {
-  background: white;
-  border: 1px solid #E2E8F0;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
   border-radius: 14px;
   padding: 22px;
   transition: box-shadow 0.25s ease, transform 0.2s ease;
@@ -257,7 +257,7 @@
 }
 
 .stat-card:hover {
-  box-shadow: 0 8px 32px rgba(4, 56, 158, 0.08);
+  box-shadow: var(--shadow-hover);
   transform: translateY(-2px);
 }
 
@@ -267,7 +267,7 @@
 
 .stat-card-label {
   font-size: 12px;
-  color: #64748B;
+  color: var(--text-secondary);
   font-weight: 600;
   margin-bottom: 6px;
   font-family: 'IBM Plex Sans', sans-serif;
@@ -279,20 +279,20 @@
   font-family: 'Instrument Serif', Georgia, serif;
   font-size: 38px;
   font-weight: 400;
-  color: #0B1220;
+  color: var(--text-primary);
 }
 
 .stat-card-value.score {
-  color: #04389E;
+  color: var(--accent);
 }
 
 /* Article table */
 .articles-table {
-  background: white;
-  border: 1px solid #E2E8F0;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
   border-radius: 14px;
   overflow: hidden;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
+  box-shadow: var(--shadow-card);
 }
 
 .articles-table table {
@@ -305,19 +305,20 @@
   text-align: left;
   font-size: 11px;
   font-weight: 700;
-  color: #64748B;
+  color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  background: #F8FAFC;
-  border-bottom: 1px solid #E2E8F0;
+  background: var(--bg-muted);
+  border-bottom: 1px solid var(--border);
   font-family: 'IBM Plex Sans', sans-serif;
 }
 
 .articles-table td {
   padding: 14px 18px;
   font-size: 14px;
-  border-bottom: 1px solid #F1F5F9;
+  border-bottom: 1px solid var(--border-light);
   transition: background-color 0.12s;
+  color: var(--text-primary);
 }
 
 .articles-table tr:last-child td {
@@ -325,7 +326,7 @@
 }
 
 .articles-table tr:hover td {
-  background: #FAFBFC;
+  background: var(--bg-hover);
 }
 
 .article-title-link {
