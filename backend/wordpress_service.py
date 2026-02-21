@@ -286,6 +286,11 @@ def _build_styled_content(article: dict) -> str:
     return styled_html
 
 
+def build_styled_wordpress_content(article: dict) -> str:
+    """Public wrapper: returns styled HTML content for WordPress export."""
+    return _build_styled_content(article)
+
+
 async def publish_to_wordpress(wp_url: str, wp_user: str, wp_app_password: str, article: dict) -> dict:
     """
     Publish an article to WordPress via REST API.
