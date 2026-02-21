@@ -36,6 +36,7 @@ from linkbuilding_service import analyze_internal_links
 from seo_audit_service import run_seo_audit
 from competition_service import analyze_competition
 from auto_update_service import check_articles_for_updates
+from chat_assistant_service import chat_with_assistant, clear_chat_session
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
