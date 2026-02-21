@@ -1658,7 +1658,7 @@ async def create_checkout(request: SubscriptionCheckoutRequest, user: dict = Dep
         raise HTTPException(status_code=400, detail="Nieznany plan subskrypcji")
     
     # Get base URL for callbacks
-    base_url = os.environ.get("APP_BASE_URL", "https://content-craft-ai-4.preview.emergentagent.com")
+    base_url = os.environ.get("APP_BASE_URL", os.environ.get("REACT_APP_BACKEND_URL", ""))
     callback_url = f"{base_url}/api/subscription/webhook"
     return_url = f"{base_url}/cennik"
     
