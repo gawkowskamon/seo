@@ -101,7 +101,7 @@ def _build_contextual_prompt(user_prompt: str, style_id: str, article_context: d
     return prompt
 
 
-async def generate_image(prompt: str, style: str = "hero", topic: str = "", article_context: dict = None, reference_image: dict = None) -> dict:
+async def generate_image(prompt: str, style: str = "hero", topic: str = "", article_context: dict = None, reference_images: list = None) -> dict:
     """Generate an image using Gemini Nano Banana model.
     
     Args:
@@ -109,7 +109,7 @@ async def generate_image(prompt: str, style: str = "hero", topic: str = "", arti
         style: Style preset ID from IMAGE_STYLES
         topic: Legacy topic parameter
         article_context: Optional article context for contextual prompts
-        reference_image: Optional reference image dict with 'data' (base64) and 'mime_type'
+        reference_images: Optional list of reference image dicts, each with 'data' (base64) and 'mime_type'
     
     Returns dict with 'data' (base64) and 'mime_type'.
     """
@@ -120,9 +120,13 @@ async def generate_image(prompt: str, style: str = "hero", topic: str = "", arti
     # Build contextual prompt
     full_prompt = _build_contextual_prompt(prompt or topic, style, article_context)
     
-    # If reference image is provided, add instruction to the prompt
-    if reference_image:
-        full_prompt += "\n\nIMPORTANT: Use the attached reference image as inspiration for style, composition, or content. Create a new image that takes cues from this reference while matching the described style and topic."
+    # If reference images are provided, add instruction to the prompt
+    if reference_images:
+        count = len(reference_images)
+        if count == 1:
+            full_prompt += "\n\nIMPORTANT: Use the attached reference image as inspiration for style, composition, or content. Create a new image that takes cues from this reference while matching the described style and topic."
+        else:
+            full_prompt += f"\n\nIMPORTANT: I have attached {count} reference images. Analyze ALL of them carefully. Use them as inspiration for style, composition, colors, and content. Combine the best elements from all references to create a new, cohesive image that matches the described style and topic."
     
     session_id = f"img-gen-{uuid.uuid4().hex[:8]}"
     
@@ -133,19 +137,20 @@ async def generate_image(prompt: str, style: str = "hero", topic: str = "", arti
     )
     chat.with_model("gemini", "gemini-3-pro-image-preview").with_params(modalities=["image", "text"])
     
-    # Build message with optional reference image
+    # Build message with all reference images
     file_contents = None
-    if reference_image:
+    if reference_images:
         file_contents = [
             FileContent(
-                content_type=reference_image["mime_type"],
-                file_content_base64=reference_image["data"]
+                content_type=ref["mime_type"],
+                file_content_base64=ref["data"]
             )
+            for ref in reference_images
         ]
     
     msg = UserMessage(text=full_prompt, file_contents=file_contents)
     
-    logger.info(f"Generating image with style={style}, prompt_len={len(full_prompt)}, has_reference={reference_image is not None}")
+    logger.info(f"Generating image with style={style}, prompt_len={len(full_prompt)}, num_references={len(reference_images) if reference_images else 0}")
     
     text, images = await chat.send_message_multimodal_response(msg)
     
@@ -161,14 +166,14 @@ async def generate_image(prompt: str, style: str = "hero", topic: str = "", arti
     }
 
 
-async def generate_image_variant(original_prompt: str, style: str, variation_type: str = "color", article_context: dict = None, reference_image: dict = None) -> dict:
+async def generate_image_variant(original_prompt: str, style: str, variation_type: str = "color", article_context: dict = None, reference_images: list = None) -> dict:
     """Generate a variant of an image with modifications.
     
     Args:
         original_prompt: The original image prompt
         style: Style preset
         variation_type: Type of variation (color, composition, mood, simplify)
-        reference_image: Optional reference image dict with 'data' (base64) and 'mime_type'
+        reference_images: Optional list of reference image dicts, each with 'data' (base64) and 'mime_type'
     
     Returns dict with 'data' (base64) and 'mime_type'.
     """
@@ -187,5 +192,5 @@ async def generate_image_variant(original_prompt: str, style: str, variation_typ
         prompt=modified_prompt,
         style=style,
         article_context=article_context,
-        reference_image=reference_image
+        reference_images=reference_images
     )
