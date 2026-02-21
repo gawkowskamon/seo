@@ -25,6 +25,8 @@ const Sidebar = () => {
     { path: '/kalendarz', label: 'Kalendarz', icon: Calendar, testId: 'sidebar-nav-calendar' },
     { path: '/import', label: 'Import', icon: Download, testId: 'sidebar-nav-import' },
     { path: '/audyt-seo', label: 'Audyt SEO', icon: Search, testId: 'sidebar-nav-audit' },
+    { path: '/analityka', label: 'Analityka', icon: BarChart3, testId: 'sidebar-nav-analytics' },
+    { path: '/newsletter', label: 'Newsletter', icon: Mail, testId: 'sidebar-nav-newsletter' },
     { path: '/aktualizacje', label: 'Aktualizacje', icon: RefreshCw, testId: 'sidebar-nav-updates' },
     { path: '/cennik', label: 'Cennik', icon: CreditCard, testId: 'sidebar-nav-pricing' },
   ];
