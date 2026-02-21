@@ -1653,8 +1653,12 @@ async def _run_keyword_analytics_job(job_id: str, keywords: list, industry: str,
     """Background task for keyword analytics."""
     try:
         _keyword_analytics_jobs[job_id]["status"] = "running"
-        from emergentintegrations.llm.chat import LlmChat
-        chat = LlmChat(api_key=emergent_key, model="gpt-4.1-mini")
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        chat = LlmChat(
+            api_key=emergent_key,
+            session_id=f"kw-analytics-{job_id[:8]}",
+            system_message="Jesteś ekspertem SEO i analityki słów kluczowych w Polsce. Odpowiadaj WYŁĄCZNIE poprawnym JSON-em."
+        )
         
         kw_list = ", ".join(keywords[:10]) if keywords else "ulgi podatkowe, VAT 2026, ZUS, PIT, CIT, księgowość online, biuro rachunkowe, faktury elektroniczne"
         
