@@ -23,7 +23,7 @@ Feature-rich application for writing accounting-related blog articles with SEO o
 
 ### Image Features
 - [x] Image generator (Nano Banana) with 7 styles
-- [x] Multiple reference images (up to 5)
+- [x] **Multiple reference images** (up to 5) — all attachments sent to Gemini for analysis
 - [x] Batch generation (4 variants)
 - [x] Image library + lightbox viewer
 - [x] AI image editing
@@ -67,6 +67,7 @@ Feature-rich application for writing accounting-related blog articles with SEO o
 - iteration_15.json: Dark Mode, AI Chat, Async SEO - 100% pass
 - iteration_16.json: Keyword Analytics, Newsletter, AI Rewriter - 100% pass
 - iteration_17.json: WordPress Styled Export - 14/14 pass (100%)
+- iteration_18.json: Multiple Reference Images - 100% pass (backend + frontend)
 
 ## Backlog
 - [ ] Social media integration (Facebook/LinkedIn post generation)
