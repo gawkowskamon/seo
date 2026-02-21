@@ -11,6 +11,7 @@ from typing import List, Optional, Dict, Any
 import uuid
 from datetime import datetime, timezone
 import json
+import asyncio
 
 from article_generator import generate_article, suggest_topics
 from seo_scorer import compute_seo_score
