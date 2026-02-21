@@ -124,22 +124,46 @@ const ArticleGenerator = () => {
     }, 4000);
 
     try {
-      const response = await axios.post(`${BACKEND_URL}/api/articles/generate`, {
+      // Start async generation
+      const startRes = await axios.post(`${BACKEND_URL}/api/articles/generate`, {
         topic: topic.trim(),
         primary_keyword: primaryKeyword.trim(),
         secondary_keywords: secondaryKeywords,
         target_length: parseInt(targetLength),
         tone: tone,
         template: selectedTemplate
-      }, { timeout: 180000 });
+      }, { timeout: 30000 });
 
-      clearInterval(stageInterval);
-      setCurrentStage(4);
+      const jobId = startRes.data.job_id;
+      
+      // Poll for completion
+      const pollInterval = setInterval(async () => {
+        try {
+          const statusRes = await axios.get(`${BACKEND_URL}/api/articles/generate/status/${jobId}`);
+          const { status, stage, article_id, error } = statusRes.data;
+          
+          if (stage !== undefined) setCurrentStage(Math.min(stage, 3));
+          
+          if (status === 'completed' && article_id) {
+            clearInterval(pollInterval);
+            clearInterval(stageInterval);
+            setCurrentStage(4);
+            setTimeout(() => {
+              toast.success('Artykul wygenerowany pomyslnie!');
+              navigate(`/editor/${article_id}`);
+            }, 800);
+          } else if (status === 'failed') {
+            clearInterval(pollInterval);
+            clearInterval(stageInterval);
+            setIsGenerating(false);
+            toast.error(error || 'Blad generowania artykulu');
+          }
+        } catch (pollErr) {
+          // Keep polling on network errors
+          console.warn('Poll error:', pollErr.message);
+        }
+      }, 3000);
 
-      setTimeout(() => {
-        toast.success('Artykul wygenerowany pomyslnie!');
-        navigate(`/editor/${response.data.id}`);
-      }, 1000);
     } catch (error) {
       clearInterval(stageInterval);
       setIsGenerating(false);
