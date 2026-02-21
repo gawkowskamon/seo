@@ -47,7 +47,9 @@ export default function SEOAuditPage() {
 
   const loadHistory = async () => {
     try {
-      const res = await axios.get(`${BACKEND_URL}/api/seo-audit/history`);
+      const token = localStorage.getItem('token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const res = await axios.get(`${BACKEND_URL}/api/seo-audit/history`, { headers });
       setHistory(res.data || []);
     } catch (e) { /* ignore */ }
   };
