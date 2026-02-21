@@ -98,11 +98,11 @@ def generate_full_html(article: dict) -> str:
     # Build sections HTML
     sections_html = ""
     for section in article.get("sections", []):
-        sections_html += f'<section id="{section["anchor"]}">'
-        sections_html += f'<h2>{section["heading"]}</h2>'
+        sections_html += f'<section id="{section.get("anchor", "")}">'
+        sections_html += f'<h2>{section.get("heading", "")}</h2>'
         sections_html += section.get("content", "")
         for sub in section.get("subsections", []):
-            sections_html += f'<h3 id="{sub["anchor"]}">{sub["heading"]}</h3>'
+            sections_html += f'<h3 id="{sub.get("anchor", "")}">{sub.get("heading", "")}</h3>'
             sections_html += sub.get("content", "")
         sections_html += '</section>'
     
@@ -111,9 +111,9 @@ def generate_full_html(article: dict) -> str:
     faq_html += '<div itemscope itemtype="https://schema.org/FAQPage">'
     for faq in article.get("faq", []):
         faq_html += f'''<div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
-            <h3 itemprop="name">{faq["question"]}</h3>
+            <h3 itemprop="name">{faq.get("question", "")}</h3>
             <div itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
-                <p itemprop="text">{faq["answer"]}</p>
+                <p itemprop="text">{faq.get("answer", "")}</p>
             </div>
         </div>'''
     faq_html += '</div></section>'
@@ -121,7 +121,7 @@ def generate_full_html(article: dict) -> str:
     # Build sources HTML
     sources_html = '<section class="sources"><h2>Źródła</h2><ul>'
     for src in article.get("sources", []):
-        sources_html += f'<li><a href="{src["url"]}" target="_blank" rel="noopener">{src["name"]}</a> ({src.get("type", "")})</li>'
+        sources_html += f'<li><a href="{src.get("url", "#")}" target="_blank" rel="noopener">{src.get("name", "")}</a> ({src.get("type", "")})</li>'
     sources_html += '</ul></section>'
     
     html = f"""<!DOCTYPE html>
