@@ -80,18 +80,47 @@ const Sidebar = () => {
       {user && (
         <div style={{
           padding: '12px 12px 16px',
-          borderTop: '1px solid #E2E8F0',
+          borderTop: '1px solid var(--border)',
           marginTop: 'auto'
         }}>
+          {/* Dark Mode Toggle */}
+          <div
+            data-testid="dark-mode-toggle"
+            onClick={() => setDarkMode(prev => !prev)}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '8px 12px', borderRadius: 10, marginBottom: 8,
+              cursor: 'pointer', background: 'var(--bg-hover)',
+              transition: 'background 0.15s'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>
+              {darkMode ? <Moon size={15} /> : <Sun size={15} />}
+              {darkMode ? 'Tryb ciemny' : 'Tryb jasny'}
+            </div>
+            <div style={{
+              width: 36, height: 20, borderRadius: 10,
+              background: darkMode ? 'var(--accent)' : 'var(--border)',
+              position: 'relative', transition: 'background 0.2s'
+            }}>
+              <div style={{
+                width: 16, height: 16, borderRadius: '50%',
+                background: 'white', position: 'absolute', top: 2,
+                left: darkMode ? 18 : 2, transition: 'left 0.2s',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.15)'
+              }} />
+            </div>
+          </div>
+
           <div style={{
             display: 'flex', alignItems: 'center', gap: 10,
             padding: '10px 12px', borderRadius: 10,
-            background: '#F8FAFC', marginBottom: 8,
+            background: 'var(--bg-muted)', marginBottom: 8,
             transition: 'background 0.15s'
           }}>
             <div style={{
               width: 32, height: 32, borderRadius: '50%',
-              background: 'linear-gradient(135deg, #04389E 0%, #0652D0 100%)', color: 'white',
+              background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%)', color: 'white',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: 13, fontWeight: 600, flexShrink: 0,
               boxShadow: '0 2px 6px rgba(4, 56, 158, 0.2)'
@@ -99,16 +128,16 @@ const Sidebar = () => {
               {(user.full_name || user.email || '?')[0].toUpperCase()}
             </div>
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#0B1220', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}>
                 {user.full_name || 'Uzytkownik'}
                 {user.is_admin && (
                   <span style={{
                     fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 5,
-                    background: '#F28C28', color: 'white', letterSpacing: '0.04em'
+                    background: 'var(--orange)', color: 'white', letterSpacing: '0.04em'
                   }}>ADMIN</span>
                 )}
               </div>
-              <div style={{ fontSize: 11, color: '#64748B', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div style={{ fontSize: 11, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {user.email}
               </div>
             </div>
