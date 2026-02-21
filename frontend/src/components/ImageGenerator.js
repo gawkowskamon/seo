@@ -211,12 +211,12 @@ const ImageGenerator = ({ articleId, article, onInsertImage }) => {
         article_id: articleId,
         num_variants: 4
       };
-      if (referenceFile) {
-        payload.reference_image = {
-          data: referenceFile.base64,
-          mime_type: referenceFile.mime_type,
-          name: referenceFile.name
-        };
+      if (referenceFiles.length > 0) {
+        payload.reference_images = referenceFiles.map(rf => ({
+          data: rf.base64,
+          mime_type: rf.mime_type,
+          name: rf.name
+        }));
       }
       const res = await axios.post(`${BACKEND_URL}/api/images/generate-batch`, payload, { timeout: 300000 });
       setBatchResults(res.data);
