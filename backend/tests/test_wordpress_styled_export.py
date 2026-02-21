@@ -243,6 +243,11 @@ class TestExistingExportFormats:
             headers=headers
         )
         
+        # Handle Cloudflare proxy errors
+        if response.status_code in [520, 521, 522, 523, 524]:
+            print(f"⚠ Cloudflare proxy error {response.status_code}")
+            pytest.skip(f"Cloudflare error {response.status_code}")
+        
         # Known issue: HTML export may fail with 500 if article's TOC items use 'title' instead of 'label'
         # The WordPress export handles this correctly, but the older HTML export doesn't
         if response.status_code == 500:
