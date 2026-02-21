@@ -1768,6 +1768,11 @@ async def get_subscription_status(user: dict = Depends(get_current_user)):
 # Include the router in the main app
 app.include_router(api_router)
 
+# Root health check for Kubernetes probes (no /api prefix)
+@app.get("/health")
+async def root_health():
+    return {"status": "healthy"}
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
