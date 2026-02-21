@@ -6,6 +6,83 @@ Scores articles on multiple dimensions and provides actionable recommendations.
 import re
 from typing import Dict, List
 
+# Polish stop words to ignore in keyword matching
+POLISH_STOP_WORDS = {
+    "w", "z", "i", "do", "na", "nie", "się", "o", "od", "za", "po", "ze",
+    "dla", "jak", "co", "to", "jest", "są", "lub", "oraz", "a", "czy",
+    "przy", "przez", "nad", "pod", "przed", "między", "bez", "ku",
+    "roku", "r", "r.", "nr", "poz", "art", "ust", "pkt"
+}
+
+
+def _extract_keyword_terms(keyword: str) -> list:
+    """Extract significant terms from a keyword phrase, ignoring stop words."""
+    words = keyword.lower().split()
+    return [w for w in words if w not in POLISH_STOP_WORDS and len(w) > 2]
+
+
+def _flexible_keyword_count(text: str, keyword: str) -> tuple:
+    """
+    Count keyword occurrences with flexible matching.
+    Returns (exact_count, flexible_count, matched_terms_ratio).
+    """
+    text_lower = text.lower()
+    kw_lower = keyword.lower().strip()
+    
+    if not kw_lower:
+        return (0, 0, 0.0)
+    
+    # 1. Exact match
+    exact_count = text_lower.count(kw_lower)
+    
+    # 2. Flexible match - count how many significant terms appear
+    terms = _extract_keyword_terms(kw_lower)
+    if not terms:
+        return (exact_count, exact_count, 1.0 if exact_count > 0 else 0.0)
+    
+    term_counts = {}
+    for term in terms:
+        # Match whole word boundaries to avoid partial matches
+        pattern = re.compile(r'\b' + re.escape(term) + r'\w{0,3}\b', re.IGNORECASE)
+        matches = pattern.findall(text_lower)
+        term_counts[term] = len(matches)
+    
+    # Count occurrences where most terms appear near each other (within ~50 chars)
+    terms_present = sum(1 for t in terms if term_counts.get(t, 0) > 0)
+    matched_ratio = terms_present / len(terms) if terms else 0.0
+    
+    # Flexible count = minimum occurrence of any significant term
+    if terms_present == len(terms):
+        flexible_count = min(term_counts.get(t, 0) for t in terms)
+    else:
+        flexible_count = 0
+    
+    # Combine: exact matches count fully, flexible matches count partially
+    total_effective = exact_count + (flexible_count - exact_count) * 0.7 if flexible_count > exact_count else exact_count
+    
+    return (exact_count, max(int(total_effective), exact_count), matched_ratio)
+
+
+def _keyword_in_text(text: str, keyword: str) -> bool:
+    """Check if keyword (or its significant terms) appear in text."""
+    text_lower = text.lower()
+    kw_lower = keyword.lower().strip()
+    
+    if not kw_lower:
+        return False
+    
+    # Exact match
+    if kw_lower in text_lower:
+        return True
+    
+    # Flexible: check if most significant terms are present
+    terms = _extract_keyword_terms(kw_lower)
+    if not terms:
+        return False
+    
+    found = sum(1 for t in terms if t in text_lower)
+    return found >= len(terms) * 0.7  # At least 70% of terms present
+
 
 def compute_seo_score(article: dict, primary_keyword: str, secondary_keywords: list) -> dict:
     """Compute advanced SEO score for an article."""
@@ -38,7 +115,7 @@ def compute_seo_score(article: dict, primary_keyword: str, secondary_keywords: l
         recommendations.append(f"Tytuł powinien mieć 30-70 znaków (obecnie: {len(title)})")
     else:
         recommendations.append("Brak tytułu artykułu")
-    if primary_keyword.lower() in title.lower():
+    if _keyword_in_text(title, primary_keyword):
         title_score += 5
     else:
         recommendations.append("Tytuł nie zawiera słowa kluczowego głównego")
@@ -59,7 +136,7 @@ def compute_seo_score(article: dict, primary_keyword: str, secondary_keywords: l
         recommendations.append(f"Meta opis za krótki lub za długi ({len(meta_desc)} znaków)")
     else:
         recommendations.append("Brak meta opisu")
-    if primary_keyword.lower() in meta_desc.lower():
+    if _keyword_in_text(meta_desc, primary_keyword):
         meta_score += 5
     else:
         recommendations.append("Meta opis nie zawiera słowa kluczowego głównego")
@@ -102,7 +179,7 @@ def compute_seo_score(article: dict, primary_keyword: str, secondary_keywords: l
     else:
         recommendations.append(f"Za mało podsekcji H3 ({h3_count}, zalecane min 6)")
     
-    keyword_in_h2 = any(primary_keyword.lower() in s.get("heading", "").lower() for s in sections)
+    keyword_in_h2 = any(_keyword_in_text(s.get("heading", ""), primary_keyword) for s in sections)
     if keyword_in_h2:
         heading_score += 5
     else:
@@ -111,10 +188,9 @@ def compute_seo_score(article: dict, primary_keyword: str, secondary_keywords: l
     
     # 5. Keyword density & placement (max 15 pts)
     kw_score = 0
-    text_lower = all_text.lower()
-    kw_lower = primary_keyword.lower()
-    kw_count = text_lower.count(kw_lower)
-    density = (kw_count / max(word_count, 1)) * 100
+    exact_count, flex_count, term_ratio = _flexible_keyword_count(all_text, primary_keyword)
+    effective_count = flex_count if flex_count > 0 else exact_count
+    density = (effective_count / max(word_count, 1)) * 100
     
     if 0.5 <= density <= 3.0:
         kw_score += 5
@@ -124,22 +200,29 @@ def compute_seo_score(article: dict, primary_keyword: str, secondary_keywords: l
             recommendations.append(f"Gęstość słowa kluczowego zbyt niska: {density:.1f}% (zalecane 0.5-3%)")
         else:
             recommendations.append(f"Gęstość słowa kluczowego zbyt wysoka: {density:.1f}% (zalecane 0.5-3%)")
+    elif term_ratio >= 0.5:
+        # Terms are present but not as a cohesive phrase
+        kw_score += 1
+        recommendations.append("Słowa kluczowe występują osobno - spróbuj użyć pełnej frazy kluczowej")
     else:
         recommendations.append("Słowo kluczowe nie występuje w treści!")
     
     first_words = " ".join(all_text.split()[:150]).lower()
-    if kw_lower in first_words:
+    if _keyword_in_text(first_words, primary_keyword):
         kw_score += 5
     else:
         recommendations.append("Słowo kluczowe powinno pojawić się w pierwszych 150 słowach")
     
-    secondary_found = sum(1 for sk in secondary_keywords if sk.lower() in text_lower)
-    if secondary_found >= len(secondary_keywords) * 0.5:
-        kw_score += 5
-    elif secondary_found > 0:
-        kw_score += 3
+    secondary_found = sum(1 for sk in secondary_keywords if _keyword_in_text(all_text, sk))
+    if len(secondary_keywords) > 0:
+        if secondary_found >= len(secondary_keywords) * 0.5:
+            kw_score += 5
+        elif secondary_found > 0:
+            kw_score += 3
+        else:
+            recommendations.append("Brak słów kluczowych dodatkowych w treści")
     else:
-        recommendations.append("Brak słów kluczowych dodatkowych w treści")
+        kw_score += 3  # No secondary keywords defined - partial credit
     scores["keywords"] = {"score": kw_score, "max": 15, "label": f"Słowa kluczowe (gęstość: {density:.1f}%)"}
     
     # 6. TOC & Anchors (max 10 pts)
