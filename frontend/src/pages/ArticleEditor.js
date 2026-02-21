@@ -565,6 +565,14 @@ const ArticleEditor = () => {
             <CalendarClock size={14} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
             Plan
           </button>
+          <button 
+            className={`right-panel-tab ${rightTab === 'chat' ? 'active' : ''}`}
+            onClick={() => setRightTab('chat')}
+            data-testid="article-chat-tab"
+          >
+            <MessageSquare size={14} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
+            Chat
+          </button>
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto' }}>
