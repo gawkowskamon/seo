@@ -1641,6 +1641,255 @@ async def get_competition_status(job_id: str, user: dict = Depends(get_current_u
     return result
 
 
+# --- Keyword Analytics ---
+
+class KeywordAnalyticsRequest(BaseModel):
+    keywords: List[str] = []
+    industry: str = "rachunkowość i podatki"
+
+_keyword_analytics_jobs = {}
+
+async def _run_keyword_analytics_job(job_id: str, keywords: list, industry: str, emergent_key: str, user_id: str):
+    """Background task for keyword analytics."""
+    try:
+        _keyword_analytics_jobs[job_id]["status"] = "running"
+        from emergentintegrations.llm import LlmChat
+        chat = LlmChat(api_key=emergent_key, model="gpt-4.1-mini")
+        
+        kw_list = ", ".join(keywords[:10]) if keywords else "ulgi podatkowe, VAT 2026, ZUS, PIT, CIT, księgowość online, biuro rachunkowe, faktury elektroniczne"
+        
+        prompt = f"""Jesteś ekspertem SEO w branży: {industry}.
+Przeanalizuj poniższe słowa kluczowe i wygeneruj dane analityczne w formacie JSON.
+
+Słowa kluczowe: {kw_list}
+
+Dla każdego słowa kluczowego podaj:
+- keyword: nazwa
+- monthly_searches: szacunkowa miesięczna liczba wyszukiwań (realistyczna dla polskiego rynku)
+- difficulty: trudność 1-100
+- trend: "rosnący", "stabilny" lub "malejący"
+- trend_data: tablica 6 wartości (ostatnie 6 miesięcy, np. [80,85,90,88,95,100])
+- cpc_pln: szacunkowy koszt za klik w PLN
+- season_peak: miesiąc szczytowy (1-12)
+- related_topics: lista 3 powiązanych tematów na artykuły
+- opportunity_score: wynik szansy 1-100 (wysoki = łatwe do pozycjonowania + dużo wyszukiwań)
+
+Odpowiedz TYLKO prawidłowym JSON: {{"keywords": [...]}}"""
+        
+        response = await chat.send_message(prompt)
+        text = response.strip()
+        if text.startswith("```"):
+            text = text.split("\n", 1)[1].rsplit("```", 1)[0]
+        
+        import json as json_mod
+        data = json_mod.loads(text)
+        
+        _keyword_analytics_jobs[job_id]["status"] = "completed"
+        _keyword_analytics_jobs[job_id]["result"] = data
+        
+        # Save to DB
+        await db.keyword_analytics.insert_one({
+            "id": job_id,
+            "user_id": user_id,
+            "keywords": keywords,
+            "result": data,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+    except Exception as e:
+        logging.error(f"Keyword analytics error: {e}")
+        _keyword_analytics_jobs[job_id]["status"] = "failed"
+        _keyword_analytics_jobs[job_id]["error"] = str(e)
+
+@api_router.post("/keyword-analytics/analyze")
+async def analyze_keywords(request: KeywordAnalyticsRequest, user: dict = Depends(get_current_user)):
+    """Start async keyword analytics."""
+    emergent_key = os.environ.get("EMERGENT_LLM_KEY")
+    if not emergent_key:
+        raise HTTPException(status_code=500, detail="Brak klucza AI")
+    
+    job_id = str(uuid.uuid4())
+    _keyword_analytics_jobs[job_id] = {"status": "queued", "result": None, "error": None, "user_id": user["id"]}
+    asyncio.create_task(_run_keyword_analytics_job(job_id, request.keywords, request.industry, emergent_key, user["id"]))
+    return {"job_id": job_id, "status": "queued"}
+
+@api_router.get("/keyword-analytics/status/{job_id}")
+async def get_keyword_analytics_status(job_id: str, user: dict = Depends(get_current_user)):
+    """Poll keyword analytics job status."""
+    job = _keyword_analytics_jobs.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job nie znaleziony")
+    result = {"job_id": job_id, "status": job["status"]}
+    if job["status"] == "completed":
+        result["result"] = job["result"]
+        del _keyword_analytics_jobs[job_id]
+    elif job["status"] == "failed":
+        result["error"] = job["error"]
+        del _keyword_analytics_jobs[job_id]
+    return result
+
+@api_router.get("/keyword-analytics/history")
+async def get_keyword_analytics_history(user: dict = Depends(get_current_user)):
+    """Get keyword analytics history."""
+    docs = await db.keyword_analytics.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1).limit(10).to_list(10)
+    return docs
+
+
+# --- AI Rewriter ---
+
+class RewriteRequest(BaseModel):
+    text: str
+    style: str = "profesjonalny"
+    article_id: str = ""
+
+_rewrite_jobs = {}
+
+async def _run_rewrite_job(job_id: str, text: str, style: str, emergent_key: str):
+    """Background rewrite task."""
+    try:
+        _rewrite_jobs[job_id]["status"] = "running"
+        from emergentintegrations.llm import LlmChat
+        chat = LlmChat(api_key=emergent_key, model="gpt-4.1-mini")
+        
+        style_prompts = {
+            "profesjonalny": "Przepisz tekst w profesjonalnym, eksperckim tonie. Używaj fachowej terminologii podatkowej i księgowej. Zachowaj precyzję i powagę.",
+            "przystępny": "Przepisz tekst prostym, przystępnym językiem. Wyjaśniaj trudne terminy. Używaj przykładów z życia. Pisz jak do osoby bez wiedzy podatkowej.",
+            "ekspercki": "Przepisz tekst w tonie autorytetu branżowego. Cytuj przepisy prawne, dodawaj kontekst historyczny i porównania. Pisz jak doradca podatkowy z 20-letnim doświadczeniem.",
+            "seo": "Przepisz tekst z optymalizacją pod SEO. Używaj naturalnie słów kluczowych, twórz krótkie akapity, dodaj pytania retoryczne i wezwania do działania.",
+            "skrócony": "Skróć tekst zachowując najważniejsze informacje. Usuń powtórzenia i zbędne słowa. Maks 50% oryginalnej długości.",
+            "rozszerzony": "Rozszerz tekst o dodatkowe szczegóły, przykłady, dane liczbowe i kontekst prawny. Dodaj minimum 50% więcej treści."
+        }
+        
+        instruction = style_prompts.get(style, style_prompts["profesjonalny"])
+        
+        prompt = f"""{instruction}
+
+ORYGINALNY TEKST:
+{text[:8000]}
+
+WAŻNE:
+- Zachowaj formatowanie HTML jeśli występuje
+- Nie dodawaj komentarzy, zwróć TYLKO przepisany tekst
+- Zachowaj wszystkie dane liczbowe i faktograficzne"""
+
+        response = await chat.send_message(prompt)
+        _rewrite_jobs[job_id]["status"] = "completed"
+        _rewrite_jobs[job_id]["result"] = {"rewritten_text": response.strip(), "style": style}
+    except Exception as e:
+        logging.error(f"Rewrite error: {e}")
+        _rewrite_jobs[job_id]["status"] = "failed"
+        _rewrite_jobs[job_id]["error"] = str(e)
+
+@api_router.post("/rewrite")
+async def rewrite_text(request: RewriteRequest, user: dict = Depends(get_current_user)):
+    """Start async text rewrite."""
+    emergent_key = os.environ.get("EMERGENT_LLM_KEY")
+    if not emergent_key:
+        raise HTTPException(status_code=500, detail="Brak klucza AI")
+    if not request.text.strip():
+        raise HTTPException(status_code=400, detail="Brak tekstu do przepisania")
+    
+    job_id = str(uuid.uuid4())
+    _rewrite_jobs[job_id] = {"status": "queued", "result": None, "error": None}
+    asyncio.create_task(_run_rewrite_job(job_id, request.text, request.style, emergent_key))
+    return {"job_id": job_id, "status": "queued"}
+
+@api_router.get("/rewrite/status/{job_id}")
+async def get_rewrite_status(job_id: str, user: dict = Depends(get_current_user)):
+    """Poll rewrite job status."""
+    job = _rewrite_jobs.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job nie znaleziony")
+    result = {"job_id": job_id, "status": job["status"]}
+    if job["status"] == "completed":
+        result["result"] = job["result"]
+        del _rewrite_jobs[job_id]
+    elif job["status"] == "failed":
+        result["error"] = job["error"]
+        del _rewrite_jobs[job_id]
+    return result
+
+
+# --- Newsletter Generator ---
+
+class NewsletterRequest(BaseModel):
+    title: str = ""
+    article_ids: List[str] = []
+    style: str = "informacyjny"
+
+@api_router.post("/newsletter/generate")
+async def generate_newsletter(request: NewsletterRequest, user: dict = Depends(get_current_user)):
+    """Generate newsletter from selected articles."""
+    emergent_key = os.environ.get("EMERGENT_LLM_KEY")
+    if not emergent_key:
+        raise HTTPException(status_code=500, detail="Brak klucza AI")
+    
+    # Get articles
+    if request.article_ids:
+        articles = await db.articles.find({"id": {"$in": request.article_ids}, "user_id": user["id"]}, {"_id": 0}).to_list(20)
+    else:
+        articles = await db.articles.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1).limit(5).to_list(5)
+    
+    if not articles:
+        raise HTTPException(status_code=400, detail="Brak artykułów do newslettera")
+    
+    articles_summary = ""
+    for a in articles:
+        articles_summary += f"\n- Tytuł: {a.get('title','')}\n  Meta opis: {a.get('meta_description','')}\n  SEO: {a.get('seo_score',{}).get('percentage',0)}%\n"
+    
+    from emergentintegrations.llm import LlmChat
+    chat = LlmChat(api_key=emergent_key, model="gpt-4.1-mini")
+    
+    title = request.title or "Cotygodniowy newsletter podatkowy"
+    
+    prompt = f"""Wygeneruj profesjonalny newsletter email w HTML dla biura rachunkowego Kurdynowski.
+Tytuł: {title}
+Styl: {request.style}
+
+Artykuły do uwzględnienia:
+{articles_summary}
+
+Wygeneruj:
+1. Nagłówek newslettera z logo tekstowym "Kurdynowski"
+2. Krótkie powitanie (2-3 zdania)
+3. Dla każdego artykułu: tytuł, krótki opis (2-3 zdania), przycisk "Czytaj więcej"
+4. Sekcja "Ważne terminy" z najbliższymi datami podatkowymi
+5. Stopka z danymi kontaktowymi
+
+Format: kompletny HTML email z inline CSS. Kolory: #04389E (główny), #0B1220 (tekst), #F7F8FA (tło).
+Zwróć TYLKO kod HTML."""
+    
+    response = await chat.send_message(prompt)
+    html = response.strip()
+    if html.startswith("```"):
+        html = html.split("\n", 1)[1].rsplit("```", 1)[0]
+    
+    newsletter_id = str(uuid.uuid4())
+    await db.newsletters.insert_one({
+        "id": newsletter_id,
+        "user_id": user["id"],
+        "title": title,
+        "html": html,
+        "article_ids": [a["id"] for a in articles],
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    
+    return {"id": newsletter_id, "title": title, "html": html}
+
+@api_router.get("/newsletter/list")
+async def list_newsletters(user: dict = Depends(get_current_user)):
+    """List generated newsletters."""
+    docs = await db.newsletters.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1).limit(20).to_list(20)
+    return docs
+
+@api_router.get("/newsletter/{newsletter_id}")
+async def get_newsletter(newsletter_id: str, user: dict = Depends(get_current_user)):
+    """Get a specific newsletter."""
+    doc = await db.newsletters.find_one({"id": newsletter_id, "user_id": user["id"]}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Newsletter nie znaleziony")
+    return doc
+
+
 # --- Subscriptions & Payments ---
 
 @api_router.get("/subscription/plans")
