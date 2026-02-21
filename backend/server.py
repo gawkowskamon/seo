@@ -631,6 +631,10 @@ async def export_article(article_id: str, request: ExportRequest):
         html = generate_full_html(article)
         return {"format": "html", "content": html}
     
+    elif request.format == "wordpress":
+        styled_content = build_styled_wordpress_content(article)
+        return {"format": "wordpress", "content": styled_content}
+    
     elif request.format == "pdf":
         pdf_bytes = generate_pdf_bytes(article)
         return Response(
