@@ -462,6 +462,19 @@ async def update_article(article_id: str, request: ArticleUpdateRequest, user: d
         raise HTTPException(status_code=403, detail="Brak dostepu")
     
     update_data = {k: v for k, v in request.model_dump().items() if v is not None}
+    
+    # Sync html_content back to sections so SEO scorer has updated data
+    if update_data.get("html_content"):
+        parsed_sections = _parse_html_to_sections(update_data["html_content"])
+        if parsed_sections:
+            update_data["sections"] = parsed_sections
+            # Also extract title from H1 if present
+            title_match = re.search(r'<h1[^>]*>(.*?)</h1>', update_data["html_content"], re.IGNORECASE | re.DOTALL)
+            if title_match:
+                new_title = re.sub(r'<[^>]+>', '', title_match.group(1)).strip()
+                if new_title:
+                    update_data["title"] = new_title
+    
     update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
     
     await db.articles.update_one({"id": article_id}, {"$set": update_data})
