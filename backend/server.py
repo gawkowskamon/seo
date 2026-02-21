@@ -1844,8 +1844,12 @@ async def generate_newsletter(request: NewsletterRequest, user: dict = Depends(g
     for a in articles:
         articles_summary += f"\n- Tytuł: {a.get('title','')}\n  Meta opis: {a.get('meta_description','')}\n  SEO: {a.get('seo_score',{}).get('percentage',0)}%\n"
     
-    from emergentintegrations.llm.chat import LlmChat
-    chat = LlmChat(api_key=emergent_key, model="gpt-4.1-mini")
+    from emergentintegrations.llm.chat import LlmChat, UserMessage
+    chat = LlmChat(
+        api_key=emergent_key,
+        session_id=f"newsletter-{uuid.uuid4().hex[:8]}",
+        system_message="Jesteś ekspertem od email marketingu dla biur rachunkowych w Polsce. Tworzysz profesjonalne newslettery w HTML."
+    )
     
     title = request.title or "Cotygodniowy newsletter podatkowy"
     
