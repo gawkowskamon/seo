@@ -1779,7 +1779,7 @@ WAŻNE:
 - Nie dodawaj komentarzy, zwróć TYLKO przepisany tekst
 - Zachowaj wszystkie dane liczbowe i faktograficzne"""
 
-        response = await chat.send_message(prompt)
+        response = await chat.send_message(UserMessage(text=prompt))
         _rewrite_jobs[job_id]["status"] = "completed"
         _rewrite_jobs[job_id]["result"] = {"rewritten_text": response.strip(), "style": style}
     except Exception as e:
