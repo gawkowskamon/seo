@@ -2,6 +2,7 @@
 WordPress Integration Service
 - Publish articles to WordPress via WP REST API
 - Generate downloadable WordPress plugin
+- Styled HTML output matching in-app editor
 """
 
 import httpx
@@ -11,10 +12,278 @@ import re
 
 logger = logging.getLogger(__name__)
 
+# ============ Inline Style Definitions (matching App.css visual-editor-canvas) ============
+
+FONTS_IMPORT = '@import url("https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap");'
+
+STYLE_WRAPPER = (
+    'font-family: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, sans-serif; '
+    'line-height: 1.8; max-width: 800px; margin: 0 auto; padding: 40px 24px; '
+    'color: hsl(222, 47%, 20%); background: #fff;'
+)
+
+STYLE_H2 = (
+    'font-family: "Instrument Serif", Georgia, serif; font-size: 26px; font-weight: 400; '
+    'color: #04389E; margin: 32px 0 16px; padding-bottom: 8px; '
+    'border-bottom: 2px solid hsl(34, 90%, 88%);'
+)
+
+STYLE_H3 = (
+    'font-family: "Instrument Serif", Georgia, serif; font-size: 19px; font-weight: 400; '
+    'color: hsl(220, 95%, 28%); margin: 24px 0 12px;'
+)
+
+STYLE_P = 'margin-bottom: 16px; color: hsl(222, 47%, 20%);'
+
+STYLE_UL = 'margin-bottom: 16px; padding-left: 24px;'
+STYLE_OL = 'margin-bottom: 16px; padding-left: 24px;'
+STYLE_LI = 'margin-bottom: 4px;'
+
+STYLE_STRONG = 'color: hsl(222, 47%, 11%);'
+
+STYLE_A = 'color: #04389E; text-decoration: underline; text-underline-offset: 3px;'
+
+STYLE_BLOCKQUOTE = (
+    'border-left: 4px solid #04389E; padding: 12px 16px; margin: 16px 0; '
+    'background: hsl(220, 95%, 98%); border-radius: 0 8px 8px 0; '
+    'color: hsl(222, 47%, 25%); font-style: italic;'
+)
+
+STYLE_HR = 'border: none; border-top: 2px solid hsl(34, 90%, 88%); margin: 24px 0;'
+
+STYLE_IMG = 'max-width: 100%; height: auto; border-radius: 8px; margin: 16px 0;'
+
+STYLE_TABLE = (
+    'width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; '
+    'border-radius: 8px; overflow: hidden; border: 1px solid hsl(214, 18%, 88%);'
+)
+
+STYLE_TH = (
+    'padding: 10px 14px; text-align: left; font-weight: 600; font-size: 13px; '
+    'color: #04389E; border-bottom: 2px solid hsl(214, 18%, 85%); '
+    'background: hsl(220, 95%, 96%); font-family: "IBM Plex Sans", sans-serif;'
+)
+
+STYLE_TD = 'padding: 10px 14px; border-bottom: 1px solid hsl(214, 18%, 93%); color: hsl(222, 47%, 20%);'
+
+STYLE_TOC = (
+    'background: hsl(35, 35%, 97%); padding: 20px 28px; border-radius: 12px; '
+    'margin: 24px 0; border: 1px solid hsl(214, 18%, 88%);'
+)
+
+STYLE_TOC_H2 = (
+    'font-family: "Instrument Serif", Georgia, serif; font-size: 1.2em; font-weight: 400; '
+    'color: #04389E; margin: 0 0 12px; padding-bottom: 0; border: none;'
+)
+
+STYLE_FAQ_WRAPPER = (
+    'background: hsl(35, 35%, 97%); padding: 24px; border-radius: 12px; '
+    'margin-top: 2em; border: 1px solid hsl(214, 18%, 88%);'
+)
+
+STYLE_FAQ_H3 = (
+    'font-family: "Instrument Serif", Georgia, serif; font-size: 19px; font-weight: 400; '
+    'color: #04389E; margin: 24px 0 12px;'
+)
+
+STYLE_SOURCES = (
+    'margin-top: 2em; padding-top: 1.5em; border-top: 2px solid hsl(34, 90%, 88%);'
+)
+
+STYLE_CALLOUT_BASE = (
+    'border-radius: 10px; padding: 16px 18px; margin: 16px 0; '
+    'font-size: 14px; line-height: 1.6; border-left: 4px solid;'
+)
+STYLE_CALLOUT_TIP = STYLE_CALLOUT_BASE + ' background: hsl(158, 55%, 95%); border-left-color: hsl(158, 55%, 34%); color: hsl(158, 30%, 20%);'
+STYLE_CALLOUT_WARNING = STYLE_CALLOUT_BASE + ' background: hsl(34, 90%, 95%); border-left-color: #F28C28; color: hsl(34, 50%, 20%);'
+STYLE_CALLOUT_INFO = STYLE_CALLOUT_BASE + ' background: hsl(220, 95%, 96%); border-left-color: #04389E; color: hsl(220, 50%, 20%);'
+
+
+def _apply_inline_styles(html_fragment: str) -> str:
+    """Apply inline styles to HTML elements within a content fragment."""
+    # h2 (skip ones already inside styled containers)
+    html_fragment = re.sub(
+        r'<h2([^>]*)>',
+        lambda m: f'<h2{m.group(1)} style="{STYLE_H2}">',
+        html_fragment
+    )
+    # h3
+    html_fragment = re.sub(
+        r'<h3([^>]*)>',
+        lambda m: f'<h3{m.group(1)} style="{STYLE_H3}">',
+        html_fragment
+    )
+    # p
+    html_fragment = re.sub(
+        r'<p([^>]*)>',
+        lambda m: f'<p{m.group(1)} style="{STYLE_P}">',
+        html_fragment
+    )
+    # ul
+    html_fragment = re.sub(
+        r'<ul([^>]*)>',
+        lambda m: f'<ul{m.group(1)} style="{STYLE_UL}">',
+        html_fragment
+    )
+    # ol
+    html_fragment = re.sub(
+        r'<ol([^>]*)>',
+        lambda m: f'<ol{m.group(1)} style="{STYLE_OL}">',
+        html_fragment
+    )
+    # li
+    html_fragment = re.sub(
+        r'<li([^>]*)>',
+        lambda m: f'<li{m.group(1)} style="{STYLE_LI}">',
+        html_fragment
+    )
+    # strong
+    html_fragment = re.sub(
+        r'<strong([^>]*)>',
+        lambda m: f'<strong{m.group(1)} style="{STYLE_STRONG}">',
+        html_fragment
+    )
+    # a
+    html_fragment = re.sub(
+        r'<a([^>]*)>',
+        lambda m: f'<a{m.group(1)} style="{STYLE_A}">',
+        html_fragment
+    )
+    # blockquote
+    html_fragment = re.sub(
+        r'<blockquote([^>]*)>',
+        lambda m: f'<blockquote{m.group(1)} style="{STYLE_BLOCKQUOTE}">',
+        html_fragment
+    )
+    # hr
+    html_fragment = re.sub(
+        r'<hr([^>]*)(/?)>',
+        lambda m: f'<hr{m.group(1)} style="{STYLE_HR}"{m.group(2)}>',
+        html_fragment
+    )
+    # img
+    html_fragment = re.sub(
+        r'<img([^>]*)>',
+        lambda m: f'<img{m.group(1)} style="{STYLE_IMG}">',
+        html_fragment
+    )
+    # table
+    html_fragment = re.sub(
+        r'<table([^>]*)>',
+        lambda m: f'<table{m.group(1)} style="{STYLE_TABLE}">',
+        html_fragment
+    )
+    # th
+    html_fragment = re.sub(
+        r'<th([^>]*)>',
+        lambda m: f'<th{m.group(1)} style="{STYLE_TH}">',
+        html_fragment
+    )
+    # td
+    html_fragment = re.sub(
+        r'<td([^>]*)>',
+        lambda m: f'<td{m.group(1)} style="{STYLE_TD}">',
+        html_fragment
+    )
+    # callout divs
+    html_fragment = re.sub(
+        r'<div([^>]*class="[^"]*callout-tip[^"]*"[^>]*)>',
+        lambda m: f'<div{m.group(1)} style="{STYLE_CALLOUT_TIP}">',
+        html_fragment
+    )
+    html_fragment = re.sub(
+        r'<div([^>]*class="[^"]*callout-warning[^"]*"[^>]*)>',
+        lambda m: f'<div{m.group(1)} style="{STYLE_CALLOUT_WARNING}">',
+        html_fragment
+    )
+    html_fragment = re.sub(
+        r'<div([^>]*class="[^"]*callout-info[^"]*"[^>]*)>',
+        lambda m: f'<div{m.group(1)} style="{STYLE_CALLOUT_INFO}">',
+        html_fragment
+    )
+    return html_fragment
+
 
 def strip_html_tags(html: str) -> str:
     """Strip HTML tags for excerpt."""
     return re.sub(r'<[^>]+>', '', html).strip()
+
+
+def _build_styled_content(article: dict) -> str:
+    """Build fully styled HTML content for WordPress, matching the in-app editor."""
+    parts = []
+
+    # Table of contents
+    toc = article.get("toc", [])
+    if toc:
+        toc_items = ""
+        for item in toc:
+            toc_items += f'<li style="{STYLE_LI}"><a href="#{item["anchor"]}" style="{STYLE_A}">{item["label"]}</a></li>'
+        parts.append(
+            f'<div style="{STYLE_TOC}">'
+            f'<h2 style="{STYLE_TOC_H2}">Spis treści</h2>'
+            f'<ol style="{STYLE_OL}">{toc_items}</ol>'
+            f'</div>'
+        )
+
+    # Sections with inline styles applied to content fragments
+    for section in article.get("sections", []):
+        anchor = section.get("anchor", "")
+        heading = section.get("heading", "")
+        content = _apply_inline_styles(section.get("content", ""))
+        parts.append(f'<h2 id="{anchor}" style="{STYLE_H2}">{heading}</h2>')
+        parts.append(content)
+        for sub in section.get("subsections", []):
+            sub_anchor = sub.get("anchor", "")
+            sub_heading = sub.get("heading", "")
+            sub_content = _apply_inline_styles(sub.get("content", ""))
+            parts.append(f'<h3 id="{sub_anchor}" style="{STYLE_H3}">{sub_heading}</h3>')
+            parts.append(sub_content)
+
+    # FAQ with Schema.org + styling
+    faq = article.get("faq", [])
+    if faq:
+        faq_items = ""
+        for q in faq:
+            faq_items += (
+                f'<div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">'
+                f'<h3 itemprop="name" style="{STYLE_FAQ_H3}">{q.get("question", "")}</h3>'
+                f'<div itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">'
+                f'<p itemprop="text" style="{STYLE_P}">{q.get("answer", "")}</p>'
+                f'</div></div>'
+            )
+        parts.append(
+            f'<div style="{STYLE_FAQ_WRAPPER}" itemscope itemtype="https://schema.org/FAQPage">'
+            f'<h2 style="{STYLE_TOC_H2}">Najczęściej zadawane pytania (FAQ)</h2>'
+            f'{faq_items}</div>'
+        )
+
+    # Sources
+    sources = article.get("sources", [])
+    if sources:
+        source_items = ""
+        for src in sources:
+            source_items += (
+                f'<li style="{STYLE_LI}">'
+                f'<a href="{src.get("url", "#")}" target="_blank" rel="noopener" style="{STYLE_A}">'
+                f'{src.get("name", "")}</a> ({src.get("type", "")})</li>'
+            )
+        parts.append(
+            f'<div style="{STYLE_SOURCES}">'
+            f'<h2 style="{STYLE_H2}">Źródła</h2>'
+            f'<ul style="{STYLE_UL}">{source_items}</ul></div>'
+        )
+
+    inner_html = "\n".join(parts)
+
+    # Wrap everything in a styled container div
+    styled_html = (
+        f'<style>{FONTS_IMPORT}</style>'
+        f'<div style="{STYLE_WRAPPER}">'
+        f'{inner_html}'
+        f'</div>'
+    )
+    return styled_html
 
 
 async def publish_to_wordpress(wp_url: str, wp_user: str, wp_app_password: str, article: dict) -> dict:
@@ -30,46 +299,8 @@ async def publish_to_wordpress(wp_url: str, wp_user: str, wp_app_password: str, 
     Returns:
         dict with post_id, post_url, status
     """
-    # Build the HTML content
-    content_html = ""
-    
-    # Table of contents
-    toc = article.get("toc", [])
-    if toc:
-        content_html += '<div class="toc"><h2>Spis treści</h2><ol>'
-        for item in toc:
-            content_html += f'<li><a href="#{item["anchor"]}">{item["label"]}</a></li>'
-        content_html += '</ol></div>'
-    
-    # Sections
-    for section in article.get("sections", []):
-        content_html += f'<h2 id="{section.get("anchor", "")}">{section.get("heading", "")}</h2>'
-        content_html += section.get("content", "")
-        for sub in section.get("subsections", []):
-            content_html += f'<h3 id="{sub.get("anchor", "")}">{sub.get("heading", "")}</h3>'
-            content_html += sub.get("content", "")
-    
-    # FAQ with Schema.org
-    faq = article.get("faq", [])
-    if faq:
-        content_html += '<div class="faq" itemscope itemtype="https://schema.org/FAQPage">'
-        content_html += '<h2>Najczęściej zadawane pytania (FAQ)</h2>'
-        for q in faq:
-            content_html += f'''<div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
-                <h3 itemprop="name">{q.get("question", "")}</h3>
-                <div itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
-                    <p itemprop="text">{q.get("answer", "")}</p>
-                </div>
-            </div>'''
-        content_html += '</div>'
-    
-    # Sources
-    sources = article.get("sources", [])
-    if sources:
-        content_html += '<div class="sources"><h2>Źródła</h2><ul>'
-        for src in sources:
-            content_html += f'<li><a href="{src.get("url", "#")}" target="_blank" rel="noopener">{src.get("name", "")}</a> ({src.get("type", "")})</li>'
-        content_html += '</ul></div>'
+    # Build styled HTML content matching in-app editor
+    content_html = _build_styled_content(article)
     
     # Build excerpt
     excerpt = article.get("meta_description", "")
