@@ -72,33 +72,35 @@ const Sidebar = () => {
       {user && (
         <div style={{
           padding: '12px 12px 16px',
-          borderTop: '1px solid hsl(214, 18%, 88%)',
+          borderTop: '1px solid #E2E8F0',
           marginTop: 'auto'
         }}>
           <div style={{
             display: 'flex', alignItems: 'center', gap: 10,
-            padding: '8px 12px', borderRadius: 8,
-            background: 'hsl(35, 35%, 97%)', marginBottom: 8
+            padding: '10px 12px', borderRadius: 10,
+            background: '#F8FAFC', marginBottom: 8,
+            transition: 'background 0.15s'
           }}>
             <div style={{
-              width: 30, height: 30, borderRadius: '50%',
-              background: '#04389E', color: 'white',
+              width: 32, height: 32, borderRadius: '50%',
+              background: 'linear-gradient(135deg, #04389E 0%, #0652D0 100%)', color: 'white',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 13, fontWeight: 600, flexShrink: 0
+              fontSize: 13, fontWeight: 600, flexShrink: 0,
+              boxShadow: '0 2px 6px rgba(4, 56, 158, 0.2)'
             }}>
               {(user.full_name || user.email || '?')[0].toUpperCase()}
             </div>
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'hsl(222, 47%, 11%)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#0B1220', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}>
                 {user.full_name || 'Uzytkownik'}
                 {user.is_admin && (
                   <span style={{
-                    fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4,
+                    fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 5,
                     background: '#F28C28', color: 'white', letterSpacing: '0.04em'
                   }}>ADMIN</span>
                 )}
               </div>
-              <div style={{ fontSize: 11, color: 'hsl(215, 16%, 50%)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div style={{ fontSize: 11, color: '#64748B', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {user.email}
               </div>
             </div>
@@ -106,10 +108,10 @@ const Sidebar = () => {
           <button
             onClick={logout}
             className="sidebar-nav-item"
-            style={{ color: 'hsl(0, 60%, 45%)' }}
+            style={{ color: '#EF4444', fontSize: 13 }}
             data-testid="sidebar-logout-button"
           >
-            <LogOut size={18} />
+            <LogOut size={16} />
             Wyloguj
           </button>
         </div>
