@@ -1,0 +1,206 @@
+{
+  "brand": {
+    "name": "Kurdynowski",
+    "full_name": "Kurdynowski Accounting & Tax Solutions",
+    "logo_url": "https://static.prod-images.emergentagent.com/jobs/03a9d366-f1af-4aca-be22-7750e2cedcf9/images/d0d934dc57a3eeae9c2f153104d1f3e94b5ebbbf83e571a8f1bebe771ffb8f14.png",
+    "keywords": ["Professional", "Authoritative", "Editorial", "Efficient", "Premium"],
+    "design_archetype": "The Performance Pro / Old Money Tech",
+    "emotional_vibe": "A digital study for serious professionals. Calm, organized, and typographically rich."
+  },
+  "colors": {
+    "palette": {
+      "primary": {
+        "DEFAULT": "#04389E",
+        "foreground": "#FFFFFF",
+        "50": "#E6F0FF",
+        "100": "#CCE0FF",
+        "200": "#99C2FF",
+        "300": "#66A3FF",
+        "400": "#3385FF",
+        "500": "#04389E",
+        "600": "#032D7E",
+        "700": "#02225F",
+        "800": "#021740",
+        "900": "#010B20"
+      },
+      "accent": {
+        "DEFAULT": "#F28C28",
+        "foreground": "#1B1206",
+        "soft": "#FFF4E6",
+        "glow": "rgba(242, 140, 40, 0.15)"
+      },
+      "background": {
+        "app": "#F8F9FA",
+        "paper": "#FFFFFF",
+        "subtle": "#F1F5F9"
+      },
+      "neutral": {
+        "ink": "#0B1220",
+        "slate": "#64748B",
+        "border": "#E2E8F0"
+      }
+    },
+    "tokens": {
+      "background": "hsl(210 40% 98%)",
+      "foreground": "hsl(222 47% 11%)",
+      "card": "hsl(0 0% 100%)",
+      "card-foreground": "hsl(222 47% 11%)",
+      "popover": "hsl(0 0% 100%)",
+      "popover-foreground": "hsl(222 47% 11%)",
+      "primary": "hsl(220 95% 32%)",
+      "primary-foreground": "hsl(210 40% 98%)",
+      "secondary": "hsl(210 40% 96%)",
+      "secondary-foreground": "hsl(222 47% 11%)",
+      "muted": "hsl(210 40% 96%)",
+      "muted-foreground": "hsl(215 16% 47%)",
+      "accent": "hsl(30 89% 55%)",
+      "accent-foreground": "hsl(222 47% 11%)",
+      "destructive": "hsl(0 84% 60%)",
+      "destructive-foreground": "hsl(210 40% 98%)",
+      "border": "hsl(214 32% 91%)",
+      "input": "hsl(214 32% 91%)",
+      "ring": "hsl(220 95% 32%)",
+      "radius": "0.75rem"
+    }
+  },
+  "typography": {
+    "font_family": {
+      "headings": "Instrument Serif, ui-serif, Georgia, serif",
+      "body": "IBM Plex Sans, ui-sans-serif, system-ui, sans-serif",
+      "mono": "IBM Plex Mono, monospace"
+    },
+    "scale": {
+      "h1": "text-4xl md:text-5xl lg:text-6xl tracking-tight leading-none font-normal",
+      "h2": "text-2xl md:text-3xl tracking-tight font-normal",
+      "h3": "text-xl md:text-2xl font-normal",
+      "body": "text-sm md:text-base leading-relaxed",
+      "small": "text-xs font-medium tracking-wide uppercase"
+    },
+    "rules": [
+      "Use Instrument Serif for all headings (h1-h4) and data values (e.g., '1,240').",
+      "Use IBM Plex Sans for UI labels, body text, and table data.",
+      "Use IBM Plex Mono for code blocks, SEO keywords, and technical data.",
+      "Headings should almost always be 'font-normal' or 'font-medium', rarely 'bold' with Serif fonts.",
+      "Section labels (e.g., 'Latest Articles') should be uppercase, small, tracked out (tracking-widest)."
+    ]
+  },
+  "layout_strategies": {
+    "dashboard_grid": {
+      "type": "bento",
+      "classes": "grid grid-cols-1 md:grid-cols-12 gap-6",
+      "items": [
+        { "role": "hero_stats", "span": "col-span-full md:col-span-8 lg:col-span-9" },
+        { "role": "quick_actions", "span": "col-span-full md:col-span-4 lg:col-span-3" },
+        { "role": "recent_articles", "span": "col-span-full" }
+      ]
+    },
+    "editor_layout": {
+      "type": "three_panel",
+      "structure": "Fixed Left (TOC) | Fluid Center (Editor) | Fixed Right (Tools)",
+      "left_width": "w-[280px]",
+      "right_width": "w-[360px]",
+      "mobile_behavior": "Panels collapse to Sheet/Drawer"
+    }
+  },
+  "surface_strategy": {
+    "theme": "The Modern Bureau",
+    "background_layer": "bg-[#F8F9FA] (Warm Grey 50)",
+    "texture_overlay": "opacity-5 mix-blend-multiply pointer-events-none fixed inset-0 z-0",
+    "card_style": {
+      "bg": "bg-white",
+      "border": "border border-slate-200/60",
+      "shadow": "shadow-sm hover:shadow-md transition-shadow duration-300",
+      "radius": "rounded-xl"
+    },
+    "active_state": {
+      "border": "border-primary/50",
+      "ring": "ring-4 ring-primary/5"
+    }
+  },
+  "components": {
+    "path_prefix": "/app/frontend/src/components/ui",
+    "definitions": [
+      {
+        "name": "Button",
+        "style": "h-10 px-6 font-medium tracking-wide rounded-lg transition-all active:scale-[0.98]",
+        "variants": {
+          "default": "bg-primary text-primary-foreground hover:bg-primary/90 shadow-[0_2px_10px_rgba(4,56,158,0.2)]",
+          "outline": "border-2 border-slate-200 bg-transparent hover:border-primary hover:text-primary",
+          "ghost": "hover:bg-slate-100 text-slate-600 hover:text-slate-900"
+        }
+      },
+      {
+        "name": "Card",
+        "style": "bg-white border border-slate-100 shadow-[0_2px_4px_rgba(0,0,0,0.02)] rounded-xl overflow-hidden"
+      },
+      {
+        "name": "Badge",
+        "style": "rounded-full px-3 py-0.5 text-xs font-semibold tracking-wide border",
+        "variants": {
+          "success": "bg-emerald-50 text-emerald-700 border-emerald-100",
+          "warning": "bg-amber-50 text-amber-700 border-amber-100",
+          "neutral": "bg-slate-50 text-slate-600 border-slate-100"
+        }
+      },
+      {
+        "name": "Input",
+        "style": "h-11 bg-white border-slate-200 focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-lg text-base"
+      }
+    ]
+  },
+  "visual_enhancers": {
+    "texture_url": "https://images.unsplash.com/photo-1538994426593-a1fc62edcbb4?auto=format&fit=crop&q=80",
+    "hero_image": "https://images.pexels.com/photos/1957477/pexels-photo-1957477.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+    "noise_css": "background-image: url('https://images.unsplash.com/photo-1538994426593-a1fc62edcbb4?auto=format&fit=crop&q=80'); opacity: 0.03; mix-blend-mode: multiply;",
+    "glass_panel": "bg-white/80 backdrop-blur-md border border-white/20 shadow-xl"
+  },
+  "accessibility": {
+    "contrast_check": "Ensure Navy Blue text on White meets WCAG AA.",
+    "focus_states": "Visible focus ring (Navy Blue) on all interactive elements.",
+    "reduced_motion": "Respect prefers-reduced-motion media query."
+  },
+  "instructions_to_main_agent": [
+    "1. UPDATE TOKENS: First, update `index.css` to match the new color palette (Navy Primary, Warm Orange Accent, Warm Grey Background).",
+    "2. TYPOGRAPHY: Ensure `Instrument Serif` is applied to all headings and KPI numbers. Use `IBM Plex Sans` for everything else.",
+    "3. TEXTURE: Add the subtle noise texture to the `body` or a fixed background div to give the app a 'premium paper' feel.",
+    "4. LAYOUT: Refactor the Dashboard to use a 'Bento' grid (mix of large and small cards). Avoid equal-width columns everywhere.",
+    "5. EDITOR: Polish the 3-panel editor. Make the center panel feel like a 'page' (white paper on grey desk).",
+    "6. COMPONENTS: Customize Shadcn components to match the 'Performance Pro' aesthetic (sharp borders, subtle shadows, no default rounded-md).",
+    "7. SIDEBAR: Update the sidebar to use the new Navy Blue branding. Use the `Instrument Serif` font for the 'Kurdynowski' logo text.",
+    "8. MICRO-INTERACTIONS: Add hover states that lift cards slightly (`-translate-y-1`) and deepen the shadow.",
+    "9. DATA-TESTID: Preserve ALL existing data-testid attributes. Add new ones for any new interactive elements."
+  ],
+  "UNIVERSAL GUIDELINES FOR MAIN AGENT": [
+    "- You must **not** apply universal transition. Eg: `transition: all`. This results in breaking transforms. Always add transitions for specific interactive elements like button, input excluding transforms",
+    "- You must **not** center align the app container, ie do not add `.App { text-align: center; }` in the css file. This disrupts the human natural reading flow of text",
+    "- NEVER: use AI assistant Emoji characters like`🤖🧠💭💡🔮🎯📚🎭🎬🎪🎉🎊🎁🎀🎂🍰🎈🎨🎰💰💵💳🏦💎🪙💸🤑📊📈📉💹🔢🏆🥇 etc for icons. Always use **FontAwesome cdn** or **lucid-react** library already installed in the package.json",
+    " **GRADIENT RESTRICTION RULE**",
+    "NEVER use dark/saturated gradient combos (e.g., purple/pink) on any UI element.  Prohibited gradients: blue-500 to purple 600, purple 500 to pink-500, green-500 to blue-500, red to pink etc",
+    "NEVER use dark gradients for logo, testimonial, footer etc",
+    "NEVER let gradients cover more than 20% of the viewport.",
+    "NEVER apply gradients to text-heavy content or reading areas.",
+    "NEVER use gradients on small UI elements (<100px width).",
+    "NEVER stack multiple gradient layers in the same viewport.",
+    "\n**ENFORCEMENT RULE:**",
+    "    • Id gradient area exceeds 20% of viewport OR affects readability, **THEN** use solid colors",
+    "\n**How and where to use:**",
+    "   • Section backgrounds (not content backgrounds)",
+    "   • Hero section header content. Eg: dark to light to dark color",
+    "   • Decorative overlays and accent elements only",
+    "   • Hero section with 2-3 mild color",
+    "   • Gradients creation can be done for any angle say horizontal, vertical or diagonal",
+    "\n- For AI chat, voice application, **do not use purple color. Use color like light green, ocean blue, peach orange etc**",
+    "\n- Every interaction needs micro-animations - hover states, transitions, parallax effects, and entrance animations. Static = dead.",
+    "   ",
+    "- Use 2-3x more spacing than feels comfortable. Cramped designs look cheap.",
+    "\n- Subtle grain textures, noise overlays, custom cursors, selection states, and loading animations: separates good from extraordinary.",
+    "   ",
+    "- Before generating UI, infer the visual style from the problem statement (palette, contrast, mood, motion) and immediately instantiate it by setting global design tokens (primary, secondary/accent, background, foreground, ring, state colors), rather than relying on any library defaults. Don't make the background dark as a default step, always understand problem first and define colors accordingly\n    Eg: - if it implies playful/energetic, choose a colorful scheme\n           - if it implies monochrome/minimal, choose a black–white/neutral scheme",
+    "\n**Component Reuse:**\n\t- Prioritize using pre-existing components from src/components/ui when applicable\n\t- Create new components that match the style and conventions of existing components when needed\n\t- Examine existing components to understand the project's component patterns before creating new ones",
+    "\n**IMPORTANT**: Do not use HTML based component like dropdown, calendar, toast etc. You **MUST** always use `/app/frontend/src/components/ui/ ` only as a primary components as these are modern and stylish component",
+    "\n**Best Practices:**\n\t- Use Shadcn/UI as the primary component library for consistency and accessibility\n\t- Import path: ./components/[component-name]",
+    "\n**Export Conventions:**\n\t- Components MUST use named exports (export const ComponentName = ...)\n\t- Pages MUST use default exports (export default function PageName() {...})",
+    "\n**Toasts:**\n  - Use `sonner` for toasts\n  - Sonner component are located in `/app/src/components/ui/sonner.tsx`",
+    "\nUse 2–4 color gradients, subtle textures/noise overlays, or CSS-based noise to avoid flat visuals."
+  ]
+}
