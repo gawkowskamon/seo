@@ -1501,30 +1501,70 @@ async def cancel_scheduled_publish(article_id: str, user: dict = Depends(get_cur
 class SEOAuditRequest(BaseModel):
     url: str
 
-@api_router.post("/seo-audit")
-async def run_audit(request: SEOAuditRequest, user: dict = Depends(get_current_user)):
-    """Run SEO audit on a URL."""
-    emergent_key = os.environ.get("EMERGENT_LLM_KEY")
-    if not emergent_key:
-        raise HTTPException(status_code=500, detail="Brak klucza AI")
-    
+# Background job storage for SEO audit
+_seo_audit_jobs = {}
+
+async def _run_seo_audit_job(job_id: str, url: str, emergent_key: str, user_id: str):
+    """Background task for SEO audit."""
     try:
-        result = await run_seo_audit(request.url, emergent_key)
+        _seo_audit_jobs[job_id]["status"] = "running"
+        result = await run_seo_audit(url, emergent_key)
         
         audit_id = str(uuid.uuid4())
         audit_doc = {
             "id": audit_id,
-            "user_id": user["id"],
-            "url": request.url,
+            "user_id": user_id,
+            "url": url,
             "result": result,
             "created_at": datetime.now(timezone.utc).isoformat()
         }
         await db.seo_audits.insert_one(audit_doc)
         
-        return {"id": audit_id, **result}
+        _seo_audit_jobs[job_id]["status"] = "completed"
+        _seo_audit_jobs[job_id]["result"] = {"id": audit_id, **result}
     except Exception as e:
-        logging.error(f"SEO audit error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logging.error(f"SEO audit background error: {e}")
+        _seo_audit_jobs[job_id]["status"] = "failed"
+        _seo_audit_jobs[job_id]["error"] = str(e)
+
+@api_router.post("/seo-audit")
+async def run_audit(request: SEOAuditRequest, user: dict = Depends(get_current_user)):
+    """Start async SEO audit on a URL - returns job_id for polling."""
+    emergent_key = os.environ.get("EMERGENT_LLM_KEY")
+    if not emergent_key:
+        raise HTTPException(status_code=500, detail="Brak klucza AI")
+    
+    job_id = str(uuid.uuid4())
+    _seo_audit_jobs[job_id] = {
+        "status": "queued",
+        "result": None,
+        "error": None,
+        "user_id": user["id"]
+    }
+    
+    asyncio.create_task(_run_seo_audit_job(job_id, request.url, emergent_key, user["id"]))
+    
+    return {"job_id": job_id, "status": "queued"}
+
+@api_router.get("/seo-audit/status/{job_id}")
+async def get_audit_status(job_id: str, user: dict = Depends(get_current_user)):
+    """Poll SEO audit job status."""
+    job = _seo_audit_jobs.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job nie znaleziony")
+    if job["user_id"] != user["id"]:
+        raise HTTPException(status_code=403, detail="Brak dostepu")
+    
+    result = {"job_id": job_id, "status": job["status"]}
+    
+    if job["status"] == "completed":
+        result["result"] = job["result"]
+        del _seo_audit_jobs[job_id]
+    elif job["status"] == "failed":
+        result["error"] = job["error"]
+        del _seo_audit_jobs[job_id]
+    
+    return result
 
 @api_router.get("/seo-audit/history")
 async def get_audit_history(user: dict = Depends(get_current_user)):
