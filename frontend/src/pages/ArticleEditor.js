@@ -108,8 +108,13 @@ const ArticleEditor = () => {
     if (!article) return;
     setSaving(true);
     try {
-      const token = localStorage.getItem('token');
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      // Sync visual editor content before saving
+      let currentHtml = htmlContent;
+      if (editorContentRef.current && editorTab === 'visual') {
+        currentHtml = editorContentRef.current.innerHTML;
+        setHtmlContent(currentHtml);
+      }
+      
       const updateData = {
         title: article.title,
         slug: article.slug,
@@ -120,9 +125,9 @@ const ArticleEditor = () => {
         toc: article.toc,
         internal_link_suggestions: article.internal_link_suggestions,
         sources: article.sources,
-        html_content: htmlContent
+        html_content: currentHtml
       };
-      const response = await axios.put(`${BACKEND_URL}/api/articles/${articleId}`, updateData, { headers });
+      const response = await axios.put(`${BACKEND_URL}/api/articles/${articleId}`, updateData);
       setArticle(response.data);
       setHasUnsavedChanges(false);
       if (!isAutosave) {
