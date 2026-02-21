@@ -30,7 +30,9 @@ const Sidebar = () => {
     <aside className="sidebar">
       <div className="sidebar-header">
         <div className="sidebar-logo">
-          <div className="sidebar-logo-mark">K</div>
+          <div className="sidebar-logo-mark">
+            <img src="https://static.prod-images.emergentagent.com/jobs/03a9d366-f1af-4aca-be22-7750e2cedcf9/images/d0d934dc57a3eeae9c2f153104d1f3e94b5ebbbf83e571a8f1bebe771ffb8f14.png" alt="Kurdynowski" />
+          </div>
           <div>
             <h1 className="sidebar-brand-name">Kurdynowski<span className="sidebar-brand-dot">.</span></h1>
             <span className="sidebar-brand-desc">Accounting & Tax Solutions</span>
