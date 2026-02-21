@@ -53,13 +53,7 @@ const Sidebar = () => {
         ))}
         {user?.is_admin && (
           <>
-            <div style={{
-              margin: '12px 12px 6px',
-              fontSize: 10,
-              fontWeight: 700,
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
-              color: 'hsl(215, 16%, 55%)'
+            <div className="sidebar-nav-section-label">Administracja</div>
             }}>
               Administracja
             </div>
