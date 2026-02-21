@@ -803,6 +803,11 @@ const ArticleEditor = () => {
               <AIChatPanel articleId={articleId} />
             </div>
           )}
+          {rightTab === 'rewriter' && (
+            <div data-testid="article-rewriter-wrapper" style={{ height: '100%' }}>
+              <AIRewriter articleId={articleId} />
+            </div>
+          )}
         </div>
       </div>
     </div>
