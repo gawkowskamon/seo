@@ -218,7 +218,7 @@ def _build_styled_content(article: dict) -> str:
     if toc:
         toc_items = ""
         for item in toc:
-            toc_items += f'<li style="{STYLE_LI}"><a href="#{item["anchor"]}" style="{STYLE_A}">{item["label"]}</a></li>'
+            toc_items += f'<li style="{STYLE_LI}"><a href="#{item.get("anchor", "")}" style="{STYLE_A}">{item.get("label", item.get("title", ""))}</a></li>'
         parts.append(
             f'<div style="{STYLE_TOC}">'
             f'<h2 style="{STYLE_TOC_H2}">Spis treści</h2>'
