@@ -1751,8 +1751,12 @@ async def _run_rewrite_job(job_id: str, text: str, style: str, emergent_key: str
     """Background rewrite task."""
     try:
         _rewrite_jobs[job_id]["status"] = "running"
-        from emergentintegrations.llm.chat import LlmChat
-        chat = LlmChat(api_key=emergent_key, model="gpt-4.1-mini")
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        chat = LlmChat(
+            api_key=emergent_key,
+            session_id=f"rewrite-{job_id[:8]}",
+            system_message="Jesteś ekspertem od pisania treści w języku polskim. Przepisuj tekst zgodnie z instrukcjami."
+        )
         
         style_prompts = {
             "profesjonalny": "Przepisz tekst w profesjonalnym, eksperckim tonie. Używaj fachowej terminologii podatkowej i księgowej. Zachowaj precyzję i powagę.",
