@@ -1066,7 +1066,8 @@ class MultiVariantRequest(BaseModel):
     style: str = "hero"
     article_id: Optional[str] = None
     num_variants: int = 4
-    reference_image: Optional[ReferenceImageData] = None
+    reference_image: Optional[ReferenceImageData] = None  # backward compat
+    reference_images: Optional[List[ReferenceImageData]] = None  # multiple attachments
 
 @api_router.post("/images/generate-batch")
 async def generate_batch_endpoint(request: MultiVariantRequest, user: dict = Depends(get_current_user)):
@@ -1077,12 +1078,20 @@ async def generate_batch_endpoint(request: MultiVariantRequest, user: dict = Dep
         raise HTTPException(status_code=400, detail="Liczba wariantow musi byc od 1 do 4")
     
     try:
-        ref_image_data = None
-        if request.reference_image:
-            allowed_mime = ["image/png", "image/jpeg", "image/jpg", "image/webp"]
+        # Build list of reference images
+        allowed_mime = ["image/png", "image/jpeg", "image/jpg", "image/webp"]
+        ref_images_list = []
+        if request.reference_images:
+            for ref in request.reference_images:
+                if ref.mime_type not in allowed_mime:
+                    raise HTTPException(status_code=400, detail=f"Nieobslugiwany format pliku: {ref.mime_type}")
+                ref_images_list.append({"data": ref.data, "mime_type": ref.mime_type})
+        elif request.reference_image:
             if request.reference_image.mime_type not in allowed_mime:
                 raise HTTPException(status_code=400, detail="Nieobslugiwany format pliku")
-            ref_image_data = {"data": request.reference_image.data, "mime_type": request.reference_image.mime_type}
+            ref_images_list.append({"data": request.reference_image.data, "mime_type": request.reference_image.mime_type})
+        
+        ref_images_data = ref_images_list if ref_images_list else None
         
         article_context = None
         if request.article_id:
@@ -1104,7 +1113,7 @@ async def generate_batch_endpoint(request: MultiVariantRequest, user: dict = Dep
                 prompt=modified_prompt,
                 style=request.style,
                 article_context=article_context,
-                reference_image=ref_image_data
+                reference_images=ref_images_data
             )
         
         tasks = [gen_one(variant_suffixes[i]) for i in range(request.num_variants)]
