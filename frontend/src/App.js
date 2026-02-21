@@ -113,6 +113,12 @@ function AppRoutes() {
       <Route path="/aktualizacje" element={
         <ProtectedLayout><AutoUpdatePage /></ProtectedLayout>
       } />
+      <Route path="/analityka" element={
+        <ProtectedLayout><KeywordAnalytics /></ProtectedLayout>
+      } />
+      <Route path="/newsletter" element={
+        <ProtectedLayout><NewsletterPage /></ProtectedLayout>
+      } />
       <Route path="/admin/users" element={
         <ProtectedLayout requireAdmin><AdminUsers /></ProtectedLayout>
       } />
