@@ -767,6 +767,11 @@ const ArticleEditor = () => {
               )}
             </div>
           )}
+          {rightTab === 'chat' && (
+            <div data-testid="article-chat-panel-wrapper" style={{ height: '100%', padding: 0 }}>
+              <AIChatPanel articleId={articleId} />
+            </div>
+          )}
         </div>
       </div>
     </div>
