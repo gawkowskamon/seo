@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageSquare, Send, Loader2, Trash2, Bot, User } from 'lucide-react';
+import { Send, Loader2, Trash2, Bot, User } from 'lucide-react';
 import { Button } from './ui/button';
 import axios from 'axios';
 
@@ -26,10 +26,14 @@ export default function AIChatPanel({ articleId }) {
     setSending(true);
     
     try {
+      const token = localStorage.getItem('token');
       const res = await axios.post(`${BACKEND_URL}/api/chat/message`, {
         message: text,
         article_id: articleId || ''
-      }, { timeout: 60000 });
+      }, { 
+        timeout: 60000,
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
       
       setMessages(prev => [...prev, { role: 'assistant', content: res.data.response }]);
     } catch (err) {
@@ -41,7 +45,12 @@ export default function AIChatPanel({ articleId }) {
 
   const handleClear = async () => {
     setMessages([{ role: 'assistant', content: 'Historia czatu wyczyszczona. Jak moge pomoc?' }]);
-    try { await axios.post(`${BACKEND_URL}/api/chat/clear`); } catch (e) {}
+    try { 
+      const token = localStorage.getItem('token');
+      await axios.post(`${BACKEND_URL}/api/chat/clear`, {}, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      }); 
+    } catch (e) {}
   };
 
   const quickActions = [
@@ -54,30 +63,30 @@ export default function AIChatPanel({ articleId }) {
   return (
     <div data-testid="ai-chat-panel" style={{
       display: 'flex', flexDirection: 'column', height: '100%',
-      background: 'white', borderRadius: 14, border: '1px solid #E2E8F0',
+      background: 'var(--bg-card)', borderRadius: 0,
       overflow: 'hidden'
     }}>
       {/* Header */}
       <div style={{
-        padding: '12px 16px', borderBottom: '1px solid #E2E8F0',
+        padding: '12px 16px', borderBottom: '1px solid var(--border)',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        background: '#F8FAFC'
+        background: 'var(--bg-muted)'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{
             width: 28, height: 28, borderRadius: 8,
-            background: 'linear-gradient(135deg, #04389E 0%, #0652D0 100%)',
+            background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%)',
             display: 'flex', alignItems: 'center', justifyContent: 'center'
           }}>
             <Bot size={15} style={{ color: 'white' }} />
           </div>
-          <span style={{ fontWeight: 700, fontSize: 13, color: '#0B1220' }}>Asystent AI</span>
+          <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-primary)' }}>Asystent AI</span>
         </div>
         <button onClick={handleClear} data-testid="chat-clear-btn"
           style={{
-            padding: '4px 8px', borderRadius: 6, border: '1px solid #E2E8F0',
-            background: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
-            fontSize: 11, color: '#64748B'
+            padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)',
+            background: 'var(--bg-card)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
+            fontSize: 11, color: 'var(--text-secondary)'
           }}>
           <Trash2 size={11} /> Wyczysc
         </button>
@@ -95,20 +104,20 @@ export default function AIChatPanel({ articleId }) {
           }}>
             <div style={{
               width: 24, height: 24, borderRadius: '50%', flexShrink: 0,
-              background: msg.role === 'user' ? '#04389E' : '#F1F5F9',
+              background: msg.role === 'user' ? 'var(--accent)' : 'var(--bg-hover)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               marginTop: 2
             }}>
               {msg.role === 'user' 
                 ? <User size={12} style={{ color: 'white' }} />
-                : <Bot size={12} style={{ color: '#04389E' }} />
+                : <Bot size={12} style={{ color: 'var(--accent)' }} />
               }
             </div>
             <div style={{
               maxWidth: '85%', padding: '8px 12px', borderRadius: 12,
               fontSize: 13, lineHeight: 1.5,
-              background: msg.role === 'user' ? '#04389E' : '#F1F5F9',
-              color: msg.role === 'user' ? 'white' : '#0B1220',
+              background: msg.role === 'user' ? 'var(--accent)' : 'var(--bg-hover)',
+              color: msg.role === 'user' ? 'white' : 'var(--text-primary)',
               borderBottomRightRadius: msg.role === 'user' ? 4 : 12,
               borderBottomLeftRadius: msg.role === 'user' ? 12 : 4
             }}
@@ -120,16 +129,16 @@ export default function AIChatPanel({ articleId }) {
           <div style={{ display: 'flex', gap: 8 }}>
             <div style={{
               width: 24, height: 24, borderRadius: '50%',
-              background: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center'
+              background: 'var(--bg-hover)', display: 'flex', alignItems: 'center', justifyContent: 'center'
             }}>
-              <Bot size={12} style={{ color: '#04389E' }} />
+              <Bot size={12} style={{ color: 'var(--accent)' }} />
             </div>
             <div style={{
-              padding: '8px 12px', borderRadius: 12, background: '#F1F5F9',
+              padding: '8px 12px', borderRadius: 12, background: 'var(--bg-hover)',
               display: 'flex', alignItems: 'center', gap: 6
             }}>
-              <Loader2 size={14} className="animate-spin" style={{ color: '#04389E' }} />
-              <span style={{ fontSize: 12, color: '#64748B' }}>Pisze...</span>
+              <Loader2 size={14} className="animate-spin" style={{ color: 'var(--accent)' }} />
+              <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Pisze...</span>
             </div>
           </div>
         )}
@@ -142,14 +151,13 @@ export default function AIChatPanel({ articleId }) {
         }}>
           {quickActions.map((action, i) => (
             <button key={i} onClick={() => { setInput(action); }}
+              data-testid={`chat-quick-action-${i}`}
               style={{
                 padding: '4px 10px', borderRadius: 16, fontSize: 11,
-                border: '1px solid #E2E8F0', background: '#FAFBFC',
-                cursor: 'pointer', color: '#64748B', fontWeight: 500,
+                border: '1px solid var(--border)', background: 'var(--bg-muted)',
+                cursor: 'pointer', color: 'var(--text-secondary)', fontWeight: 500,
                 transition: 'all 0.12s'
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#04389E'; e.currentTarget.style.color = '#04389E'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#E2E8F0'; e.currentTarget.style.color = '#64748B'; }}
             >
               {action}
             </button>
@@ -159,8 +167,8 @@ export default function AIChatPanel({ articleId }) {
 
       {/* Input */}
       <div style={{
-        padding: '8px 12px', borderTop: '1px solid #E2E8F0',
-        display: 'flex', gap: 6, background: '#FAFBFC'
+        padding: '8px 12px', borderTop: '1px solid var(--border)',
+        display: 'flex', gap: 6, background: 'var(--bg-muted)'
       }}>
         <input
           value={input}
@@ -170,8 +178,9 @@ export default function AIChatPanel({ articleId }) {
           data-testid="chat-input"
           style={{
             flex: 1, padding: '8px 12px', borderRadius: 10,
-            border: '1px solid #E2E8F0', fontSize: 13,
-            outline: 'none', background: 'white'
+            border: '1px solid var(--border)', fontSize: 13,
+            outline: 'none', background: 'var(--bg-input)',
+            color: 'var(--text-primary)'
           }}
           disabled={sending}
         />
