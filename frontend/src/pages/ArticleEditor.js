@@ -321,14 +321,36 @@ const ArticleEditor = () => {
     if (!compUrl) { toast.error('Podaj URL konkurencji'); return; }
     setCompLoading(true);
     try {
-      const res = await axios.post(`${BACKEND_URL}/api/competition/analyze`, {
+      const token = localStorage.getItem('token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      // Start async competition analysis
+      const startRes = await axios.post(`${BACKEND_URL}/api/competition/analyze`, {
         article_id: articleId, competitor_url: compUrl
-      }, { timeout: 90000 });
-      setCompResult(res.data);
-      toast.success('Analiza konkurencji zakonczona');
+      }, { headers });
+      const jobId = startRes.data.job_id;
+      
+      // Poll for result
+      const poll = async () => {
+        try {
+          const statusRes = await axios.get(`${BACKEND_URL}/api/competition/status/${jobId}`, { headers });
+          if (statusRes.data.status === 'completed') {
+            setCompResult(statusRes.data.result);
+            toast.success('Analiza konkurencji zakonczona');
+            setCompLoading(false);
+          } else if (statusRes.data.status === 'failed') {
+            toast.error(statusRes.data.error || 'Blad analizy');
+            setCompLoading(false);
+          } else {
+            setTimeout(poll, 2000);
+          }
+        } catch (e) {
+          toast.error('Blad sprawdzania statusu');
+          setCompLoading(false);
+        }
+      };
+      setTimeout(poll, 2000);
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Blad analizy');
-    } finally {
       setCompLoading(false);
     }
   };
