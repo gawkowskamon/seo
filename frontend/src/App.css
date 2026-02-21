@@ -45,7 +45,8 @@
 .app-layout {
   display: flex;
   min-height: 100vh;
-  background: #F7F8FA;
+  background: var(--bg-app);
+  color: var(--text-primary);
 }
 
 .app-layout::before {
