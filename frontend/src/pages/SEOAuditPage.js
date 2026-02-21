@@ -57,13 +57,30 @@ export default function SEOAuditPage() {
     setLoading(true);
     setResult(null);
     try {
-      const res = await axios.post(`${BACKEND_URL}/api/seo-audit`, { url }, { timeout: 90000 });
-      setResult(res.data);
-      loadHistory();
-      toast.success('Audyt SEO zakonczony');
+      const token = localStorage.getItem('token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      // Start async audit
+      const startRes = await axios.post(`${BACKEND_URL}/api/seo-audit`, { url }, { headers });
+      const jobId = startRes.data.job_id;
+      
+      // Poll for result
+      const poll = async () => {
+        const statusRes = await axios.get(`${BACKEND_URL}/api/seo-audit/status/${jobId}`, { headers });
+        if (statusRes.data.status === 'completed') {
+          setResult(statusRes.data.result);
+          loadHistory();
+          toast.success('Audyt SEO zakonczony');
+          setLoading(false);
+        } else if (statusRes.data.status === 'failed') {
+          toast.error(statusRes.data.error || 'Blad audytu');
+          setLoading(false);
+        } else {
+          setTimeout(poll, 2000);
+        }
+      };
+      setTimeout(poll, 2000);
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Blad audytu');
-    } finally {
       setLoading(false);
     }
   };
