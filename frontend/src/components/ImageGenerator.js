@@ -37,6 +37,7 @@ const ImageGenerator = ({ articleId, article, onInsertImage }) => {
   const [showVariants, setShowVariants] = useState(false);
   const [generatingVariant, setGeneratingVariant] = useState(null);
   const [referenceFile, setReferenceFile] = useState(null);
+  const [referenceFiles, setReferenceFiles] = useState([]);
   const [batchGenerating, setBatchGenerating] = useState(false);
   const [batchResults, setBatchResults] = useState(null); // { variants: [...] }
   const [lightboxImage, setLightboxImage] = useState(null);
@@ -44,41 +45,67 @@ const ImageGenerator = ({ articleId, article, onInsertImage }) => {
   const fileInputRef = useRef(null);
 
   const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+  const MAX_FILES = 5;
   const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
 
   const handleFileSelect = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
 
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      toast.error('Nieobslugiwany format. Dozwolone: PNG, JPG, WEBP');
-      return;
-    }
-    if (file.size > MAX_FILE_SIZE) {
-      toast.error('Plik jest zbyt duzy. Maksymalny rozmiar: 5MB');
+    const remaining = MAX_FILES - referenceFiles.length;
+    if (remaining <= 0) {
+      toast.error(`Maksymalnie ${MAX_FILES} zalacznikow`);
+      e.target.value = '';
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const base64Full = ev.target.result;
-      // base64Full is like "data:image/png;base64,iVBOR..."
-      const base64Data = base64Full.split(',')[1];
-      setReferenceFile({
-        file,
-        preview: base64Full,
-        base64: base64Data,
-        mime_type: file.type,
-        name: file.name
-      });
-    };
-    reader.readAsDataURL(file);
-    // Reset input so same file can be re-selected
+    const toProcess = files.slice(0, remaining);
+    let processed = 0;
+
+    toProcess.forEach((file) => {
+      if (!ALLOWED_TYPES.includes(file.type)) {
+        toast.error(`${file.name}: nieobslugiwany format`);
+        return;
+      }
+      if (file.size > MAX_FILE_SIZE) {
+        toast.error(`${file.name}: zbyt duzy (max 5MB)`);
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const base64Full = ev.target.result;
+        const base64Data = base64Full.split(',')[1];
+        const newFile = {
+          file,
+          preview: base64Full,
+          base64: base64Data,
+          mime_type: file.type,
+          name: file.name,
+          id: Date.now() + '_' + processed
+        };
+        setReferenceFiles(prev => [...prev, newFile]);
+        // Keep backward compat with single file
+        setReferenceFile(prev => prev || newFile);
+        processed++;
+      };
+      reader.readAsDataURL(file);
+    });
     e.target.value = '';
   };
 
-  const removeReferenceFile = () => {
-    setReferenceFile(null);
+  const removeReferenceFile = (fileId) => {
+    if (fileId === undefined) {
+      // Old behavior - remove all
+      setReferenceFile(null);
+      setReferenceFiles([]);
+      return;
+    }
+    setReferenceFiles(prev => {
+      const updated = prev.filter(f => f.id !== fileId);
+      setReferenceFile(updated.length > 0 ? updated[0] : null);
+      return updated;
+    });
   };
 
   useEffect(() => {
