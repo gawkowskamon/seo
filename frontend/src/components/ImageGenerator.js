@@ -323,108 +323,96 @@ const ImageGenerator = ({ articleId, article, onInsertImage }) => {
           }}
         />
 
-        {/* File attachment */}
+        {/* File attachment - multiple files */}
         <input
           type="file"
           ref={fileInputRef}
           onChange={handleFileSelect}
           accept="image/png,image/jpeg,image/jpg,image/webp"
+          multiple
           style={{ display: 'none' }}
           data-testid="image-file-input"
         />
 
-        {referenceFile ? (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '8px 10px',
-              borderRadius: 8,
-              border: '1px solid hsl(214, 18%, 88%)',
-              background: 'hsl(35, 35%, 97%)',
-              marginTop: 8,
-            }}
-            data-testid="image-reference-preview"
-          >
-            <img
-              src={referenceFile.preview}
-              alt="Referencja"
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 6,
-                objectFit: 'cover',
-                flexShrink: 0,
-                border: '1px solid hsl(214, 18%, 88%)'
-              }}
-            />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{
-                fontSize: 12,
-                fontWeight: 600,
-                color: 'hsl(222, 47%, 11%)',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap'
+        {referenceFiles.length > 0 && (
+          <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 6 }}
+            data-testid="image-reference-preview">
+            {referenceFiles.map((rf) => (
+              <div key={rf.id} style={{
+                position: 'relative', width: 56, height: 56,
+                borderRadius: 8, overflow: 'hidden',
+                border: '1px solid #E2E8F0', flexShrink: 0
               }}>
-                {referenceFile.name}
+                <img src={rf.preview} alt={rf.name}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <button onClick={() => removeReferenceFile(rf.id)}
+                  style={{
+                    position: 'absolute', top: 2, right: 2,
+                    width: 18, height: 18, borderRadius: '50%',
+                    background: 'rgba(0,0,0,0.6)', color: 'white',
+                    border: 'none', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 10
+                  }}
+                  data-testid={`image-remove-ref-${rf.id}`}
+                >
+                  <X size={10} />
+                </button>
               </div>
-              <div style={{ fontSize: 11, color: 'hsl(215, 16%, 50%)' }}>
-                Obraz referencyjny
-              </div>
-            </div>
-            <button
-              onClick={removeReferenceFile}
-              style={{
-                width: 26,
-                height: 26,
-                borderRadius: 6,
-                border: '1px solid hsl(214, 18%, 88%)',
-                background: 'white',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-                color: 'hsl(0, 60%, 45%)'
-              }}
-              data-testid="image-remove-reference-button"
-            >
-              <X size={14} />
-            </button>
+            ))}
+            {referenceFiles.length < MAX_FILES && (
+              <button onClick={() => fileInputRef.current?.click()}
+                style={{
+                  width: 56, height: 56, borderRadius: 8,
+                  border: '1px dashed #CBD5E1', background: '#F8FAFC',
+                  cursor: 'pointer', display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', justifyContent: 'center', gap: 2,
+                  fontSize: 9, color: '#64748B', fontWeight: 600,
+                  transition: 'border-color 0.15s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.borderColor = '#04389E'}
+                onMouseLeave={(e) => e.currentTarget.style.borderColor = '#CBD5E1'}
+              >
+                <Paperclip size={14} />
+                +
+              </button>
+            )}
           </div>
-        ) : (
+        )}
+
+        {referenceFiles.length === 0 && (
           <button
             onClick={() => fileInputRef.current?.click()}
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: 6,
-              padding: '7px 10px',
-              borderRadius: 8,
-              border: '1px dashed hsl(214, 18%, 82%)',
+              padding: '8px 12px',
+              borderRadius: 10,
+              border: '1px dashed #CBD5E1',
               background: 'transparent',
               cursor: 'pointer',
               fontSize: 12,
               fontWeight: 500,
-              color: 'hsl(215, 16%, 45%)',
+              color: '#64748B',
               width: '100%',
               marginTop: 8,
-              transition: 'border-color 0.15s, color 0.15s'
+              transition: 'border-color 0.15s, color 0.15s, background 0.15s'
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.borderColor = '#04389E';
               e.currentTarget.style.color = '#04389E';
+              e.currentTarget.style.background = '#F0F5FF';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = 'hsl(214, 18%, 82%)';
-              e.currentTarget.style.color = 'hsl(215, 16%, 45%)';
+              e.currentTarget.style.borderColor = '#CBD5E1';
+              e.currentTarget.style.color = '#64748B';
+              e.currentTarget.style.background = 'transparent';
             }}
             data-testid="image-attach-file-button"
           >
             <Paperclip size={14} />
-            Dolacz obraz referencyjny (PNG, JPG, WEBP)
+            Dolacz obrazy referencyjne (max {MAX_FILES}, PNG/JPG/WEBP)
           </button>
         )}
 
