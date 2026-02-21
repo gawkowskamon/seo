@@ -453,6 +453,98 @@ async def get_article(article_id: str, user: dict = Depends(get_current_user)):
     return serialize_doc(article)
 
 
+def _slugify(text: str) -> str:
+    """Create a URL-friendly slug from text."""
+    text = text.lower().strip()
+    text = re.sub(r'[ąàáâãäå]', 'a', text)
+    text = re.sub(r'[ćçč]', 'c', text)
+    text = re.sub(r'[ęèéêë]', 'e', text)
+    text = re.sub(r'[łl]', 'l', text)
+    text = re.sub(r'[ńñ]', 'n', text)
+    text = re.sub(r'[óòôõö]', 'o', text)
+    text = re.sub(r'[śšş]', 's', text)
+    text = re.sub(r'[żźž]', 'z', text)
+    text = re.sub(r'[^a-z0-9\s-]', '', text)
+    text = re.sub(r'[\s]+', '-', text)
+    text = re.sub(r'-+', '-', text)
+    return text[:80].strip('-')
+
+
+def _parse_html_to_sections(html: str) -> list:
+    """Parse HTML content from the visual editor back into structured sections."""
+    if not html or not html.strip():
+        return []
+    
+    # Split HTML by h2 tags to get sections
+    # Pattern: find all h2 and content between them
+    parts = re.split(r'(<h2[^>]*>.*?</h2>)', html, flags=re.IGNORECASE | re.DOTALL)
+    
+    sections = []
+    current_section = None
+    
+    for part in parts:
+        part = part.strip()
+        if not part:
+            continue
+        
+        # Check if this is an h2 heading
+        h2_match = re.match(r'<h2[^>]*(?:id="([^"]*)")?[^>]*>(.*?)</h2>', part, re.IGNORECASE | re.DOTALL)
+        if h2_match:
+            # Save previous section
+            if current_section:
+                sections.append(current_section)
+            
+            heading_text = re.sub(r'<[^>]+>', '', h2_match.group(2)).strip()
+            anchor = h2_match.group(1) or _slugify(heading_text)
+            current_section = {
+                "heading": heading_text,
+                "anchor": anchor,
+                "content": "",
+                "subsections": []
+            }
+        elif current_section is not None:
+            # Process content within current section - split by h3
+            h3_parts = re.split(r'(<h3[^>]*>.*?</h3>)', part, flags=re.IGNORECASE | re.DOTALL)
+            current_subsection = None
+            
+            for h3_part in h3_parts:
+                h3_part = h3_part.strip()
+                if not h3_part:
+                    continue
+                
+                h3_match = re.match(r'<h3[^>]*(?:id="([^"]*)")?[^>]*>(.*?)</h3>', h3_part, re.IGNORECASE | re.DOTALL)
+                if h3_match:
+                    if current_subsection:
+                        current_section["subsections"].append(current_subsection)
+                    
+                    sub_heading = re.sub(r'<[^>]+>', '', h3_match.group(2)).strip()
+                    sub_anchor = h3_match.group(1) or _slugify(sub_heading)
+                    current_subsection = {
+                        "heading": sub_heading,
+                        "anchor": sub_anchor,
+                        "content": ""
+                    }
+                elif current_subsection is not None:
+                    current_subsection["content"] += h3_part
+                else:
+                    current_section["content"] += h3_part
+            
+            if current_subsection:
+                current_section["subsections"].append(current_subsection)
+    
+    # Don't forget the last section
+    if current_section:
+        sections.append(current_section)
+    
+    # Clean up content - trim whitespace
+    for section in sections:
+        section["content"] = section["content"].strip()
+        for sub in section.get("subsections", []):
+            sub["content"] = sub["content"].strip()
+    
+    return sections
+
+
 @api_router.put("/articles/{article_id}")
 async def update_article(article_id: str, request: ArticleUpdateRequest, user: dict = Depends(get_current_user)):
     """Update an existing article (owner or admin)."""
