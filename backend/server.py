@@ -557,12 +557,15 @@ async def update_article(article_id: str, request: ArticleUpdateRequest, user: d
     update_data = {k: v for k, v in request.model_dump().items() if v is not None}
     
     # Sync html_content back to sections so SEO scorer has updated data
-    if update_data.get("html_content"):
-        parsed_sections = _parse_html_to_sections(update_data["html_content"])
+    html_to_parse = update_data.get("html_content", "")
+    if html_to_parse:
+        logging.info(f"Parsing html_content ({len(html_to_parse)} chars) to sections")
+        parsed_sections = _parse_html_to_sections(html_to_parse)
+        logging.info(f"Parsed {len(parsed_sections)} sections from html_content")
         if parsed_sections:
             update_data["sections"] = parsed_sections
             # Also extract title from H1 if present
-            title_match = re.search(r'<h1[^>]*>(.*?)</h1>', update_data["html_content"], re.IGNORECASE | re.DOTALL)
+            title_match = re.search(r'<h1[^>]*>(.*?)</h1>', html_to_parse, re.IGNORECASE | re.DOTALL)
             if title_match:
                 new_title = re.sub(r'<[^>]+>', '', title_match.group(1)).strip()
                 if new_title:
