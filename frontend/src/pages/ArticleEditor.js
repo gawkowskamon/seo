@@ -108,6 +108,8 @@ const ArticleEditor = () => {
     if (!article) return;
     setSaving(true);
     try {
+      const token = localStorage.getItem('token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const updateData = {
         title: article.title,
         slug: article.slug,
@@ -120,7 +122,7 @@ const ArticleEditor = () => {
         sources: article.sources,
         html_content: htmlContent
       };
-      const response = await axios.put(`${BACKEND_URL}/api/articles/${articleId}`, updateData);
+      const response = await axios.put(`${BACKEND_URL}/api/articles/${articleId}`, updateData, { headers });
       setArticle(response.data);
       setHasUnsavedChanges(false);
       if (!isAutosave) {
@@ -141,10 +143,12 @@ const ArticleEditor = () => {
     if (!article) return;
     setScoring(true);
     try {
+      const token = localStorage.getItem('token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const response = await axios.post(`${BACKEND_URL}/api/articles/${articleId}/score`, {
         primary_keyword: article.primary_keyword || '',
         secondary_keywords: article.secondary_keywords || []
-      });
+      }, { headers });
       setArticle(prev => ({ ...prev, seo_score: response.data }));
       toast.success('Wynik SEO zaktualizowany');
     } catch (error) {
