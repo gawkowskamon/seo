@@ -1681,6 +1681,7 @@ Dla każdego słowa kluczowego podaj:
 Odpowiedz TYLKO prawidłowym JSON: {{"keywords": [...]}}"""
         
         response = await chat.send_message(UserMessage(text=prompt))
+        text = response.strip()
         if text.startswith("```"):
             text = text.split("\n", 1)[1].rsplit("```", 1)[0]
         
