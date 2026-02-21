@@ -54,9 +54,6 @@ const Sidebar = () => {
         {user?.is_admin && (
           <>
             <div className="sidebar-nav-section-label">Administracja</div>
-            }}>
-              Administracja
-            </div>
             {adminItems.map((item) => (
               <Link
                 key={item.path}
