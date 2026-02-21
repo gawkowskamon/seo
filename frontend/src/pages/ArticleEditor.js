@@ -596,6 +596,14 @@ const ArticleEditor = () => {
             <MessageSquare size={14} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
             Chat
           </button>
+          <button 
+            className={`right-panel-tab ${rightTab === 'rewriter' ? 'active' : ''}`}
+            onClick={() => setRightTab('rewriter')}
+            data-testid="article-rewriter-tab"
+          >
+            <PenLine size={14} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
+            Rewriter
+          </button>
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto' }}>
