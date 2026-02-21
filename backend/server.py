@@ -788,19 +788,27 @@ async def list_image_styles():
 async def generate_image_endpoint(request: ImageGenerateRequest, user: dict = Depends(get_current_user)):
     """Generate an image using Gemini Nano Banana model."""
     try:
-        # Validate reference image if provided
-        ref_image_data = None
-        if request.reference_image:
-            allowed_mime = ["image/png", "image/jpeg", "image/jpg", "image/webp"]
+        # Build list of reference images from both fields (backward compat + new multi)
+        allowed_mime = ["image/png", "image/jpeg", "image/jpg", "image/webp"]
+        ref_images_list = []
+        
+        # New field: multiple reference images
+        if request.reference_images:
+            for ref in request.reference_images:
+                if ref.mime_type not in allowed_mime:
+                    raise HTTPException(status_code=400, detail=f"Nieobslugiwany format pliku: {ref.mime_type}. Dozwolone: PNG, JPG, WEBP")
+                if len(ref.data) > 7_000_000:
+                    raise HTTPException(status_code=400, detail="Jeden z plikow jest zbyt duzy. Maksymalny rozmiar: 5MB")
+                ref_images_list.append({"data": ref.data, "mime_type": ref.mime_type})
+        # Backward compat: single reference_image
+        elif request.reference_image:
             if request.reference_image.mime_type not in allowed_mime:
                 raise HTTPException(status_code=400, detail="Nieobslugiwany format pliku. Dozwolone: PNG, JPG, WEBP")
-            # Check size (base64 is ~4/3 of original, limit to ~5MB original = ~6.7MB base64)
             if len(request.reference_image.data) > 7_000_000:
                 raise HTTPException(status_code=400, detail="Plik jest zbyt duzy. Maksymalny rozmiar: 5MB")
-            ref_image_data = {
-                "data": request.reference_image.data,
-                "mime_type": request.reference_image.mime_type
-            }
+            ref_images_list.append({"data": request.reference_image.data, "mime_type": request.reference_image.mime_type})
+
+        ref_images_data = ref_images_list if ref_images_list else None
 
         # Get article context if article_id provided
         article_context = None
@@ -816,14 +824,14 @@ async def generate_image_endpoint(request: ImageGenerateRequest, user: dict = De
                 style=request.style,
                 variation_type=request.variation_type,
                 article_context=article_context,
-                reference_image=ref_image_data
+                reference_images=ref_images_data
             )
         else:
             result = await generate_image(
                 prompt=request.prompt,
                 style=request.style,
                 article_context=article_context,
-                reference_image=ref_image_data
+                reference_images=ref_images_data
             )
         
         # Save image to DB
@@ -837,7 +845,8 @@ async def generate_image_endpoint(request: ImageGenerateRequest, user: dict = De
             "variation_type": request.variation_type,
             "mime_type": result["mime_type"],
             "data": result["data"],
-            "has_reference": ref_image_data is not None,
+            "has_reference": ref_images_data is not None,
+            "num_references": len(ref_images_list),
             "created_at": datetime.now(timezone.utc).isoformat()
         }
         
