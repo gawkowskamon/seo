@@ -1870,7 +1870,7 @@ Wygeneruj:
 Format: kompletny HTML email z inline CSS. Kolory: #04389E (główny), #0B1220 (tekst), #F7F8FA (tło).
 Zwróć TYLKO kod HTML."""
     
-    response = await chat.send_message(prompt)
+    response = await chat.send_message(UserMessage(text=prompt))
     html = response.strip()
     if html.startswith("```"):
         html = html.split("\n", 1)[1].rsplit("```", 1)[0]
