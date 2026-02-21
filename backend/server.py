@@ -1023,7 +1023,7 @@ async def edit_image_endpoint(request: ImageEditRequest, user: dict = Depends(ge
         result = await generate_image(
             prompt=edit_prompt,
             style="custom",
-            reference_image=source_data
+            reference_images=[source_data]
         )
         
         # Save edited image
