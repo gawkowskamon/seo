@@ -11,7 +11,7 @@ from datetime import datetime
 from typing import Dict, Any, Optional
 
 # Configuration
-BACKEND_URL = "https://blog-optimizer-kit.preview.emergentagent.com"
+BACKEND_URL = "https://content-craft-ai-4.preview.emergentagent.com"
 ADMIN_EMAIL = "monika.gawkowska@kurdynowski.pl"
 ADMIN_PASSWORD = "MonZuz8180!"
 
