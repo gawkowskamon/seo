@@ -66,22 +66,11 @@ const AuthPage = () => {
       }}>
         {/* Brand header */}
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <div style={{
-            width: 48, height: 48, borderRadius: 14,
-            background: '#04389E', color: 'white',
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            fontFamily: "'Instrument Serif', Georgia, serif",
-            fontSize: 24, marginBottom: 12,
-            boxShadow: '0 2px 8px rgba(4, 56, 158, 0.25)',
-            position: 'relative', overflow: 'hidden'
-          }}>
-            K
-            <div style={{
-              position: 'absolute', bottom: 0, right: 0,
-              width: 12, height: 12, background: '#F28C28',
-              borderRadius: '0 0 14px 0', opacity: 0.9
-            }} />
-          </div>
+          <img 
+            src="https://static.prod-images.emergentagent.com/jobs/03a9d366-f1af-4aca-be22-7750e2cedcf9/images/d0d934dc57a3eeae9c2f153104d1f3e94b5ebbbf83e571a8f1bebe771ffb8f14.png"
+            alt="Kurdynowski"
+            style={{ width: 56, height: 56, borderRadius: 14, marginBottom: 12, objectFit: 'contain' }}
+          />
           <h1 style={{
             fontFamily: "'Instrument Serif', Georgia, serif",
             fontSize: 28, fontWeight: 400,
@@ -90,9 +79,9 @@ const AuthPage = () => {
             Kurdynowski<span style={{ color: '#F28C28' }}>.</span>
           </h1>
           <p style={{
-            fontSize: 11, color: 'hsl(215, 16%, 50%)',
+            fontSize: 11, color: '#64748B',
             textTransform: 'uppercase', letterSpacing: '0.06em',
-            fontWeight: 500
+            fontWeight: 600
           }}>
             SEO Article Builder
           </p>
