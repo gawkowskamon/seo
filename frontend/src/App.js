@@ -17,6 +17,8 @@ import ContentCalendar from './pages/ContentCalendar';
 import ImportArticles from './pages/ImportArticles';
 import SEOAuditPage from './pages/SEOAuditPage';
 import AutoUpdatePage from './pages/AutoUpdatePage';
+import KeywordAnalytics from './pages/KeywordAnalytics';
+import NewsletterPage from './pages/NewsletterPage';
 import AuthPage from './pages/AuthPage';
 import './App.css';
 
