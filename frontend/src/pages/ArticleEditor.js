@@ -13,6 +13,7 @@ import ImageGenerator from '../components/ImageGenerator';
 import SEOAssistantPanel from '../components/SEOAssistantPanel';
 import EditorToolbar from '../components/EditorToolbar';
 import AIChatPanel from '../components/AIChatPanel';
+import AIRewriter from '../components/AIRewriter';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
