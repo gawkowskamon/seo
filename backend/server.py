@@ -25,7 +25,7 @@ from export_service import (
 from image_generator import generate_image, generate_image_variant, get_all_image_styles
 from seo_assistant import analyze_article_seo, chat_about_seo
 from content_templates import get_all_templates
-from wordpress_service import publish_to_wordpress, generate_wordpress_plugin
+from wordpress_service import publish_to_wordpress, generate_wordpress_plugin, build_styled_wordpress_content
 from tpay_service import get_all_plans, get_plan, create_tpay_transaction, calculate_subscription_end
 from auth import (
     register_user, authenticate_user, get_user_by_id,
