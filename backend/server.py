@@ -776,7 +776,8 @@ class ImageGenerateRequest(BaseModel):
     style: str = "hero"
     article_id: Optional[str] = None
     variation_type: Optional[str] = None  # color, composition, mood, simplify
-    reference_image: Optional[ReferenceImageData] = None
+    reference_image: Optional[ReferenceImageData] = None  # backward compat (single)
+    reference_images: Optional[List[ReferenceImageData]] = None  # multiple attachments
 
 @api_router.get("/image-styles")
 async def list_image_styles():
