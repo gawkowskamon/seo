@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, PenTool, Lightbulb, LogOut, User, Layers, Users, Image as ImageIcon, Sparkles, Settings, CreditCard, Calendar, Download, Search, RefreshCw, Moon, Sun } from 'lucide-react';
+import { LayoutDashboard, PenTool, Lightbulb, LogOut, User, Layers, Users, Image as ImageIcon, Sparkles, Settings, CreditCard, Calendar, Download, Search, RefreshCw, Moon, Sun, BarChart3, Mail } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 const Sidebar = () => {
