@@ -82,7 +82,7 @@ Odpowiedz WYLACZNIE JSON-em:
 
 async def scrape_for_audit(url: str) -> dict:
     """Scrape a URL and extract SEO-relevant data."""
-    async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+    async with httpx.AsyncClient(timeout=30.0, follow_redirects=True, verify=False) as client:
         headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
         response = await client.get(url, headers=headers)
         response.raise_for_status()
