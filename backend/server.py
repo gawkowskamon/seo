@@ -1836,7 +1836,7 @@ async def generate_newsletter(request: NewsletterRequest, user: dict = Depends(g
     for a in articles:
         articles_summary += f"\n- Tytuł: {a.get('title','')}\n  Meta opis: {a.get('meta_description','')}\n  SEO: {a.get('seo_score',{}).get('percentage',0)}%\n"
     
-    from emergentintegrations.llm import LlmChat
+    from emergentintegrations.llm.chat import LlmChat
     chat = LlmChat(api_key=emergent_key, model="gpt-4.1-mini")
     
     title = request.title or "Cotygodniowy newsletter podatkowy"
