@@ -1653,7 +1653,7 @@ async def _run_keyword_analytics_job(job_id: str, keywords: list, industry: str,
     """Background task for keyword analytics."""
     try:
         _keyword_analytics_jobs[job_id]["status"] = "running"
-        from emergentintegrations.llm import LlmChat
+        from emergentintegrations.llm.chat import LlmChat
         chat = LlmChat(api_key=emergent_key, model="gpt-4.1-mini")
         
         kw_list = ", ".join(keywords[:10]) if keywords else "ulgi podatkowe, VAT 2026, ZUS, PIT, CIT, księgowość online, biuro rachunkowe, faktury elektroniczne"
