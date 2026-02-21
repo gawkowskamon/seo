@@ -71,8 +71,8 @@
 .sidebar {
   width: 260px;
   min-width: 260px;
-  background: white;
-  border-right: 1px solid #E2E8F0;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   padding: 0;
@@ -81,6 +81,7 @@
   top: 0;
   z-index: 10;
   box-shadow: 1px 0 8px rgba(4, 56, 158, 0.03);
+  transition: background-color 0.3s, border-color 0.3s;
 }
 
 .sidebar-header {
