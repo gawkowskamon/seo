@@ -74,15 +74,14 @@ Odpowiedz WYŁĄCZNIE w formacie JSON (bez markdown, bez ```json, bez żadnego t
 }}
 
 WAŻNE WYMAGANIA:
-- Artykuł MUSI mieć minimum 5-6 sekcji H2
-- Każda sekcja MUSI mieć 2-3 podsekcje H3
-- Każda sekcja i podsekcja MUSI zawierać rozbudowaną treść (minimum 150 słów na sekcję)
-- FAQ MUSI mieć minimum 6 pytań ze szczegółowymi odpowiedziami
-- Źródła MUSZĄ być wiarygodne (gov.pl, oficjalne instytucje polskie)
-- Anchory: unikalne, bez polskich znaków (ą→a, ę→e, ł→l, ś→s, ć→c, ó→o, ż→z, ź→z, ń→n), małe litery z myślnikami
-- Słowo kluczowe główne: w pierwszych 150 słowach, w co najmniej 2 nagłówkach H2, w meta opisie
-- Treść w sekcjach MUSI być w formacie HTML z tagami <p>, <strong>, <em>, <ul>, <li>
-- Pisz konkretnie: podawaj kwoty, terminy, podstawy prawne, przykłady
+- Artykuł MUSI mieć 4-5 sekcji H2
+- Każda sekcja MUSI mieć 1-2 podsekcje H3
+- Treść w sekcjach w formacie HTML z tagami <p>, <strong>, <em>, <ul>, <li>
+- FAQ: 4 pytania ze szczegółowymi odpowiedziami
+- Źródła: wiarygodne (gov.pl, oficjalne instytucje polskie)
+- Anchory: bez polskich znaków, małe litery z myślnikami
+- Słowo kluczowe główne: w pierwszych 100 słowach, w co najmniej 2 nagłówkach H2
+- Pisz konkretnie: kwoty, terminy, podstawy prawne
 """
 
 TOPIC_SUGGESTION_PROMPT = """Jako ekspert od księgowości i SEO, zaproponuj 10 tematów artykułów blogowych z zakresu księgowości, rachunkowości i podatków w Polsce.
