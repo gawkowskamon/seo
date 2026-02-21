@@ -1416,6 +1416,43 @@ async def suggest_internal_links(article_id: str, user: dict = Depends(get_curre
         raise HTTPException(status_code=500, detail=str(e))
 
 
+
+# --- AI Chat Assistant ---
+
+class ChatMessage(BaseModel):
+    message: str
+    article_id: str = ""
+
+@api_router.post("/chat/message")
+async def send_chat_message(request: ChatMessage, user: dict = Depends(get_current_user)):
+    """Send a message to AI assistant."""
+    emergent_key = os.environ.get("EMERGENT_LLM_KEY")
+    if not emergent_key:
+        raise HTTPException(status_code=500, detail="Brak klucza AI")
+    
+    article_context = {}
+    if request.article_id:
+        article = await db.articles.find_one({"id": request.article_id}, {"_id": 0})
+        if article:
+            article_context = article
+    
+    session_id = f"chat-{user['id']}-{request.article_id or 'general'}"
+    
+    try:
+        response = await chat_with_assistant(session_id, request.message, article_context, emergent_key)
+        return {"response": response}
+    except Exception as e:
+        logging.error(f"Chat error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/chat/clear")
+async def clear_chat(user: dict = Depends(get_current_user)):
+    """Clear chat session."""
+    session_id = f"chat-{user['id']}-general"
+    clear_chat_session(session_id)
+    return {"status": "cleared"}
+
+
 # --- Scheduled Publishing ---
 
 class SchedulePublishRequest(BaseModel):
