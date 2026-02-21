@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Save, Eye, Code, BarChart3, Share2, ChevronLeft, Loader2, RefreshCw, Wand2, Cloud, CloudOff, Image as ImageIcon, Sparkles, Link2, CalendarClock, MessageSquare } from 'lucide-react';
+import { Save, Eye, Code, BarChart3, Share2, ChevronLeft, Loader2, RefreshCw, Wand2, Cloud, CloudOff, Image as ImageIcon, Sparkles, Link2, CalendarClock, MessageSquare, PenLine } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { toast } from 'sonner';
