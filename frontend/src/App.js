@@ -23,6 +23,15 @@ import NewsletterPage from './pages/NewsletterPage';
 import AuthPage from './pages/AuthPage';
 import './App.css';
 
+// Global axios interceptor for auth headers
+axios.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 const ProtectedLayout = ({ children, requireAdmin = false }) => {
   const { isAuthenticated, loading, user } = useAuth();
 
