@@ -1747,7 +1747,7 @@ async def _run_rewrite_job(job_id: str, text: str, style: str, emergent_key: str
     """Background rewrite task."""
     try:
         _rewrite_jobs[job_id]["status"] = "running"
-        from emergentintegrations.llm import LlmChat
+        from emergentintegrations.llm.chat import LlmChat
         chat = LlmChat(api_key=emergent_key, model="gpt-4.1-mini")
         
         style_prompts = {
