@@ -92,7 +92,7 @@ def generate_full_html(article: dict) -> str:
     # Build TOC HTML
     toc_html = '<nav class="toc"><h2>Spis treści</h2><ol>'
     for item in article.get("toc", []):
-        toc_html += f'<li><a href="#{item["anchor"]}">{item["label"]}</a></li>'
+        toc_html += f'<li><a href="#{item.get("anchor", "")}">{item.get("label", item.get("title", ""))}</a></li>'
     toc_html += '</ol></nav>'
     
     # Build sections HTML
