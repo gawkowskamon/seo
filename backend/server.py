@@ -12,6 +12,7 @@ import uuid
 from datetime import datetime, timezone
 import json
 import asyncio
+import re
 
 from article_generator import generate_article, suggest_topics
 from seo_scorer import compute_seo_score
