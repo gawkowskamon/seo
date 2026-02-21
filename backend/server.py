@@ -1582,9 +1582,24 @@ class CompetitionRequest(BaseModel):
     article_id: str
     competitor_url: str
 
+# Background job storage for competition analysis
+_competition_jobs = {}
+
+async def _run_competition_job(job_id: str, article: dict, competitor_url: str, emergent_key: str, user_id: str):
+    """Background task for competition analysis."""
+    try:
+        _competition_jobs[job_id]["status"] = "running"
+        result = await analyze_competition(article, competitor_url, emergent_key)
+        _competition_jobs[job_id]["status"] = "completed"
+        _competition_jobs[job_id]["result"] = result
+    except Exception as e:
+        logging.error(f"Competition analysis background error: {e}")
+        _competition_jobs[job_id]["status"] = "failed"
+        _competition_jobs[job_id]["error"] = str(e)
+
 @api_router.post("/competition/analyze")
 async def analyze_comp(request: CompetitionRequest, user: dict = Depends(get_current_user)):
-    """Analyze competition for an article."""
+    """Start async competition analysis - returns job_id for polling."""
     emergent_key = os.environ.get("EMERGENT_LLM_KEY")
     if not emergent_key:
         raise HTTPException(status_code=500, detail="Brak klucza AI")
@@ -1593,12 +1608,37 @@ async def analyze_comp(request: CompetitionRequest, user: dict = Depends(get_cur
     if not article:
         raise HTTPException(status_code=404, detail="Artykul nie znaleziony")
     
-    try:
-        result = await analyze_competition(article, request.competitor_url, emergent_key)
-        return result
-    except Exception as e:
-        logging.error(f"Competition analysis error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    job_id = str(uuid.uuid4())
+    _competition_jobs[job_id] = {
+        "status": "queued",
+        "result": None,
+        "error": None,
+        "user_id": user["id"]
+    }
+    
+    asyncio.create_task(_run_competition_job(job_id, article, request.competitor_url, emergent_key, user["id"]))
+    
+    return {"job_id": job_id, "status": "queued"}
+
+@api_router.get("/competition/status/{job_id}")
+async def get_competition_status(job_id: str, user: dict = Depends(get_current_user)):
+    """Poll competition analysis job status."""
+    job = _competition_jobs.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job nie znaleziony")
+    if job["user_id"] != user["id"]:
+        raise HTTPException(status_code=403, detail="Brak dostepu")
+    
+    result = {"job_id": job_id, "status": job["status"]}
+    
+    if job["status"] == "completed":
+        result["result"] = job["result"]
+        del _competition_jobs[job_id]
+    elif job["status"] == "failed":
+        result["error"] = job["error"]
+        del _competition_jobs[job_id]
+    
+    return result
 
 
 # --- Subscriptions & Payments ---
