@@ -31,6 +31,7 @@ Feature-rich application for writing accounting-related blog articles with SEO o
 ### Export & Publishing
 - [x] PDF/HTML export with branded styling
 - [x] WordPress integration with scheduled publishing
+- [x] **Styled WordPress Export** - Inline CSS styles matching in-app editor (fonts, colors, spacing, separators, TOC, FAQ, tables)
 
 ### SEO Intelligence
 - [x] SEO Audit - async background job
@@ -65,6 +66,7 @@ Feature-rich application for writing accounting-related blog articles with SEO o
 ## Test Reports
 - iteration_15.json: Dark Mode, AI Chat, Async SEO - 100% pass
 - iteration_16.json: Keyword Analytics, Newsletter, AI Rewriter - 100% pass
+- iteration_17.json: WordPress Styled Export - 14/14 pass (100%)
 
 ## Backlog
 - [ ] Social media integration (Facebook/LinkedIn post generation)
