@@ -334,8 +334,14 @@ async def _discover_wp_api_url(client, wp_url: str, extra_headers: dict = None) 
     for url in unique:
         try:
             resp = await client.get(url, params={"per_page": 1}, headers=req_headers)
-            if resp.status_code in (200, 401, 403):
+            content_type = resp.headers.get("content-type", "")
+            is_json = "application/json" in content_type
+            if resp.status_code == 200 and is_json:
                 logger.info(f"WP REST API discovered at: {url}")
+                return url
+            elif resp.status_code in (401, 403):
+                # Exists but needs auth — also valid discovery
+                logger.info(f"WP REST API discovered (auth required) at: {url}")
                 return url
         except Exception:
             continue
