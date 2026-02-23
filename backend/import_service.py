@@ -144,15 +144,15 @@ async def import_from_wordpress(wp_url: str, wp_user: str = None, wp_password: s
     async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
         response = None
         for api_url in unique:
-        try:
-            resp = await client.get(api_url, params=params, headers=headers)
-            content_type = resp.headers.get("content-type", "")
-            if resp.status_code == 200 and "application/json" in content_type:
-                response = resp
-                logger.info(f"WP import: REST API found at {api_url}")
-                break
-        except (httpx.ConnectError, httpx.TimeoutException):
-            continue
+            try:
+                resp = await client.get(api_url, params=params, headers=headers)
+                content_type = resp.headers.get("content-type", "")
+                if resp.status_code == 200 and "application/json" in content_type:
+                    response = resp
+                    logger.info(f"WP import: REST API found at {api_url}")
+                    break
+            except (httpx.ConnectError, httpx.TimeoutException):
+                continue
         
         if response is None:
             raise ValueError(f"WordPress REST API niedostepne. Sprawdz adres ({clean_url}). Sprobowano rowniez {base_domain}.")
