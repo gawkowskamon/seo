@@ -69,6 +69,7 @@ Feature-rich application for writing accounting-related blog articles with SEO o
 - iteration_17.json: WordPress Styled Export - 14/14 pass (100%)
 - iteration_18.json: Multiple Reference Images - 100% pass (backend + frontend)
 - iteration_19.json: Article Generation Fix (MongoDB jobs) - 100% pass
+- iteration_20.json: WordPress Import/Export Fix - 100% pass (9 backend + frontend UI)
 
 ## Backlog
 - [ ] Social media integration (Facebook/LinkedIn post generation)
