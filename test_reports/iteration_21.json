@@ -1,0 +1,108 @@
+{
+  "summary": "WordPress subdirectory URL discovery fix verified. All 10 backend tests passed. Frontend import and export tested successfully. Key fix: REST API URL discovery tries subdirectory URL first, then falls back to root domain. Content-Type validation ensures only JSON responses are accepted (not HTML/Cloudflare).",
+
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+
+  "passed_tests": [
+    "✓ POST /api/import/wordpress with URL 'kurdynowski.com.pl/cms-biuro' - discovers API at root, returns 20 articles",
+    "✓ POST /api/import/wordpress with URL 'www.kurdynowski.com.pl' - works directly",
+    "✓ POST /api/import/wordpress with URL 'kurdynowski.com.pl' (no path) - works",
+    "✓ POST /api/articles/{id}/publish-wordpress discovers correct REST API despite subdirectory URL in settings",
+    "✓ POST /api/articles/{id}/publish-wordpress returns JSON error (HTTP 422, not 502)",
+    "✓ POST /api/articles/{id}/publish-wordpress error is meaningful Polish text, NOT Cloudflare HTML",
+    "✓ POST /api/settings/wordpress normalizes URL (adds https://) and preserves subdirectory path",
+    "✓ POST /api/import/wordpress with invalid URL returns meaningful Polish error",
+    "✓ GET /api/health endpoint accessible",
+    "✓ POST /api/auth/login works correctly",
+    "✓ Frontend: Import page loads with 'Z adresu URL' and 'Z WordPress' tabs",
+    "✓ Frontend: WordPress import with URL 'kurdynowski.com.pl/cms-biuro' fetches 20 articles",
+    "✓ Frontend: Articles list displays with Import buttons",
+    "✓ Frontend: Export panel shows WordPress section with 'Opublikuj na WordPress' button",
+    "✓ Frontend: WordPress publish shows meaningful Polish error message (not HTML)"
+  ],
+
+  "test_report_links": [
+    "/app/backend/tests/test_wordpress_subdirectory_discovery.py",
+    "/app/test_reports/pytest/pytest_wordpress_subdirectory.xml"
+  ],
+
+  "action_items": [],
+
+  "critical_code_review_comments": [
+    "REST API URL discovery correctly implemented in import_service.py (lines 120-134) and wordpress_service.py (lines 314-351)",
+    "Discovery tries: given URL + /wp-json/wp/v2/posts, given URL + /index.php/wp-json/wp/v2/posts, given URL + ?rest_route=, then root domain + same patterns",
+    "Content-Type validation ensures only 'application/json' responses are accepted, preventing false matches on HTML pages returning 200",
+    "HTTP 422 instead of raising HTTPException with 500 ensures Cloudflare passes through JSON responses",
+    "Polish error messages correctly returned for all failure scenarios (401, 403, timeout, connection error)"
+  ],
+
+  "updated_files": [
+    "/app/backend/tests/test_wordpress_subdirectory_discovery.py"
+  ],
+
+  "success_rate": {
+    "backend": "100% (10/10 tests passed)",
+    "frontend": "100% (all UI elements and flows verified)"
+  },
+
+  "test_credentials": {
+    "admin": "monika.gawkowska@kurdynowski.pl / MonZuz8180!",
+    "test_article_id": "4897af13-4e72-4dda-8b75-989a4794344a",
+    "real_wp_root": "kurdynowski.com.pl",
+    "real_wp_subdir": "kurdynowski.com.pl/cms-biuro",
+    "real_wp_www": "www.kurdynowski.com.pl"
+  },
+
+  "seed_data_creation": "None - used existing articles and real WordPress site",
+
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+
+  "context_for_next_testing_agent": "WordPress subdirectory URL discovery fix verified. The key change is multi-URL discovery pattern: when a subdirectory URL is provided (e.g., kurdynowski.com.pl/cms-biuro), the system tries that URL first, then falls back to root domain (kurdynowski.com.pl). Content-Type validation ensures HTML responses are rejected. The site kurdynowski.com.pl is REAL - REST API is at root domain. WordPress publish uses test credentials (will get 401) but the important thing is it discovers the correct REST API URL and returns JSON error (HTTP 422, not 502).",
+
+  "features_verified": {
+    "rest_api_url_discovery": {
+      "candidate_urls_order": [
+        "{url}/wp-json/wp/v2/posts",
+        "{url}/index.php/wp-json/wp/v2/posts",
+        "{url}/?rest_route=/wp/v2/posts",
+        "{root_domain}/wp-json/wp/v2/posts (if url has path)",
+        "{root_domain}/index.php/wp-json/wp/v2/posts",
+        "{root_domain}/?rest_route=/wp/v2/posts"
+      ],
+      "validation": "Content-Type must contain 'application/json'",
+      "success_criteria": "HTTP 200 with JSON, or HTTP 401/403 (auth required but API exists)"
+    },
+    "error_handling": {
+      "http_status": "422 (not 502 - Cloudflare passes through)",
+      "content_type": "application/json",
+      "error_messages": {
+        "401": "Bledne dane logowania WordPress. Sprawdz uzytkownika i haslo aplikacji w ustawieniach.",
+        "403": "Brak uprawnien do publikacji. Sprawdz czy uzytkownik ma role autora/redaktora i czy haslo aplikacji jest poprawne.",
+        "api_not_found": "WordPress REST API niedostepne. Sprawdz adres ({url}) i upewnij sie, ze REST API jest wlaczone.",
+        "timeout": "Timeout podczas publikacji.",
+        "connect_error": "Nie mozna polaczyc z WordPress."
+      }
+    },
+    "frontend_verified": {
+      "import_page": "Both tabs load, WordPress tab shows URL input with fetch button",
+      "wordpress_import_subdir": "URL 'kurdynowski.com.pl/cms-biuro' fetches 20 articles successfully",
+      "export_panel": "WordPress publish shows 'Opublikuj na WordPress' button, error displays as meaningful Polish text"
+    }
+  },
+
+  "mocked_api": {
+    "TPay": "Payment integration mocked",
+    "WordPress_publish": "Uses test credentials (testuser/xxxx-xxxx-xxxx) - returns 401 but with proper JSON error",
+    "WordPress_import": "Uses REAL kurdynowski.com.pl - returns real articles"
+  }
+}
