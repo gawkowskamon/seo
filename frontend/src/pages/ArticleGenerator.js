@@ -116,13 +116,6 @@ const ArticleGenerator = () => {
     setIsGenerating(true);
     setCurrentStage(0);
 
-    const stageInterval = setInterval(() => {
-      setCurrentStage(prev => {
-        if (prev < 3) return prev + 1;
-        return prev;
-      });
-    }, 4000);
-
     try {
       // Start async generation
       const startRes = await axios.post(`${BACKEND_URL}/api/articles/generate`, {
@@ -135,18 +128,22 @@ const ArticleGenerator = () => {
       }, { timeout: 30000 });
 
       const jobId = startRes.data.job_id;
+      let pollCount = 0;
+      const maxPolls = 60; // 60 * 3s = 3 minutes max
+      let notFoundCount = 0;
       
       // Poll for completion
       const pollInterval = setInterval(async () => {
         try {
+          pollCount++;
           const statusRes = await axios.get(`${BACKEND_URL}/api/articles/generate/status/${jobId}`);
           const { status, stage, article_id, error } = statusRes.data;
+          notFoundCount = 0; // reset on success
           
           if (stage !== undefined) setCurrentStage(Math.min(stage, 3));
           
           if (status === 'completed' && article_id) {
             clearInterval(pollInterval);
-            clearInterval(stageInterval);
             setCurrentStage(4);
             setTimeout(() => {
               toast.success('Artykul wygenerowany pomyslnie!');
@@ -154,13 +151,24 @@ const ArticleGenerator = () => {
             }, 800);
           } else if (status === 'failed') {
             clearInterval(pollInterval);
-            clearInterval(stageInterval);
             setIsGenerating(false);
             toast.error(error || 'Blad generowania artykulu');
+          } else if (pollCount >= maxPolls) {
+            clearInterval(pollInterval);
+            setIsGenerating(false);
+            toast.error('Generowanie trwa zbyt dlugo. Sprobuj ponownie.');
           }
         } catch (pollErr) {
-          // Keep polling on network errors
-          console.warn('Poll error:', pollErr.message);
+          if (pollErr.response?.status === 404) {
+            notFoundCount++;
+            if (notFoundCount >= 3) {
+              clearInterval(pollInterval);
+              setIsGenerating(false);
+              toast.error('Utracono polaczenie z procesem generowania. Sprobuj ponownie.');
+            }
+          } else {
+            console.warn('Poll error:', pollErr.message);
+          }
         }
       }, 3000);
 
