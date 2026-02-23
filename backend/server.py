@@ -348,15 +348,16 @@ async def generate_article_endpoint(request: ArticleGenerateRequest, user: dict 
     """Start async article generation - returns job ID immediately."""
     job_id = str(uuid.uuid4())
     
-    _generation_jobs[job_id] = {
+    job_doc = {
+        "job_id": job_id,
         "status": "queued",
         "stage": 0,
         "article_id": None,
-        "article": None,
         "error": None,
         "user_id": user["id"],
         "created_at": datetime.now(timezone.utc).isoformat()
     }
+    await db.generation_jobs.insert_one(job_doc)
     
     request_data = {
         "topic": request.topic,
@@ -375,26 +376,43 @@ async def generate_article_endpoint(request: ArticleGenerateRequest, user: dict 
 @api_router.get("/articles/generate/status/{job_id}")
 async def get_generation_status(job_id: str, user: dict = Depends(get_current_user)):
     """Check article generation job status."""
-    job = _generation_jobs.get(job_id)
+    job = await db.generation_jobs.find_one({"job_id": job_id}, {"_id": 0})
     if not job:
         raise HTTPException(status_code=404, detail="Job nie znaleziony")
     if job["user_id"] != user["id"]:
         raise HTTPException(status_code=403, detail="Brak dostepu")
     
+    # Detect stale jobs: if generating for more than 3 minutes, mark as failed
+    if job["status"] == "generating":
+        from datetime import datetime as dt
+        created = dt.fromisoformat(job["created_at"].replace("Z", "+00:00")) if isinstance(job["created_at"], str) else job["created_at"]
+        elapsed = (datetime.now(timezone.utc) - created).total_seconds()
+        if elapsed > 180:
+            await db.generation_jobs.update_one(
+                {"job_id": job_id},
+                {"$set": {"status": "failed", "error": "Generowanie przekroczylo limit czasu (3 min)"}}
+            )
+            job["status"] = "failed"
+            job["error"] = "Generowanie przekroczylo limit czasu (3 min)"
+    
     result = {
         "job_id": job_id,
         "status": job["status"],
-        "stage": job["stage"]
+        "stage": job.get("stage", 0)
     }
     
     if job["status"] == "completed":
-        result["article_id"] = job["article_id"]
-        result["article"] = job["article"]
-        # Cleanup
-        del _generation_jobs[job_id]
+        result["article_id"] = job.get("article_id")
+        # Load article from DB
+        if job.get("article_id"):
+            article = await db.articles.find_one({"id": job["article_id"]}, {"_id": 0})
+            if article:
+                result["article"] = serialize_doc(article)
+        # Cleanup old job
+        await db.generation_jobs.delete_one({"job_id": job_id})
     elif job["status"] == "failed":
-        result["error"] = job["error"]
-        del _generation_jobs[job_id]
+        result["error"] = job.get("error", "Nieznany blad")
+        await db.generation_jobs.delete_one({"job_id": job_id})
     
     return result
 
