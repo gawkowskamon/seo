@@ -1214,11 +1214,16 @@ async def get_wordpress_settings(user: dict = Depends(require_admin)):
 @api_router.post("/settings/wordpress")
 async def save_wordpress_settings(request: WordPressSettingsRequest, user: dict = Depends(require_admin)):
     """Save WordPress settings (admin only)."""
+    # Normalize URL - add https:// if missing
+    wp_url = request.wp_url.strip().rstrip("/")
+    if not wp_url.startswith("http://") and not wp_url.startswith("https://"):
+        wp_url = f"https://{wp_url}"
+    
     await db.settings.update_one(
         {"key": "wordpress"},
         {"$set": {
             "key": "wordpress",
-            "wp_url": request.wp_url.rstrip("/"),
+            "wp_url": wp_url,
             "wp_user": request.wp_user,
             "wp_app_password": request.wp_app_password,
             "updated_at": datetime.now(timezone.utc).isoformat(),
