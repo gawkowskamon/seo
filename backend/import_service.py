@@ -107,17 +107,41 @@ async def scrape_article_from_url(url: str) -> dict:
 
 async def import_from_wordpress(wp_url: str, wp_user: str = None, wp_password: str = None, limit: int = 20) -> list:
     """Import articles from WordPress REST API."""
-    api_url = f"{wp_url.rstrip('/')}/wp-json/wp/v2/posts"
+    # Normalize URL - add protocol if missing
+    clean_url = wp_url.strip().rstrip('/')
+    if not clean_url.startswith('http://') and not clean_url.startswith('https://'):
+        clean_url = f"https://{clean_url}"
+    
+    api_url = f"{clean_url}/wp-json/wp/v2/posts"
     params = {"per_page": limit, "status": "publish", "_fields": "id,title,content,excerpt,slug,date,link"}
     
-    headers = {}
+    headers = {"User-Agent": "KurdynowskiSEO/1.0"}
     if wp_user and wp_password:
         import base64
         creds = base64.b64encode(f"{wp_user}:{wp_password}".encode()).decode()
         headers["Authorization"] = f"Basic {creds}"
     
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        response = await client.get(api_url, params=params, headers=headers)
+    async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+        try:
+            response = await client.get(api_url, params=params, headers=headers)
+        except httpx.ConnectError:
+            raise ValueError(f"Nie mozna polaczyc z {clean_url}. Sprawdz adres strony.")
+        except httpx.TimeoutException:
+            raise ValueError(f"Timeout polaczenia z {clean_url}. Sprawdz czy strona jest dostepna.")
+        
+        if response.status_code == 404:
+            # Try alternative URL with index.php
+            alt_api_url = f"{clean_url}/index.php/wp-json/wp/v2/posts"
+            try:
+                response = await client.get(alt_api_url, params=params, headers=headers)
+            except Exception:
+                pass
+            if response.status_code == 404:
+                raise ValueError(f"WordPress REST API niedostepne pod {clean_url}. Sprawdz czy API jest wlaczone i adres jest poprawny.")
+        
+        if response.status_code == 401 or response.status_code == 403:
+            raise ValueError("Bledne dane logowania lub brak uprawnien. Sprawdz uzytkownika i haslo aplikacji.")
+        
         response.raise_for_status()
         
         posts = response.json()
