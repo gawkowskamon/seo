@@ -269,14 +269,14 @@ async def health():
 
 import asyncio
 
-# Background job storage
-_generation_jobs = {}
 
 async def _run_generation_job(job_id: str, request_data: dict, user: dict):
     """Background task for article generation."""
     try:
-        _generation_jobs[job_id]["status"] = "generating"
-        _generation_jobs[job_id]["stage"] = 1
+        await db.generation_jobs.update_one(
+            {"job_id": job_id},
+            {"$set": {"status": "generating", "stage": 1}}
+        )
         
         article_data = await generate_article(
             topic=request_data["topic"],
@@ -287,7 +287,10 @@ async def _run_generation_job(job_id: str, request_data: dict, user: dict):
             template=request_data["template"]
         )
         
-        _generation_jobs[job_id]["stage"] = 3
+        await db.generation_jobs.update_one(
+            {"job_id": job_id},
+            {"$set": {"stage": 3}}
+        )
         
         seo_score = compute_seo_score(
             article_data,
@@ -323,15 +326,21 @@ async def _run_generation_job(job_id: str, request_data: dict, user: dict):
         
         await db.articles.insert_one(article_doc)
         
-        _generation_jobs[job_id]["status"] = "completed"
-        _generation_jobs[job_id]["stage"] = 4
-        _generation_jobs[job_id]["article_id"] = article_id
-        _generation_jobs[job_id]["article"] = serialize_doc(article_doc)
+        await db.generation_jobs.update_one(
+            {"job_id": job_id},
+            {"$set": {
+                "status": "completed",
+                "stage": 4,
+                "article_id": article_id
+            }}
+        )
         
     except Exception as e:
         logging.error(f"Background generation error: {e}")
-        _generation_jobs[job_id]["status"] = "failed"
-        _generation_jobs[job_id]["error"] = str(e)
+        await db.generation_jobs.update_one(
+            {"job_id": job_id},
+            {"$set": {"status": "failed", "error": str(e)}}
+        )
 
 
 @api_router.post("/articles/generate")
