@@ -294,16 +294,12 @@ def build_styled_wordpress_content(article: dict) -> str:
 async def publish_to_wordpress(wp_url: str, wp_user: str, wp_app_password: str, article: dict) -> dict:
     """
     Publish an article to WordPress via REST API.
-    
-    Args:
-        wp_url: WordPress site URL (e.g. https://example.com)
-        wp_user: WordPress username
-        wp_app_password: WordPress Application Password
-        article: Article dict from DB
-    
-    Returns:
-        dict with post_id, post_url, status
     """
+    # Normalize URL - add protocol if missing
+    clean_url = wp_url.strip().rstrip('/')
+    if not clean_url.startswith('http://') and not clean_url.startswith('https://'):
+        clean_url = f"https://{clean_url}"
+    
     # Build styled HTML content matching in-app editor
     content_html = _build_styled_content(article)
     
@@ -315,13 +311,13 @@ async def publish_to_wordpress(wp_url: str, wp_user: str, wp_app_password: str, 
             excerpt = strip_html_tags(sections[0].get("content", ""))[:300]
     
     # Prepare WP REST API payload
-    wp_api_url = f"{wp_url.rstrip('/')}/wp-json/wp/v2/posts"
+    wp_api_url = f"{clean_url}/wp-json/wp/v2/posts"
     
     post_data = {
         "title": article.get("title", "Bez tytułu"),
         "content": content_html,
         "excerpt": excerpt,
-        "status": "draft",  # Always publish as draft for safety
+        "status": "draft",
         "slug": article.get("slug", ""),
         "meta": {
             "_yoast_wpseo_metadesc": article.get("meta_description", ""),
@@ -334,11 +330,27 @@ async def publish_to_wordpress(wp_url: str, wp_user: str, wp_app_password: str, 
     credentials = base64.b64encode(f"{wp_user}:{wp_app_password}".encode()).decode()
     headers = {
         "Authorization": f"Basic {credentials}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "User-Agent": "KurdynowskiSEO/1.0"
     }
     
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        response = await client.post(wp_api_url, json=post_data, headers=headers)
+    async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+        try:
+            response = await client.post(wp_api_url, json=post_data, headers=headers)
+        except httpx.ConnectError:
+            return {"success": False, "error": f"Nie mozna polaczyc z {clean_url}. Sprawdz adres WordPress w ustawieniach."}
+        except httpx.TimeoutException:
+            return {"success": False, "error": f"Timeout polaczenia z WordPress ({clean_url})."}
+        
+        if response.status_code == 404:
+            # Try with index.php in path
+            alt_url = f"{clean_url}/index.php/wp-json/wp/v2/posts"
+            try:
+                response = await client.post(alt_url, json=post_data, headers=headers)
+            except Exception:
+                pass
+            if response.status_code == 404:
+                return {"success": False, "error": f"WordPress REST API niedostepne ({clean_url}). Sprawdz czy adres jest poprawny i REST API jest wlaczone."}
         
         if response.status_code in (200, 201):
             data = response.json()
@@ -346,7 +358,7 @@ async def publish_to_wordpress(wp_url: str, wp_user: str, wp_app_password: str, 
                 "success": True,
                 "post_id": data.get("id"),
                 "post_url": data.get("link", ""),
-                "edit_url": f"{wp_url.rstrip('/')}/wp-admin/post.php?post={data.get('id')}&action=edit",
+                "edit_url": f"{clean_url}/wp-admin/post.php?post={data.get('id')}&action=edit",
                 "status": data.get("status", "draft")
             }
         else:
@@ -356,6 +368,11 @@ async def publish_to_wordpress(wp_url: str, wp_user: str, wp_app_password: str, 
                 error_msg = err_data.get("message", str(response.status_code))
             except Exception:
                 error_msg = f"HTTP {response.status_code}"
+            
+            if response.status_code == 401:
+                error_msg = "Bledne dane logowania WordPress. Sprawdz uzytkownika i haslo aplikacji w ustawieniach."
+            elif response.status_code == 403:
+                error_msg = "Brak uprawnien do publikacji na WordPress. Uzytkownik musi miec uprawnienia autora/redaktora."
             
             logger.error(f"WordPress publish failed: {response.status_code} - {error_msg}")
             return {
