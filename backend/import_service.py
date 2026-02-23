@@ -107,12 +107,32 @@ async def scrape_article_from_url(url: str) -> dict:
 
 async def import_from_wordpress(wp_url: str, wp_user: str = None, wp_password: str = None, limit: int = 20) -> list:
     """Import articles from WordPress REST API."""
-    # Normalize URL - add protocol if missing
+    from urllib.parse import urlparse
+    
+    # Normalize URL
     clean_url = wp_url.strip().rstrip('/')
     if not clean_url.startswith('http://') and not clean_url.startswith('https://'):
         clean_url = f"https://{clean_url}"
     
-    api_url = f"{clean_url}/wp-json/wp/v2/posts"
+    parsed = urlparse(clean_url)
+    base_domain = f"{parsed.scheme}://{parsed.netloc}"
+    
+    # Build candidate API URLs (subpath first, then root domain)
+    candidates = [
+        f"{clean_url}/wp-json/wp/v2/posts",
+        f"{clean_url}/index.php/wp-json/wp/v2/posts",
+        f"{clean_url}/?rest_route=/wp/v2/posts",
+    ]
+    if parsed.path and parsed.path != '/':
+        candidates += [
+            f"{base_domain}/wp-json/wp/v2/posts",
+            f"{base_domain}/index.php/wp-json/wp/v2/posts",
+            f"{base_domain}/?rest_route=/wp/v2/posts",
+        ]
+    
+    seen = set()
+    unique = [c for c in candidates if c not in seen and not seen.add(c)]
+    
     params = {"per_page": limit, "status": "publish", "_fields": "id,title,content,excerpt,slug,date,link"}
     
     headers = {"User-Agent": "KurdynowskiSEO/1.0"}
@@ -122,27 +142,22 @@ async def import_from_wordpress(wp_url: str, wp_user: str = None, wp_password: s
         headers["Authorization"] = f"Basic {creds}"
     
     async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
-        try:
-            response = await client.get(api_url, params=params, headers=headers)
-        except httpx.ConnectError:
-            raise ValueError(f"Nie mozna polaczyc z {clean_url}. Sprawdz adres strony.")
-        except httpx.TimeoutException:
-            raise ValueError(f"Timeout polaczenia z {clean_url}. Sprawdz czy strona jest dostepna.")
-        
-        if response.status_code == 404:
-            # Try alternative URL with index.php
-            alt_api_url = f"{clean_url}/index.php/wp-json/wp/v2/posts"
+        response = None
+        for api_url in unique:
             try:
-                response = await client.get(alt_api_url, params=params, headers=headers)
-            except Exception:
-                pass
-            if response.status_code == 404:
-                raise ValueError(f"WordPress REST API niedostepne pod {clean_url}. Sprawdz czy API jest wlaczone i adres jest poprawny.")
+                resp = await client.get(api_url, params=params, headers=headers)
+                if resp.status_code == 200:
+                    response = resp
+                    logger.info(f"WP import: REST API found at {api_url}")
+                    break
+            except (httpx.ConnectError, httpx.TimeoutException):
+                continue
+        
+        if response is None:
+            raise ValueError(f"WordPress REST API niedostepne. Sprawdz adres ({clean_url}). Sprobowano rowniez {base_domain}.")
         
         if response.status_code == 401 or response.status_code == 403:
             raise ValueError("Bledne dane logowania lub brak uprawnien. Sprawdz uzytkownika i haslo aplikacji.")
-        
-        response.raise_for_status()
         
         posts = response.json()
         articles = []
