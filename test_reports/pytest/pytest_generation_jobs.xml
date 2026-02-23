@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="7" skipped="0" tests="9" time="172.013" timestamp="2026-02-23T00:19:43.769675+00:00" hostname="agent-env-42030381-8610-4a86-885e-2d0dee2fc5fb"><testcase classname="backend.tests.test_article_generation_jobs.TestArticleGenerationJobCreation" name="test_generate_endpoint_returns_job_id" time="0.588" /><testcase classname="backend.tests.test_article_generation_jobs.TestArticleGenerationJobCreation" name="test_generate_endpoint_requires_authentication" time="10.053"><failure message="requests.exceptions.ReadTimeout: HTTPSConnectionPool(host='seo-article-builder-2.preview.emergentagent.com', port=443): Read timed out. (read timeout=10)">/root/.venv/lib/python3.11/site-packages/urllib3/connectionpool.py:534: in _make_request
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="3" skipped="1" tests="7" time="89.576" timestamp="2026-02-23T00:23:42.922869+00:00" hostname="agent-env-42030381-8610-4a86-885e-2d0dee2fc5fb"><testcase classname="backend.tests.test_article_generation_jobs.TestArticleGenerationMongoDBJobs" name="test_01_health_endpoint" time="0.290" /><testcase classname="backend.tests.test_article_generation_jobs.TestArticleGenerationMongoDBJobs" name="test_02_generate_returns_job_id" time="0.509" /><testcase classname="backend.tests.test_article_generation_jobs.TestArticleGenerationMongoDBJobs" name="test_03_generate_requires_auth" time="20.069"><skipped type="pytest.skip" message="Request timed out - server may be busy processing LLM generation">/app/backend/tests/test_article_generation_jobs.py:106: Request timed out - server may be busy processing LLM generation</skipped></testcase><testcase classname="backend.tests.test_article_generation_jobs.TestArticleGenerationMongoDBJobs" name="test_04_nonexistent_job_returns_404" time="15.088"><failure message="requests.exceptions.ReadTimeout: HTTPSConnectionPool(host='seo-article-builder-2.preview.emergentagent.com', port=443): Read timed out. (read timeout=15)">/root/.venv/lib/python3.11/site-packages/urllib3/connectionpool.py:534: in _make_request
     response = conn.getresponse()
                ^^^^^^^^^^^^^^^^^^
 /root/.venv/lib/python3.11/site-packages/urllib3/connection.py:571: in getresponse
@@ -39,130 +39,10 @@ The above exception was the direct cause of the following exception:
     self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
 /root/.venv/lib/python3.11/site-packages/urllib3/connectionpool.py:367: in _raise_timeout
     raise ReadTimeoutError(
-E   urllib3.exceptions.ReadTimeoutError: HTTPSConnectionPool(host='seo-article-builder-2.preview.emergentagent.com', port=443): Read timed out. (read timeout=10)
+E   urllib3.exceptions.ReadTimeoutError: HTTPSConnectionPool(host='seo-article-builder-2.preview.emergentagent.com', port=443): Read timed out. (read timeout=15)
 
 During handling of the above exception, another exception occurred:
-backend/tests/test_article_generation_jobs.py:89: in test_generate_endpoint_requires_authentication
-    response = requests.post(
-/root/.venv/lib/python3.11/site-packages/requests/api.py:115: in post
-    return request("post", url, data=data, json=json, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-/root/.venv/lib/python3.11/site-packages/requests/api.py:59: in request
-    return session.request(method=method, url=url, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-/root/.venv/lib/python3.11/site-packages/requests/sessions.py:589: in request
-    resp = self.send(prep, **send_kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-/root/.venv/lib/python3.11/site-packages/requests/sessions.py:703: in send
-    r = adapter.send(request, **kwargs)
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-/root/.venv/lib/python3.11/site-packages/requests/adapters.py:690: in send
-    raise ReadTimeout(e, request=request)
-E   requests.exceptions.ReadTimeout: HTTPSConnectionPool(host='seo-article-builder-2.preview.emergentagent.com', port=443): Read timed out. (read timeout=10)</failure></testcase><testcase classname="backend.tests.test_article_generation_jobs.TestGenerationStatusPolling" name="test_status_endpoint_returns_job_status" time="30.090"><failure message="requests.exceptions.ReadTimeout: HTTPSConnectionPool(host='seo-article-builder-2.preview.emergentagent.com', port=443): Read timed out. (read timeout=30)">/root/.venv/lib/python3.11/site-packages/urllib3/connectionpool.py:534: in _make_request
-    response = conn.getresponse()
-               ^^^^^^^^^^^^^^^^^^
-/root/.venv/lib/python3.11/site-packages/urllib3/connection.py:571: in getresponse
-    httplib_response = super().getresponse()
-                       ^^^^^^^^^^^^^^^^^^^^^
-/usr/local/lib/python3.11/http/client.py:1395: in getresponse
-    response.begin()
-/usr/local/lib/python3.11/http/client.py:325: in begin
-    version, status, reason = self._read_status()
-                              ^^^^^^^^^^^^^^^^^^^
-/usr/local/lib/python3.11/http/client.py:286: in _read_status
-    line = str(self.fp.readline(_MAXLINE + 1), "iso-8859-1")
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-/usr/local/lib/python3.11/socket.py:718: in readinto
-    return self._sock.recv_into(b)
-           ^^^^^^^^^^^^^^^^^^^^^^^
-/usr/local/lib/python3.11/ssl.py:1314: in recv_into
-    return self.read(nbytes, buffer)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^
-/usr/local/lib/python3.11/ssl.py:1166: in read
-    return self._sslobj.read(len, buffer)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-E   TimeoutError: The read operation timed out
-
-The above exception was the direct cause of the following exception:
-/root/.venv/lib/python3.11/site-packages/requests/adapters.py:644: in send
-    resp = conn.urlopen(
-/root/.venv/lib/python3.11/site-packages/urllib3/connectionpool.py:841: in urlopen
-    retries = retries.increment(
-/root/.venv/lib/python3.11/site-packages/urllib3/util/retry.py:490: in increment
-    raise reraise(type(error), error, _stacktrace)
-          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-/root/.venv/lib/python3.11/site-packages/urllib3/util/util.py:39: in reraise
-    raise value
-/root/.venv/lib/python3.11/site-packages/urllib3/connectionpool.py:787: in urlopen
-    response = self._make_request(
-/root/.venv/lib/python3.11/site-packages/urllib3/connectionpool.py:536: in _make_request
-    self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
-/root/.venv/lib/python3.11/site-packages/urllib3/connectionpool.py:367: in _raise_timeout
-    raise ReadTimeoutError(
-E   urllib3.exceptions.ReadTimeoutError: HTTPSConnectionPool(host='seo-article-builder-2.preview.emergentagent.com', port=443): Read timed out. (read timeout=30)
-
-During handling of the above exception, another exception occurred:
-backend/tests/test_article_generation_jobs.py:111: in test_status_endpoint_returns_job_status
-    create_response = requests.post(
-/root/.venv/lib/python3.11/site-packages/requests/api.py:115: in post
-    return request("post", url, data=data, json=json, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-/root/.venv/lib/python3.11/site-packages/requests/api.py:59: in request
-    return session.request(method=method, url=url, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-/root/.venv/lib/python3.11/site-packages/requests/sessions.py:589: in request
-    resp = self.send(prep, **send_kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-/root/.venv/lib/python3.11/site-packages/requests/sessions.py:703: in send
-    r = adapter.send(request, **kwargs)
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-/root/.venv/lib/python3.11/site-packages/requests/adapters.py:690: in send
-    raise ReadTimeout(e, request=request)
-E   requests.exceptions.ReadTimeout: HTTPSConnectionPool(host='seo-article-builder-2.preview.emergentagent.com', port=443): Read timed out. (read timeout=30)</failure></testcase><testcase classname="backend.tests.test_article_generation_jobs.TestGenerationStatusPolling" name="test_nonexistent_job_returns_404" time="3.429" /><testcase classname="backend.tests.test_article_generation_jobs.TestGenerationStatusPolling" name="test_status_endpoint_requires_authentication" time="10.057"><failure message="requests.exceptions.ReadTimeout: HTTPSConnectionPool(host='seo-article-builder-2.preview.emergentagent.com', port=443): Read timed out. (read timeout=10)">/root/.venv/lib/python3.11/site-packages/urllib3/connectionpool.py:534: in _make_request
-    response = conn.getresponse()
-               ^^^^^^^^^^^^^^^^^^
-/root/.venv/lib/python3.11/site-packages/urllib3/connection.py:571: in getresponse
-    httplib_response = super().getresponse()
-                       ^^^^^^^^^^^^^^^^^^^^^
-/usr/local/lib/python3.11/http/client.py:1395: in getresponse
-    response.begin()
-/usr/local/lib/python3.11/http/client.py:325: in begin
-    version, status, reason = self._read_status()
-                              ^^^^^^^^^^^^^^^^^^^
-/usr/local/lib/python3.11/http/client.py:286: in _read_status
-    line = str(self.fp.readline(_MAXLINE + 1), "iso-8859-1")
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-/usr/local/lib/python3.11/socket.py:718: in readinto
-    return self._sock.recv_into(b)
-           ^^^^^^^^^^^^^^^^^^^^^^^
-/usr/local/lib/python3.11/ssl.py:1314: in recv_into
-    return self.read(nbytes, buffer)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^
-/usr/local/lib/python3.11/ssl.py:1166: in read
-    return self._sslobj.read(len, buffer)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-E   TimeoutError: The read operation timed out
-
-The above exception was the direct cause of the following exception:
-/root/.venv/lib/python3.11/site-packages/requests/adapters.py:644: in send
-    resp = conn.urlopen(
-/root/.venv/lib/python3.11/site-packages/urllib3/connectionpool.py:841: in urlopen
-    retries = retries.increment(
-/root/.venv/lib/python3.11/site-packages/urllib3/util/retry.py:490: in increment
-    raise reraise(type(error), error, _stacktrace)
-          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-/root/.venv/lib/python3.11/site-packages/urllib3/util/util.py:39: in reraise
-    raise value
-/root/.venv/lib/python3.11/site-packages/urllib3/connectionpool.py:787: in urlopen
-    response = self._make_request(
-/root/.venv/lib/python3.11/site-packages/urllib3/connectionpool.py:536: in _make_request
-    self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
-/root/.venv/lib/python3.11/site-packages/urllib3/connectionpool.py:367: in _raise_timeout
-    raise ReadTimeoutError(
-E   urllib3.exceptions.ReadTimeoutError: HTTPSConnectionPool(host='seo-article-builder-2.preview.emergentagent.com', port=443): Read timed out. (read timeout=10)
-
-During handling of the above exception, another exception occurred:
-backend/tests/test_article_generation_jobs.py:156: in test_status_endpoint_requires_authentication
+backend/tests/test_article_generation_jobs.py:112: in test_04_nonexistent_job_returns_404
     response = requests.get(
 /root/.venv/lib/python3.11/site-packages/requests/api.py:73: in get
     return request("get", url, params=params, **kwargs)
@@ -178,7 +58,7 @@ backend/tests/test_article_generation_jobs.py:156: in test_status_endpoint_requi
         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 /root/.venv/lib/python3.11/site-packages/requests/adapters.py:690: in send
     raise ReadTimeout(e, request=request)
-E   requests.exceptions.ReadTimeout: HTTPSConnectionPool(host='seo-article-builder-2.preview.emergentagent.com', port=443): Read timed out. (read timeout=10)</failure></testcase><testcase classname="backend.tests.test_article_generation_jobs.TestFullGenerationFlow" name="test_full_generation_flow_with_article_retrieval" time="34.854"><failure message="requests.exceptions.ReadTimeout: HTTPSConnectionPool(host='seo-article-builder-2.preview.emergentagent.com', port=443): Read timed out. (read timeout=10)">/root/.venv/lib/python3.11/site-packages/urllib3/connectionpool.py:534: in _make_request
+E   requests.exceptions.ReadTimeout: HTTPSConnectionPool(host='seo-article-builder-2.preview.emergentagent.com', port=443): Read timed out. (read timeout=15)</failure></testcase><testcase classname="backend.tests.test_article_generation_jobs.TestArticleGenerationMongoDBJobs" name="test_05_status_requires_auth" time="5.923" /><testcase classname="backend.tests.test_article_generation_jobs.TestArticleGenerationMongoDBJobs" name="test_06_status_returns_job_data" time="17.220"><failure message="requests.exceptions.ReadTimeout: HTTPSConnectionPool(host='seo-article-builder-2.preview.emergentagent.com', port=443): Read timed out. (read timeout=15)">/root/.venv/lib/python3.11/site-packages/urllib3/connectionpool.py:534: in _make_request
     response = conn.getresponse()
                ^^^^^^^^^^^^^^^^^^
 /root/.venv/lib/python3.11/site-packages/urllib3/connection.py:571: in getresponse
@@ -219,10 +99,10 @@ The above exception was the direct cause of the following exception:
     self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
 /root/.venv/lib/python3.11/site-packages/urllib3/connectionpool.py:367: in _raise_timeout
     raise ReadTimeoutError(
-E   urllib3.exceptions.ReadTimeoutError: HTTPSConnectionPool(host='seo-article-builder-2.preview.emergentagent.com', port=443): Read timed out. (read timeout=10)
+E   urllib3.exceptions.ReadTimeoutError: HTTPSConnectionPool(host='seo-article-builder-2.preview.emergentagent.com', port=443): Read timed out. (read timeout=15)
 
 During handling of the above exception, another exception occurred:
-backend/tests/test_article_generation_jobs.py:204: in test_full_generation_flow_with_article_retrieval
+backend/tests/test_article_generation_jobs.py:159: in test_06_status_returns_job_data
     status_response = requests.get(
 /root/.venv/lib/python3.11/site-packages/requests/api.py:73: in get
     return request("get", url, params=params, **kwargs)
@@ -238,67 +118,7 @@ backend/tests/test_article_generation_jobs.py:204: in test_full_generation_flow_
         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 /root/.venv/lib/python3.11/site-packages/requests/adapters.py:690: in send
     raise ReadTimeout(e, request=request)
-E   requests.exceptions.ReadTimeout: HTTPSConnectionPool(host='seo-article-builder-2.preview.emergentagent.com', port=443): Read timed out. (read timeout=10)</failure></testcase><testcase classname="backend.tests.test_article_generation_jobs.TestJobCleanup" name="test_completed_job_is_deleted_after_fetch" time="41.941"><failure message="requests.exceptions.ReadTimeout: HTTPSConnectionPool(host='seo-article-builder-2.preview.emergentagent.com', port=443): Read timed out. (read timeout=10)">/root/.venv/lib/python3.11/site-packages/urllib3/connectionpool.py:534: in _make_request
-    response = conn.getresponse()
-               ^^^^^^^^^^^^^^^^^^
-/root/.venv/lib/python3.11/site-packages/urllib3/connection.py:571: in getresponse
-    httplib_response = super().getresponse()
-                       ^^^^^^^^^^^^^^^^^^^^^
-/usr/local/lib/python3.11/http/client.py:1395: in getresponse
-    response.begin()
-/usr/local/lib/python3.11/http/client.py:325: in begin
-    version, status, reason = self._read_status()
-                              ^^^^^^^^^^^^^^^^^^^
-/usr/local/lib/python3.11/http/client.py:286: in _read_status
-    line = str(self.fp.readline(_MAXLINE + 1), "iso-8859-1")
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-/usr/local/lib/python3.11/socket.py:718: in readinto
-    return self._sock.recv_into(b)
-           ^^^^^^^^^^^^^^^^^^^^^^^
-/usr/local/lib/python3.11/ssl.py:1314: in recv_into
-    return self.read(nbytes, buffer)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^
-/usr/local/lib/python3.11/ssl.py:1166: in read
-    return self._sslobj.read(len, buffer)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-E   TimeoutError: The read operation timed out
-
-The above exception was the direct cause of the following exception:
-/root/.venv/lib/python3.11/site-packages/requests/adapters.py:644: in send
-    resp = conn.urlopen(
-/root/.venv/lib/python3.11/site-packages/urllib3/connectionpool.py:841: in urlopen
-    retries = retries.increment(
-/root/.venv/lib/python3.11/site-packages/urllib3/util/retry.py:490: in increment
-    raise reraise(type(error), error, _stacktrace)
-          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-/root/.venv/lib/python3.11/site-packages/urllib3/util/util.py:39: in reraise
-    raise value
-/root/.venv/lib/python3.11/site-packages/urllib3/connectionpool.py:787: in urlopen
-    response = self._make_request(
-/root/.venv/lib/python3.11/site-packages/urllib3/connectionpool.py:536: in _make_request
-    self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
-/root/.venv/lib/python3.11/site-packages/urllib3/connectionpool.py:367: in _raise_timeout
-    raise ReadTimeoutError(
-E   urllib3.exceptions.ReadTimeoutError: HTTPSConnectionPool(host='seo-article-builder-2.preview.emergentagent.com', port=443): Read timed out. (read timeout=10)
-
-During handling of the above exception, another exception occurred:
-backend/tests/test_article_generation_jobs.py:295: in test_completed_job_is_deleted_after_fetch
-    status_response = requests.get(
-/root/.venv/lib/python3.11/site-packages/requests/api.py:73: in get
-    return request("get", url, params=params, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-/root/.venv/lib/python3.11/site-packages/requests/api.py:59: in request
-    return session.request(method=method, url=url, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-/root/.venv/lib/python3.11/site-packages/requests/sessions.py:589: in request
-    resp = self.send(prep, **send_kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-/root/.venv/lib/python3.11/site-packages/requests/sessions.py:703: in send
-    r = adapter.send(request, **kwargs)
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-/root/.venv/lib/python3.11/site-packages/requests/adapters.py:690: in send
-    raise ReadTimeout(e, request=request)
-E   requests.exceptions.ReadTimeout: HTTPSConnectionPool(host='seo-article-builder-2.preview.emergentagent.com', port=443): Read timed out. (read timeout=10)</failure></testcase><testcase classname="backend.tests.test_article_generation_jobs.TestAccessControl" name="test_user_cannot_access_other_users_job" time="30.095"><failure message="requests.exceptions.ReadTimeout: HTTPSConnectionPool(host='seo-article-builder-2.preview.emergentagent.com', port=443): Read timed out. (read timeout=30)">/root/.venv/lib/python3.11/site-packages/urllib3/connectionpool.py:534: in _make_request
+E   requests.exceptions.ReadTimeout: HTTPSConnectionPool(host='seo-article-builder-2.preview.emergentagent.com', port=443): Read timed out. (read timeout=15)</failure></testcase><testcase classname="backend.tests.test_article_generation_jobs.TestArticleGenerationMongoDBJobs" name="test_07_full_generation_flow" time="30.109"><failure message="requests.exceptions.ReadTimeout: HTTPSConnectionPool(host='seo-article-builder-2.preview.emergentagent.com', port=443): Read timed out. (read timeout=30)">/root/.venv/lib/python3.11/site-packages/urllib3/connectionpool.py:534: in _make_request
     response = conn.getresponse()
                ^^^^^^^^^^^^^^^^^^
 /root/.venv/lib/python3.11/site-packages/urllib3/connection.py:571: in getresponse
@@ -342,7 +162,7 @@ The above exception was the direct cause of the following exception:
 E   urllib3.exceptions.ReadTimeoutError: HTTPSConnectionPool(host='seo-article-builder-2.preview.emergentagent.com', port=443): Read timed out. (read timeout=30)
 
 During handling of the above exception, another exception occurred:
-backend/tests/test_article_generation_jobs.py:355: in test_user_cannot_access_other_users_job
+backend/tests/test_article_generation_jobs.py:193: in test_07_full_generation_flow
     create_response = requests.post(
 /root/.venv/lib/python3.11/site-packages/requests/api.py:115: in post
     return request("post", url, data=data, json=json, **kwargs)
@@ -358,65 +178,4 @@ backend/tests/test_article_generation_jobs.py:355: in test_user_cannot_access_ot
         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 /root/.venv/lib/python3.11/site-packages/requests/adapters.py:690: in send
     raise ReadTimeout(e, request=request)
-E   requests.exceptions.ReadTimeout: HTTPSConnectionPool(host='seo-article-builder-2.preview.emergentagent.com', port=443): Read timed out. (read timeout=30)</failure></testcase><testcase classname="backend.tests.test_article_generation_jobs.TestHealthEndpoint" name="test_health_endpoint" time="10.112"><failure message="requests.exceptions.ReadTimeout: HTTPSConnectionPool(host='seo-article-builder-2.preview.emergentagent.com', port=443): Read timed out. (read timeout=10)">/root/.venv/lib/python3.11/site-packages/urllib3/connectionpool.py:534: in _make_request
-    response = conn.getresponse()
-               ^^^^^^^^^^^^^^^^^^
-/root/.venv/lib/python3.11/site-packages/urllib3/connection.py:571: in getresponse
-    httplib_response = super().getresponse()
-                       ^^^^^^^^^^^^^^^^^^^^^
-/usr/local/lib/python3.11/http/client.py:1395: in getresponse
-    response.begin()
-/usr/local/lib/python3.11/http/client.py:325: in begin
-    version, status, reason = self._read_status()
-                              ^^^^^^^^^^^^^^^^^^^
-/usr/local/lib/python3.11/http/client.py:286: in _read_status
-    line = str(self.fp.readline(_MAXLINE + 1), "iso-8859-1")
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-/usr/local/lib/python3.11/socket.py:718: in readinto
-    return self._sock.recv_into(b)
-           ^^^^^^^^^^^^^^^^^^^^^^^
-/usr/local/lib/python3.11/ssl.py:1314: in recv_into
-    return self.read(nbytes, buffer)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^
-/usr/local/lib/python3.11/ssl.py:1166: in read
-    return self._sslobj.read(len, buffer)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-E   TimeoutError: The read operation timed out
-
-The above exception was the direct cause of the following exception:
-/root/.venv/lib/python3.11/site-packages/requests/adapters.py:644: in send
-    resp = conn.urlopen(
-/root/.venv/lib/python3.11/site-packages/urllib3/connectionpool.py:841: in urlopen
-    retries = retries.increment(
-/root/.venv/lib/python3.11/site-packages/urllib3/util/retry.py:490: in increment
-    raise reraise(type(error), error, _stacktrace)
-          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-/root/.venv/lib/python3.11/site-packages/urllib3/util/util.py:39: in reraise
-    raise value
-/root/.venv/lib/python3.11/site-packages/urllib3/connectionpool.py:787: in urlopen
-    response = self._make_request(
-/root/.venv/lib/python3.11/site-packages/urllib3/connectionpool.py:536: in _make_request
-    self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
-/root/.venv/lib/python3.11/site-packages/urllib3/connectionpool.py:367: in _raise_timeout
-    raise ReadTimeoutError(
-E   urllib3.exceptions.ReadTimeoutError: HTTPSConnectionPool(host='seo-article-builder-2.preview.emergentagent.com', port=443): Read timed out. (read timeout=10)
-
-During handling of the above exception, another exception occurred:
-backend/tests/test_article_generation_jobs.py:385: in test_health_endpoint
-    response = requests.get(f"{BASE_URL}/api/health", timeout=10)
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-/root/.venv/lib/python3.11/site-packages/requests/api.py:73: in get
-    return request("get", url, params=params, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-/root/.venv/lib/python3.11/site-packages/requests/api.py:59: in request
-    return session.request(method=method, url=url, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-/root/.venv/lib/python3.11/site-packages/requests/sessions.py:589: in request
-    resp = self.send(prep, **send_kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-/root/.venv/lib/python3.11/site-packages/requests/sessions.py:703: in send
-    r = adapter.send(request, **kwargs)
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-/root/.venv/lib/python3.11/site-packages/requests/adapters.py:690: in send
-    raise ReadTimeout(e, request=request)
-E   requests.exceptions.ReadTimeout: HTTPSConnectionPool(host='seo-article-builder-2.preview.emergentagent.com', port=443): Read timed out. (read timeout=10)</failure></testcase></testsuite></testsuites>
+E   requests.exceptions.ReadTimeout: HTTPSConnectionPool(host='seo-article-builder-2.preview.emergentagent.com', port=443): Read timed out. (read timeout=30)</failure></testcase></testsuite></testsuites>
