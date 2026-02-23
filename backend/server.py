@@ -1265,7 +1265,7 @@ async def publish_article_to_wordpress(article_id: str, user: dict = Depends(get
             )
             return result
         else:
-            raise HTTPException(status_code=502, detail=result.get("error", "Blad publikacji na WordPress"))
+            raise HTTPException(status_code=422, detail=result.get("error", "Blad publikacji na WordPress"))
     except HTTPException:
         raise
     except Exception as e:
