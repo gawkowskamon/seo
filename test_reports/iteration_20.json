@@ -1,0 +1,113 @@
+{
+  "summary": "WordPress import/export bug fixes verified. All 9 backend tests passed. Frontend verified: Import page loads with both tabs (URL/WordPress), WordPress import works with URL without https:// (20 articles fetched from kurdynowski.com.pl), Export panel shows meaningful Polish error messages (not Cloudflare HTML). Key fixes confirmed: URL normalization, HTTP 422 instead of 502, follow_redirects=True, Polish error messages.",
+
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Dashboard",
+        "issues": ["Console warning: '<tr> cannot be a child of <span>' - HTML structure issue in articles table (pre-existing, noted in iteration_19)"]
+      }
+    ]
+  },
+
+  "passed_tests": [
+    "✓ POST /api/import/wordpress with URL without https:// - normalizes and succeeds",
+    "✓ POST /api/import/wordpress with URL with https:// - succeeds",
+    "✓ POST /api/import/wordpress with invalid URL returns meaningful Polish error",
+    "✓ POST /api/articles/{id}/publish-wordpress returns JSON error (422, not 502)",
+    "✓ POST /api/articles/{id}/publish-wordpress error is JSON not Cloudflare HTML",
+    "✓ POST /api/settings/wordpress normalizes URL (adds https://)",
+    "✓ POST /api/import/url imports from real URL",
+    "✓ GET /api/health endpoint accessible",
+    "✓ POST /api/auth/login works correctly",
+    "✓ Frontend: Import page loads with data-testid='import-page'",
+    "✓ Frontend: 'Z adresu URL' tab present with data-testid='import-tab-url'",
+    "✓ Frontend: 'Z WordPress' tab present with data-testid='import-tab-wordpress'",
+    "✓ Frontend: WordPress URL input present with data-testid='import-wp-url'",
+    "✓ Frontend: Fetch button present with data-testid='import-wp-fetch-btn'",
+    "✓ Frontend: WordPress import with URL without https:// fetches 20 articles",
+    "✓ Frontend: Export panel visible with WordPress section",
+    "✓ Frontend: WordPress publish button clickable",
+    "✓ Frontend: Error displayed with data-testid='wp-publish-error'",
+    "✓ Frontend: Error message is meaningful Polish (not HTML/Cloudflare)",
+    "✓ Frontend: Toast notification shows same meaningful error"
+  ],
+
+  "test_report_links": [
+    "/app/backend/tests/test_wordpress_import_fix.py",
+    "/app/test_reports/pytest/pytest_wordpress_import_fix.xml"
+  ],
+
+  "action_items": [],
+
+  "critical_code_review_comments": [
+    "URL normalization correctly implemented in import_service.py (lines 110-113) and wordpress_service.py (lines 298-301)",
+    "HTTP 422 instead of 502 correctly implemented in server.py (line 1273)",
+    "follow_redirects=True added to httpx.AsyncClient in both services",
+    "Polish error messages correctly returned for 401/403/404/timeout scenarios",
+    "Fallback for /index.php/wp-json/wp/v2/posts correctly implemented when /wp-json returns 404"
+  ],
+
+  "updated_files": [
+    "/app/backend/tests/test_wordpress_import_fix.py"
+  ],
+
+  "success_rate": {
+    "backend": "100% (9/9 tests passed)",
+    "frontend": "100% (all UI elements and flows verified)"
+  },
+
+  "test_credentials": {
+    "admin": "monika.gawkowska@kurdynowski.pl / MonZuz8180!",
+    "test_article_id": "b4f55829-f62b-4b0e-9bd1-9c399a55f8d6",
+    "real_wp_site": "www.kurdynowski.com.pl"
+  },
+
+  "seed_data_creation": "None - used existing test article and real WordPress site",
+
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+
+  "context_for_next_testing_agent": "WordPress import/export bug fixes verified. Key changes: 1) URL normalization auto-adds https:// to URLs without protocol, 2) HTTP 422 returned instead of 502 for WP API failures (Cloudflare passes through JSON), 3) follow_redirects=True prevents redirect loops, 4) Polish error messages for common failures. The WordPress site www.kurdynowski.com.pl is real and accessible - import returns 20 articles. Publish fails with 403 because saved credentials are test credentials (test-wp-site.com), but error is properly returned as JSON.",
+
+  "features_verified": {
+    "url_normalization": {
+      "locations": [
+        "/app/backend/import_service.py import_from_wordpress()",
+        "/app/backend/wordpress_service.py publish_to_wordpress()",
+        "/app/backend/server.py save_wordpress_settings endpoint"
+      ],
+      "behavior": "Auto-adds https:// if URL doesn't start with http:// or https://"
+    },
+    "error_handling_fix": {
+      "old_status": "502 (Cloudflare intercepts and shows error page)",
+      "new_status": "422 (JSON passed through Cloudflare)",
+      "location": "/app/backend/server.py line 1273"
+    },
+    "polish_error_messages": {
+      "403": "Brak uprawnien do publikacji na WordPress. Uzytkownik musi miec uprawnienia autora/redaktora.",
+      "401": "Bledne dane logowania WordPress. Sprawdz uzytkownika i haslo aplikacji w ustawieniach.",
+      "404": "WordPress REST API niedostepne. Sprawdz czy API jest wlaczone i adres jest poprawny.",
+      "timeout": "Timeout polaczenia z WordPress.",
+      "connect_error": "Nie mozna polaczyc z [url]. Sprawdz adres strony."
+    },
+    "frontend_verified": {
+      "import_page": "Both URL and WordPress tabs load correctly with all form fields",
+      "wordpress_import": "Fetches articles from real WP site with URL normalization",
+      "export_panel": "WordPress publish shows meaningful error in both error element and toast"
+    }
+  },
+
+  "mocked_api": {
+    "TPay": "Payment integration uses mocked credentials",
+    "WordPress_publish": "Uses test credentials (test-wp-site.com) - returns 403 but with proper JSON error",
+    "WordPress_import": "Uses REAL www.kurdynowski.com.pl - returns real articles"
+  }
+}
