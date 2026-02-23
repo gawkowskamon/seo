@@ -291,28 +291,72 @@ def build_styled_wordpress_content(article: dict) -> str:
     return _build_styled_content(article)
 
 
+def _normalize_wp_url(wp_url: str) -> str:
+    """Normalize WordPress URL - add protocol if missing."""
+    clean = wp_url.strip().rstrip('/')
+    if not clean.startswith('http://') and not clean.startswith('https://'):
+        clean = f"https://{clean}"
+    return clean
+
+
+async def _discover_wp_api_url(client, wp_url: str, extra_headers: dict = None) -> str:
+    """
+    Discover the working WP REST API posts endpoint.
+    WordPress may be at root even if admin URL has a subpath (e.g. /cms-biuro).
+    Tries multiple URL patterns.
+    Returns the working REST API posts URL.
+    Raises ValueError if none work.
+    """
+    from urllib.parse import urlparse
+    parsed = urlparse(wp_url)
+    base_domain = f"{parsed.scheme}://{parsed.netloc}"
+
+    candidates = [
+        f"{wp_url}/wp-json/wp/v2/posts",
+        f"{wp_url}/index.php/wp-json/wp/v2/posts",
+        f"{wp_url}/?rest_route=/wp/v2/posts",
+    ]
+    # If URL has a path, also try root domain
+    if parsed.path and parsed.path != '/':
+        candidates += [
+            f"{base_domain}/wp-json/wp/v2/posts",
+            f"{base_domain}/index.php/wp-json/wp/v2/posts",
+            f"{base_domain}/?rest_route=/wp/v2/posts",
+        ]
+
+    seen = set()
+    unique = [c for c in candidates if c not in seen and not seen.add(c)]
+
+    req_headers = {"User-Agent": "KurdynowskiSEO/1.0"}
+    if extra_headers:
+        req_headers.update(extra_headers)
+
+    for url in unique:
+        try:
+            resp = await client.get(url, params={"per_page": 1}, headers=req_headers)
+            if resp.status_code in (200, 401, 403):
+                logger.info(f"WP REST API discovered at: {url}")
+                return url
+        except Exception:
+            continue
+
+    raise ValueError(
+        f"WordPress REST API niedostepne. Sprawdz adres ({wp_url}) i upewnij sie, ze REST API jest wlaczone."
+    )
+
+
 async def publish_to_wordpress(wp_url: str, wp_user: str, wp_app_password: str, article: dict) -> dict:
-    """
-    Publish an article to WordPress via REST API.
-    """
-    # Normalize URL - add protocol if missing
-    clean_url = wp_url.strip().rstrip('/')
-    if not clean_url.startswith('http://') and not clean_url.startswith('https://'):
-        clean_url = f"https://{clean_url}"
-    
-    # Build styled HTML content matching in-app editor
+    """Publish an article to WordPress via REST API."""
+    clean_url = _normalize_wp_url(wp_url)
+
     content_html = _build_styled_content(article)
-    
-    # Build excerpt
+
     excerpt = article.get("meta_description", "")
     if not excerpt:
         sections = article.get("sections", [])
         if sections:
             excerpt = strip_html_tags(sections[0].get("content", ""))[:300]
-    
-    # Prepare WP REST API payload
-    wp_api_url = f"{clean_url}/wp-json/wp/v2/posts"
-    
+
     post_data = {
         "title": article.get("title", "Bez tytułu"),
         "content": content_html,
@@ -325,40 +369,43 @@ async def publish_to_wordpress(wp_url: str, wp_user: str, wp_app_password: str, 
             "_yoast_wpseo_focuskw": article.get("primary_keyword", ""),
         }
     }
-    
-    # Auth header (Basic Auth with Application Password)
+
     credentials = base64.b64encode(f"{wp_user}:{wp_app_password}".encode()).decode()
-    headers = {
+    auth_headers = {
         "Authorization": f"Basic {credentials}",
         "Content-Type": "application/json",
         "User-Agent": "KurdynowskiSEO/1.0"
     }
-    
+
     async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+        # Discover working REST API URL
         try:
-            response = await client.post(wp_api_url, json=post_data, headers=headers)
+            wp_api_url = await _discover_wp_api_url(
+                client, clean_url, {"Authorization": f"Basic {credentials}"}
+            )
+        except ValueError as e:
+            return {"success": False, "error": str(e)}
+        except (httpx.ConnectError, httpx.TimeoutException):
+            return {"success": False, "error": f"Nie mozna polaczyc z {clean_url}. Sprawdz adres WordPress."}
+
+        # Publish
+        try:
+            response = await client.post(wp_api_url, json=post_data, headers=auth_headers)
         except httpx.ConnectError:
-            return {"success": False, "error": f"Nie mozna polaczyc z {clean_url}. Sprawdz adres WordPress w ustawieniach."}
+            return {"success": False, "error": "Nie mozna polaczyc z WordPress."}
         except httpx.TimeoutException:
-            return {"success": False, "error": f"Timeout polaczenia z WordPress ({clean_url})."}
-        
-        if response.status_code == 404:
-            # Try with index.php in path
-            alt_url = f"{clean_url}/index.php/wp-json/wp/v2/posts"
-            try:
-                response = await client.post(alt_url, json=post_data, headers=headers)
-            except Exception:
-                pass
-            if response.status_code == 404:
-                return {"success": False, "error": f"WordPress REST API niedostepne ({clean_url}). Sprawdz czy adres jest poprawny i REST API jest wlaczone."}
-        
+            return {"success": False, "error": "Timeout podczas publikacji."}
+
+        from urllib.parse import urlparse
+        admin_base = f"{urlparse(clean_url).scheme}://{urlparse(clean_url).netloc}"
+
         if response.status_code in (200, 201):
             data = response.json()
             return {
                 "success": True,
                 "post_id": data.get("id"),
                 "post_url": data.get("link", ""),
-                "edit_url": f"{clean_url}/wp-admin/post.php?post={data.get('id')}&action=edit",
+                "edit_url": f"{admin_base}/wp-admin/post.php?post={data.get('id')}&action=edit",
                 "status": data.get("status", "draft")
             }
         else:
@@ -368,12 +415,12 @@ async def publish_to_wordpress(wp_url: str, wp_user: str, wp_app_password: str, 
                 error_msg = err_data.get("message", str(response.status_code))
             except Exception:
                 error_msg = f"HTTP {response.status_code}"
-            
+
             if response.status_code == 401:
                 error_msg = "Bledne dane logowania WordPress. Sprawdz uzytkownika i haslo aplikacji w ustawieniach."
             elif response.status_code == 403:
-                error_msg = "Brak uprawnien do publikacji na WordPress. Uzytkownik musi miec uprawnienia autora/redaktora."
-            
+                error_msg = "Brak uprawnien do publikacji. Sprawdz czy uzytkownik ma role autora/redaktora i czy haslo aplikacji jest poprawne."
+
             logger.error(f"WordPress publish failed: {response.status_code} - {error_msg}")
             return {
                 "success": False,
