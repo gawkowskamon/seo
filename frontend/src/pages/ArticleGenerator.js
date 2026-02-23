@@ -173,7 +173,6 @@ const ArticleGenerator = () => {
       }, 3000);
 
     } catch (error) {
-      clearInterval(stageInterval);
       setIsGenerating(false);
       const msg = error.response?.data?.detail || 'Blad podczas generowania artykulu';
       toast.error(msg);
