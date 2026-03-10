@@ -1,79 +1,71 @@
-# Kurdynowski SEO Article Builder - PRD
+# SEO Article Writer - PRD
 
-## Problem Statement
-Feature-rich application for writing accounting-related blog articles with SEO optimization, AI-powered content generation, image generation, and a complete subscription system.
+## Original Problem Statement
+Aplikacja do pisania artykulow blogowych zwiazanych z ksiegowoscia, zoptymalizowana pod SEO AI.
+
+## Core Requirements
+- Generowanie artykulow zoptymalizowanych pod SEO (cel: 99%+)
+- Edytor wizualny z paskiem formatowania i widokiem HTML
+- Sugestie tematow artykulow
+- Asystent AI do poprawy wynikow SEO
+- Generator obrazow (Nano Banana) z obsluga wielu obrazow referencyjnych
+- Rozne szablony tresci (standard, listicle, case study)
+- Generowanie serii powiazanych artykulow
+- Uwierzytelnianie JWT, wieloklientowe workspace, rola admina
+- Eksport PDF i HTML
+- Integracja z WordPress (publikowanie, import, stylizacja)
+- System subskrypcji z TPay
+- Nowoczesny, profesjonalny design
 
 ## Tech Stack
-- **Backend**: FastAPI + MongoDB (Motor)
-- **Frontend**: React + Shadcn/UI
-- **AI**: OpenAI gpt-4.1-mini via Emergent LLM Key, Gemini nano-banana (images)
-- **Payments**: TPay Open API (OAuth2, MOCKED credentials)
-- **PDF**: fpdf2
+- **Backend**: FastAPI + MongoDB (Motor async)
+- **Frontend**: React + Shadcn UI
+- **AI**: OpenAI gpt-4.1-mini (text), Gemini nano-banana (images) via Emergent LLM Key
+- **Payments**: TPay
+- **CMS**: WordPress REST API
 
-## What's Implemented
+## Completed Features
+- [x] Generowanie artykulow AI (async z MongoDB job persistence)
+- [x] Edytor wizualny z HTML sync
+- [x] SEO scoring engine (flexible keyword matching)
+- [x] Generator obrazow (single + multi reference)
+- [x] Szablony tresci
+- [x] Serie artykulow
+- [x] JWT auth + admin role (auto-seeding z env vars)
+- [x] Eksport PDF/HTML/Facebook/Google Business
+- [x] WordPress publish z inline styling
+- [x] WordPress import z autodiscovery REST API
+- [x] Kalendarz tresci
+- [x] Zaplanowane publikacje WordPress
+- [x] Automatyczne linkowanie wewnetrzne
+- [x] Import artykulow z URL
+- [x] AI Chat Assistant
+- [x] Dark Mode
+- [x] Keyword Analytics Dashboard
+- [x] AI Rewriter
+- [x] Generator Newsletterow
+- [x] System subskrypcji TPay
+- [x] Panel admina (users CRUD)
 
-### Core Features
-- [x] JWT Authentication + Admin role + auto-seeding
-- [x] Admin user management (CRUD)
-- [x] Article generation (async background jobs) + visual WYSIWYG editor
-- [x] AI SEO assistant + flexible keyword scoring
-- [x] Content templates (standard, listicle, case study)
-- [x] Article series generation
-- [x] Topic suggestions
+## Production Deployment Fixes (Feb 2026)
+- [x] load_dotenv(override=False) - nie nadpisuje zmiennych Kubernetes
+- [x] Admin credentials przeniesione do env vars (ADMIN_EMAIL, ADMIN_PASSWORD)
+- [x] JWT secret wymaga env var (JWT_SECRET) - bez hardcoded fallback
+- [x] MongoDB client z serverSelectionTimeoutMS=5000
+- [x] seed_admin_user() w try/except - nie crashuje app jesli DB niedostepna
+- [x] os.environ.get() zamiast os.environ[] dla MONGO_URL
+- [x] N+1 query fix w admin users endpoint
+- [x] PDF font fallback (DejaVu -> Helvetica)
+- [x] Deployment agent: PASS - wszystkie blokery resolved
 
-### Image Features
-- [x] Image generator (Nano Banana) with 7 styles
-- [x] **Multiple reference images** (up to 5) — all attachments sent to Gemini for analysis
-- [x] Batch generation (4 variants)
-- [x] Image library + lightbox viewer
-- [x] AI image editing
+## Credentials
+- **Admin**: ADMIN_EMAIL / ADMIN_PASSWORD (z .env)
+- **WordPress**: monika.gawkowska@kurdynowski.pl / jY67 vfXG WSqw Wic4 LRRg CJUw
+- **WordPress URL**: https://kurdynowski.com.pl/cms-biuro
 
-### Export & Publishing
-- [x] PDF/HTML export with branded styling
-- [x] WordPress integration with scheduled publishing
-- [x] **Styled WordPress Export** - Inline CSS styles matching in-app editor (fonts, colors, spacing, separators, TOC, FAQ, tables)
-
-### SEO Intelligence
-- [x] SEO Audit - async background job
-- [x] Competition Analysis - async background job
-- [x] Auto-Update Check
-- [x] Internal Linkbuilding
-
-### Content Management
-- [x] Content Calendar
-- [x] Import Articles from URL/WordPress
-
-### "Wow" Effects (ALL COMPLETE)
-- [x] **Dark Mode** - toggle in sidebar, localStorage persistence
-- [x] **AI Chat Assistant** - Chat tab in article editor
-- [x] **Keyword Analytics Dashboard** - trends, difficulty, CPC, opportunity scores, mini-charts
-- [x] **AI Rewriter** - 6 styles (profesjonalny, przystępny, ekspercki, SEO, skrócony, rozszerzony) in editor
-- [x] **Newsletter Generator** - auto-generate HTML newsletters from articles, 3 styles, copy/download
-- [x] **Flexible SEO Scoring** - intelligent keyword matching ignoring Polish stop words
-
-### Payments & Branding
-- [x] Subscription system (TPay MOCKED)
-- [x] Professional logo + modernized UI
-
-## Key Credentials
-- Admin: monika.gawkowska@kurdynowski.pl / MonZuz8180!
-
-## API Endpoints (New)
-- `POST /api/keyword-analytics/analyze` → `GET /api/keyword-analytics/status/{job_id}`
-- `POST /api/rewrite` → `GET /api/rewrite/status/{job_id}`
-- `POST /api/newsletter/generate`, `GET /api/newsletter/list`, `GET /api/newsletter/{id}`
-
-## Test Reports
-- iteration_15.json: Dark Mode, AI Chat, Async SEO - 100% pass
-- iteration_16.json: Keyword Analytics, Newsletter, AI Rewriter - 100% pass
-- iteration_17.json: WordPress Styled Export - 14/14 pass (100%)
-- iteration_18.json: Multiple Reference Images - 100% pass (backend + frontend)
-- iteration_19.json: Article Generation Fix (MongoDB jobs) - 100% pass
-- iteration_20.json: WordPress Import/Export Fix - 100% pass (9 backend + frontend UI)
-- iteration_21.json: WordPress Subdirectory URL Discovery - 100% pass (10 backend + frontend)
-
-## Backlog
-- [ ] Social media integration (Facebook/LinkedIn post generation)
-- [ ] Masowe operacje na artykułach
-- [ ] Auto meta tags generation
-- [ ] Historia wersji artykułów
+## Backlog (P2+)
+- [ ] A/B Testing tytulow
+- [ ] Integracja Social Media
+- [ ] Masowe operacje na artykulach
+- [ ] Historia wersji artykulow
+- [ ] Auto generowanie meta tagow
