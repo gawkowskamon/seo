@@ -18,19 +18,19 @@ Aplikacja do pisania artykulow blogowych zwiazanych z ksiegowoscia, zoptymalizow
 - Nowoczesny, profesjonalny design
 
 ## Tech Stack
-- **Backend**: FastAPI + MongoDB (Motor async + PyMongo sync for threads)
-- **Frontend**: React + Shadcn UI
-- **AI**: OpenAI gpt-4.1-mini (text), gpt-5.2 (SEO assistant), Gemini nano-banana (images) via Emergent LLM Key
-- **Payments**: TPay
-- **CMS**: WordPress REST API
+- Backend: FastAPI + MongoDB (Motor async + PyMongo sync for threads)
+- Frontend: React + Shadcn UI
+- AI: OpenAI gpt-4.1-mini (text), gpt-5.2 (SEO assistant), Gemini nano-banana (images) via Emergent LLM Key
+- Payments: TPay
+- CMS: WordPress REST API
 
 ## Completed Features
 - [x] Generowanie artykulow AI (async z MongoDB job persistence)
 - [x] Edytor wizualny z HTML sync
 - [x] SEO scoring engine (flexible keyword matching)
 - [x] SEO AI Assistant (async z polling, GPT-5.2)
-- [x] Auto-optymalizacja SEO ("Zastosuj wszystkie" - jednorazowe aplikowanie sugestii)
-- [x] Smart find-and-replace sugestii SEO (nie append)
+- [x] Auto-optymalizacja SEO ("Zastosuj wszystkie")
+- [x] Smart find-and-replace sugestii SEO (z walidacja HTML)
 - [x] Generator obrazow (single + multi reference)
 - [x] Szablony tresci
 - [x] Serie artykulow
@@ -50,27 +50,17 @@ Aplikacja do pisania artykulow blogowych zwiazanych z ksiegowoscia, zoptymalizow
 - [x] System subskrypcji TPay
 - [x] Panel admina (users CRUD)
 
-## Production Deployment Fixes (Feb 2026)
-- [x] load_dotenv(override=False)
-- [x] Admin credentials w env vars (ADMIN_EMAIL, ADMIN_PASSWORD)
-- [x] JWT secret wymaga env var (JWT_SECRET)
-- [x] MongoDB client z serverSelectionTimeoutMS=5000
-- [x] seed_admin_user() w try/except
-- [x] os.environ.get() zamiast os.environ[] dla MONGO_URL
-- [x] N+1 query fix w admin users endpoint
-- [x] PDF font fallback
-
-## SEO AI Async + Auto-Optimize (Mar 10, 2026)
-- [x] SEO Assistant async polling (POST start + GET status)
-- [x] LLM w ThreadPoolExecutor (nie blokuje event loop)
-- [x] Sync PyMongo w watku
-- [x] Smart find-and-replace sugestii
-- [x] Przycisk "Zastosuj wszystkie" - aplikuje wszystkie sugestie jednorazowo
+## Bug Fix: Sugestie wklejane jako tekst (Mar 10, 2026)
+Problem: AI SEO Assistant generowal instrukcje ("Zmien strukture...", "Proponowany uklad H2...") zamiast gotowego HTML, ktore byly wklejane jako surowy tekst do artykulu.
+Rozwiazanie (dwuwarstwowe):
+1. Backend prompt: AI teraz ustawia apply_target="none" dla sugestii instrukcyjnych, apply_target="html_content" TYLKO z gotowym HTML
+2. Frontend walidacja: handleApplySuggestion odrzuca html_content bez tagow HTML (/<[a-z][^>]*>/i)
+3. Usunieto fallback append — jesli nie ma match, content nie jest zmieniany
 
 ## Credentials
-- **Admin**: ADMIN_EMAIL / ADMIN_PASSWORD (z .env)
-- **WordPress**: monika.gawkowska@kurdynowski.pl / jY67 vfXG WSqw Wic4 LRRg CJUw
-- **WordPress URL**: https://kurdynowski.com.pl/cms-biuro
+- Admin: ADMIN_EMAIL / ADMIN_PASSWORD (z .env)
+- WordPress: monika.gawkowska@kurdynowski.pl / jY67 vfXG WSqw Wic4 LRRg CJUw
+- WordPress URL: https://kurdynowski.com.pl/cms-biuro
 
 ## Backlog (P2+)
 - [ ] A/B Testing tytulow

@@ -65,7 +65,9 @@ WAZNE:
 - Dla kazdej sugestii z apply_target != "none", podaj konkretna proposed_value gotowa do zastosowania.
 - Dla meta_title: max 60 znakow.
 - Dla meta_description: 120-160 znakow.
-- Sugestie dotyczace tresci HTML powinny byc konkretnymi akapitami/zdaniami do dodania lub modyfikacji.
+- KRYTYCZNE dla html_content: proposed_value MUSI byc gotowym kodem HTML (np. <h2>Tytul</h2><p>Tresc akapitu...</p>), NIGDY instrukcjami ani opisem zmian. Jesli sugestia to zmiana struktury, ukladu naglowkow, nazewnictwa itp. - ustaw apply_target na "none" i opisz zmiane w polu rationale.
+- apply_target = "html_content" TYLKO gdy proposed_value zawiera gotowy HTML do wklejenia zamiast current_value.
+- Jesli sugestia wymaga recznej pracy redaktora (np. zmien nazewnictwo w calym tekscie, przebuduj uklad) - ustaw apply_target na "none".
 - Dla FAQ: proposed_value to JSON string z obiektem {{"question": "...", "answer": "..."}}.
 """
 

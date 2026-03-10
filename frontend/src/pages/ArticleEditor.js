@@ -235,13 +235,21 @@ const ArticleEditor = () => {
         break;
       case 'html_content':
         if (suggestion.proposed_value) {
+          const val = suggestion.proposed_value;
+          // Safety check: only apply if proposed_value looks like actual HTML content
+          // (contains HTML tags). If it's raw instructions/text without tags, skip it.
+          const hasHtmlTags = /<[a-z][^>]*>/i.test(val);
+          if (!hasHtmlTags) {
+            // This is an instruction, not actual HTML — don't insert into content
+            break;
+          }
           setHtmlContent(prev => {
             // Try to find and replace current_value in the HTML
             if (suggestion.current_value && suggestion.current_value.trim()) {
               const current = suggestion.current_value.trim();
               // Try exact match
               if (prev.includes(current)) {
-                return prev.replace(current, suggestion.proposed_value);
+                return prev.replace(current, val);
               }
               // Try matching stripped text (without HTML tags)
               const stripTags = (html) => html.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
@@ -254,7 +262,7 @@ const ArticleEditor = () => {
                 for (let i = 0; i < paragraphs.length; i++) {
                   const chunk = paragraphs[i];
                   if (!replaced && stripTags(chunk).includes(currentStripped)) {
-                    rebuilt += suggestion.proposed_value;
+                    rebuilt += val;
                     replaced = true;
                   } else {
                     rebuilt += chunk;
@@ -263,8 +271,8 @@ const ArticleEditor = () => {
                 if (replaced) return rebuilt;
               }
             }
-            // Fallback: append new content
-            return prev + '\n' + suggestion.proposed_value;
+            // No match found — don't append, just return unchanged
+            return prev;
           });
           setHasUnsavedChanges(true);
         }
