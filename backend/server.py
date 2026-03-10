@@ -2241,7 +2241,7 @@ from auth import hash_password
 
 @app.on_event("startup")
 async def seed_admin_user():
-    """Ensure admin user exists on every startup."""
+    """Ensure admin user exists on every startup with correct password."""
     admin_email = "monika.gawkowska@kurdynowski.pl"
     admin_password = "MonZuz8180!"
     existing = await db.users.find_one({"email": admin_email})
@@ -2259,13 +2259,16 @@ async def seed_admin_user():
         await db.users.insert_one(admin_doc)
         logger.info(f"Admin user created: {admin_email}")
     else:
-        # Ensure admin flag and active status are set correctly
-        if not existing.get("is_admin") or not existing.get("is_active", True):
-            await db.users.update_one(
-                {"email": admin_email},
-                {"$set": {"is_admin": True, "is_active": True}}
-            )
-            logger.info(f"Admin user flags updated: {admin_email}")
+        # Always ensure admin has correct password, admin flag, and active status
+        await db.users.update_one(
+            {"email": admin_email},
+            {"$set": {
+                "is_admin": True,
+                "is_active": True,
+                "password_hash": hash_password(admin_password)
+            }}
+        )
+        logger.info(f"Admin user synced: {admin_email}")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
