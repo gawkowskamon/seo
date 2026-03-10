@@ -155,7 +155,7 @@ async def generate_article(topic: str, primary_keyword: str, secondary_keywords:
                     session_id=f"article-gen-{hash(topic) % 100000}-{attempt}",
                     system_message=ARTICLE_SYSTEM_PROMPT
                 )
-                chat.with_model(provider, model)
+                chat.with_model(provider, model).with_params(timeout=90)
                 
                 response = await chat.send_message(UserMessage(text=prompt))
                 

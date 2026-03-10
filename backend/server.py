@@ -1,11 +1,16 @@
+from dotenv import load_dotenv
+import os
+from pathlib import Path
+
+# Load .env FIRST before any other imports
+ROOT_DIR = Path(__file__).parent
+load_dotenv(ROOT_DIR / '.env', override=True)
+
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, Header
 from fastapi.responses import Response
-from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
-import os
 import logging
-from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional, Dict, Any
 import uuid
@@ -40,13 +45,18 @@ from competition_service import analyze_competition
 from auto_update_service import check_articles_for_updates
 from chat_assistant_service import chat_with_assistant, clear_chat_session
 
-ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / '.env')
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ.get('DB_NAME', 'seo_article_writer')]
+
+# Validate EMERGENT_LLM_KEY at startup
+_llm_key = os.environ.get('EMERGENT_LLM_KEY')
+if _llm_key:
+    logging.info(f"EMERGENT_LLM_KEY loaded: {_llm_key[:12]}...")
+else:
+    logging.warning("EMERGENT_LLM_KEY NOT FOUND in environment! AI features will not work.")
 
 # Create the main app
 app = FastAPI()
@@ -262,7 +272,12 @@ async def admin_delete_user(user_id: str, admin: dict = Depends(require_admin)):
 
 @api_router.get("/health")
 async def health():
-    return {"status": "healthy"}
+    llm_key = os.environ.get("EMERGENT_LLM_KEY")
+    return {
+        "status": "healthy",
+        "llm_key_configured": bool(llm_key),
+        "llm_key_prefix": llm_key[:12] + "..." if llm_key else None
+    }
 
 
 # --- Article Generation ---
