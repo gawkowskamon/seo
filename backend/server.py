@@ -1373,30 +1373,74 @@ class SEOAssistantRequest(BaseModel):
     message: Optional[str] = None
     history: Optional[List[Dict[str, str]]] = None
 
+def _sync_seo_assistant(job_id: str, article_id: str, mode: str, message: str = None, history: list = None):
+    """Run SEO assistant in a separate thread (sync) to avoid blocking event loop.
+    litellm.completion() is synchronous, so it must run in a thread pool."""
+    import pymongo
+    sync_client = pymongo.MongoClient(os.environ.get('MONGO_URL'), serverSelectionTimeoutMS=5000)
+    sync_db = sync_client[os.environ.get('DB_NAME', 'seo_article_writer')]
+    try:
+        article = sync_db.articles.find_one({"id": article_id}, {"_id": 0})
+        if not article:
+            sync_db.seo_assistant_jobs.update_one(
+                {"job_id": job_id},
+                {"$set": {"status": "failed", "error": "Article not found", "updated_at": datetime.now(timezone.utc)}}
+            )
+            return
+        loop = asyncio.new_event_loop()
+        try:
+            if mode == "chat" and message:
+                result = loop.run_until_complete(chat_about_seo(article=article, user_message=message, conversation_history=history or []))
+            else:
+                result = loop.run_until_complete(analyze_article_seo(article=article))
+        finally:
+            loop.close()
+        sync_db.seo_assistant_jobs.update_one(
+            {"job_id": job_id},
+            {"$set": {"status": "completed", "result": result, "updated_at": datetime.now(timezone.utc)}}
+        )
+    except Exception as e:
+        logging.error(f"SEO Assistant job {job_id} failed: {e}")
+        sync_db.seo_assistant_jobs.update_one(
+            {"job_id": job_id},
+            {"$set": {"status": "failed", "error": str(e), "updated_at": datetime.now(timezone.utc)}}
+        )
+    finally:
+        sync_client.close()
+
 @api_router.post("/articles/{article_id}/seo-assistant")
 async def seo_assistant_endpoint(article_id: str, request: SEOAssistantRequest):
-    """AI SEO Assistant - analyze article or chat about improvements."""
+    """AI SEO Assistant - starts async analysis or chat job."""
     article = await db.articles.find_one({"id": article_id}, {"_id": 0})
     if not article:
         raise HTTPException(status_code=404, detail="Article not found")
-    
-    try:
-        if request.mode == "chat" and request.message:
-            result = await chat_about_seo(
-                article=article,
-                user_message=request.message,
-                conversation_history=request.history or []
-            )
-        else:
-            result = await analyze_article_seo(article=article)
-        
-        return result
-        
-    except json.JSONDecodeError as e:
-        raise HTTPException(status_code=500, detail=f"AI returned invalid JSON: {str(e)}")
-    except Exception as e:
-        logging.error(f"SEO Assistant error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    job_id = str(uuid.uuid4())
+    await db.seo_assistant_jobs.insert_one({
+        "job_id": job_id,
+        "article_id": article_id,
+        "mode": request.mode,
+        "status": "processing",
+        "created_at": datetime.now(timezone.utc),
+        "updated_at": datetime.now(timezone.utc)
+    })
+    asyncio.get_event_loop().run_in_executor(
+        None, _sync_seo_assistant, job_id, article_id, request.mode, request.message, request.history
+    )
+    return {"job_id": job_id, "status": "processing"}
+
+@api_router.get("/seo-assistant/status/{job_id}")
+async def seo_assistant_status(job_id: str):
+    """Poll SEO assistant job status."""
+    job = await db.seo_assistant_jobs.find_one({"job_id": job_id}, {"_id": 0})
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if job["status"] == "completed":
+        await db.seo_assistant_jobs.delete_one({"job_id": job_id})
+        return {"status": "completed", "result": job.get("result", {})}
+    if job["status"] == "failed":
+        await db.seo_assistant_jobs.delete_one({"job_id": job_id})
+        return {"status": "failed", "error": job.get("error", "Unknown error")}
+    return {"status": "processing"}
 
 
 # --- Content Calendar ---

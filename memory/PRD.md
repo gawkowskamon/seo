@@ -18,9 +18,9 @@ Aplikacja do pisania artykulow blogowych zwiazanych z ksiegowoscia, zoptymalizow
 - Nowoczesny, profesjonalny design
 
 ## Tech Stack
-- **Backend**: FastAPI + MongoDB (Motor async)
+- **Backend**: FastAPI + MongoDB (Motor async + PyMongo sync for threads)
 - **Frontend**: React + Shadcn UI
-- **AI**: OpenAI gpt-4.1-mini (text), Gemini nano-banana (images) via Emergent LLM Key
+- **AI**: OpenAI gpt-4.1-mini (text), gpt-5.2 (SEO assistant), Gemini nano-banana (images) via Emergent LLM Key
 - **Payments**: TPay
 - **CMS**: WordPress REST API
 
@@ -54,9 +54,25 @@ Aplikacja do pisania artykulow blogowych zwiazanych z ksiegowoscia, zoptymalizow
 - [x] MongoDB client z serverSelectionTimeoutMS=5000
 - [x] seed_admin_user() w try/except - nie crashuje app jesli DB niedostepna
 - [x] os.environ.get() zamiast os.environ[] dla MONGO_URL
-- [x] N+1 query fix w admin users endpoint
+- [x] N+1 query fix w admin users endpoint (aggregation)
 - [x] PDF font fallback (DejaVu -> Helvetica)
-- [x] Deployment agent: PASS - wszystkie blokery resolved
+
+## SEO AI Async Fix (Mar 10, 2026)
+- [x] SEO Assistant przeniesiony na async polling (POST start + GET status)
+- [x] LLM call uruchamiany w ThreadPoolExecutor (nie blokuje event loop)
+- [x] Sync PyMongo w watku (zamiast async Motor) - unika problemow z event loop
+- [x] Frontend polling co 3s, max 40 prob (2 min timeout)
+- [x] Tryb analyze i chat oba async
+- [x] Sugestie SEO: smart find-and-replace zamiast append
+  - Proba exact match current_value
+  - Fallback: stripped text match (bez tagow HTML)  
+  - Ostateczny fallback: append
+
+## Key Technical Details
+- **Root cause SEO timeout**: litellm.completion() jest synchroniczne wewnatrz async metody emergentintegrations
+- **Solution**: run_in_executor z ThreadPoolExecutor + sync PyMongo + asyncio.new_event_loop()
+- **Production proxy timeout**: 30 sekund (Kubernetes ingress)
+- **LLM response time**: ~50 sekund w watku
 
 ## Credentials
 - **Admin**: ADMIN_EMAIL / ADMIN_PASSWORD (z .env)

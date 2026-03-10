@@ -48,20 +48,40 @@ const SEOAssistantPanel = ({ articleId, article, onApplySuggestion }) => {
     setSuggestions([]);
     setAppliedSuggestions(new Set());
     try {
-      const response = await axios.post(
+      const startRes = await axios.post(
         `${BACKEND_URL}/api/articles/${articleId}/seo-assistant`,
-        { mode: 'analyze' },
-        { timeout: 120000 }
+        { mode: 'analyze' }
       );
-      const data = response.data;
-      setSuggestions(data.suggestions || []);
-      if (data.assistant_message) {
-        setChatMessages(prev => [
-          ...prev,
-          { role: 'assistant', content: data.assistant_message }
-        ]);
+      const jobId = startRes.data.job_id;
+      if (!jobId) {
+        toast.error('Blad: brak job_id w odpowiedzi');
+        return;
       }
-      toast.success('Analiza SEO zakonczona');
+      // Poll for result
+      for (let i = 0; i < 40; i++) {
+        await new Promise(r => setTimeout(r, 3000));
+        const statusRes = await axios.get(`${BACKEND_URL}/api/seo-assistant/status/${jobId}`);
+        const status = statusRes.data;
+        if (status.status === 'completed') {
+          const data = status.result;
+          setSuggestions(data.suggestions || []);
+          if (data.assistant_message) {
+            setChatMessages(prev => [
+              ...prev,
+              { role: 'assistant', content: data.assistant_message }
+            ]);
+          }
+          toast.success('Analiza SEO zakonczona');
+          setAnalyzing(false);
+          return;
+        }
+        if (status.status === 'failed') {
+          toast.error(status.error || 'Blad analizy SEO');
+          setAnalyzing(false);
+          return;
+        }
+      }
+      toast.error('Przekroczono czas oczekiwania');
     } catch (error) {
       const msg = error.response?.data?.detail || 'Blad analizy SEO';
       toast.error(msg);
@@ -79,30 +99,50 @@ const SEOAssistantPanel = ({ articleId, article, onApplySuggestion }) => {
     setChatLoading(true);
     
     try {
-      const response = await axios.post(
+      const startRes = await axios.post(
         `${BACKEND_URL}/api/articles/${articleId}/seo-assistant`,
         {
           mode: 'chat',
           message: userMsg,
           history: chatMessages.slice(-10)
-        },
-        { timeout: 120000 }
+        }
       );
-      const data = response.data;
-      
+      const jobId = startRes.data.job_id;
+      // Poll for result
+      for (let i = 0; i < 40; i++) {
+        await new Promise(r => setTimeout(r, 3000));
+        const statusRes = await axios.get(`${BACKEND_URL}/api/seo-assistant/status/${jobId}`);
+        const status = statusRes.data;
+        if (status.status === 'completed') {
+          const data = status.result;
+          setChatMessages(prev => [
+            ...prev,
+            { role: 'assistant', content: data.assistant_message || 'Brak odpowiedzi.' }
+          ]);
+          if (data.suggestions && data.suggestions.length > 0) {
+            setSuggestions(prev => {
+              const existingIds = new Set(prev.map(s => s.id));
+              const newSuggestions = data.suggestions.filter(s => !existingIds.has(s.id));
+              return [...newSuggestions, ...prev];
+            });
+            toast.success(`${data.suggestions.length} nowych sugestii dodanych`);
+          }
+          setChatLoading(false);
+          return;
+        }
+        if (status.status === 'failed') {
+          setChatMessages(prev => [
+            ...prev,
+            { role: 'assistant', content: `Przepraszam, wystapil blad: ${status.error}` }
+          ]);
+          setChatLoading(false);
+          return;
+        }
+      }
       setChatMessages(prev => [
         ...prev,
-        { role: 'assistant', content: data.assistant_message || 'Brak odpowiedzi.' }
+        { role: 'assistant', content: 'Przekroczono czas oczekiwania.' }
       ]);
-      
-      if (data.suggestions && data.suggestions.length > 0) {
-        setSuggestions(prev => {
-          const existingIds = new Set(prev.map(s => s.id));
-          const newSuggestions = data.suggestions.filter(s => !existingIds.has(s.id));
-          return [...newSuggestions, ...prev];
-        });
-        toast.success(`${data.suggestions.length} nowych sugestii dodanych`);
-      }
     } catch (error) {
       const msg = error.response?.data?.detail || 'Blad komunikacji z asystentem';
       setChatMessages(prev => [

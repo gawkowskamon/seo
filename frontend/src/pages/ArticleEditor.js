@@ -235,7 +235,37 @@ const ArticleEditor = () => {
         break;
       case 'html_content':
         if (suggestion.proposed_value) {
-          setHtmlContent(prev => prev + '\n' + suggestion.proposed_value);
+          setHtmlContent(prev => {
+            // Try to find and replace current_value in the HTML
+            if (suggestion.current_value && suggestion.current_value.trim()) {
+              const current = suggestion.current_value.trim();
+              // Try exact match
+              if (prev.includes(current)) {
+                return prev.replace(current, suggestion.proposed_value);
+              }
+              // Try matching stripped text (without HTML tags)
+              const stripTags = (html) => html.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+              const currentStripped = stripTags(current);
+              if (currentStripped.length > 20) {
+                // Find the paragraph/section containing this text
+                const paragraphs = prev.split(/(<\/(?:p|h[2-4]|div|li)>)/i);
+                let rebuilt = '';
+                let replaced = false;
+                for (let i = 0; i < paragraphs.length; i++) {
+                  const chunk = paragraphs[i];
+                  if (!replaced && stripTags(chunk).includes(currentStripped)) {
+                    rebuilt += suggestion.proposed_value;
+                    replaced = true;
+                  } else {
+                    rebuilt += chunk;
+                  }
+                }
+                if (replaced) return rebuilt;
+              }
+            }
+            // Fallback: append new content
+            return prev + '\n' + suggestion.proposed_value;
+          });
           setHasUnsavedChanges(true);
         }
         break;
