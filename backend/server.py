@@ -47,8 +47,10 @@ from chat_assistant_service import chat_with_assistant, clear_chat_session
 
 
 # MongoDB connection
-mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
+mongo_url = os.environ.get('MONGO_URL')
+if not mongo_url:
+    raise RuntimeError("MONGO_URL environment variable is required")
+client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=5000)
 db = client[os.environ.get('DB_NAME', 'seo_article_writer')]
 
 # Validate EMERGENT_LLM_KEY at startup
@@ -208,13 +210,14 @@ async def require_admin(user: dict = Depends(get_current_user)):
 async def admin_list_users(admin: dict = Depends(require_admin)):
     """List all users (admin only)."""
     users = await db.users.find({}, {"_id": 0, "password_hash": 0}).sort("created_at", -1).to_list(200)
+    # Batch count articles per user
+    counts_cursor = db.articles.aggregate([{"$group": {"_id": "$user_id", "count": {"$sum": 1}}}])
+    counts = {doc["_id"]: doc["count"] async for doc in counts_cursor}
     result = []
     for u in users:
         if isinstance(u.get("created_at"), datetime):
             u["created_at"] = u["created_at"].isoformat()
-        # Count articles for this user
-        article_count = await db.articles.count_documents({"user_id": u["id"]})
-        u["article_count"] = article_count
+        u["article_count"] = counts.get(u["id"], 0)
         result.append(u)
     return result
 
@@ -2242,33 +2245,39 @@ from auth import hash_password
 @app.on_event("startup")
 async def seed_admin_user():
     """Ensure admin user exists on every startup with correct password."""
-    admin_email = "monika.gawkowska@kurdynowski.pl"
-    admin_password = "MonZuz8180!"
-    existing = await db.users.find_one({"email": admin_email})
-    if not existing:
-        admin_doc = {
-            "id": str(uuid.uuid4()),
-            "email": admin_email,
-            "password_hash": hash_password(admin_password),
-            "full_name": "Monika Gawkowska",
-            "workspace_id": str(uuid.uuid4()),
-            "is_admin": True,
-            "is_active": True,
-            "created_at": datetime.now(timezone.utc),
-        }
-        await db.users.insert_one(admin_doc)
-        logger.info(f"Admin user created: {admin_email}")
-    else:
-        # Always ensure admin has correct password, admin flag, and active status
-        await db.users.update_one(
-            {"email": admin_email},
-            {"$set": {
+    try:
+        admin_email = os.environ.get("ADMIN_EMAIL", "").strip()
+        admin_password = os.environ.get("ADMIN_PASSWORD", "").strip()
+        if not admin_email or not admin_password:
+            logger.warning("ADMIN_EMAIL or ADMIN_PASSWORD not set, skipping admin seed")
+            return
+        existing = await db.users.find_one({"email": admin_email})
+        if not existing:
+            admin_doc = {
+                "id": str(uuid.uuid4()),
+                "email": admin_email,
+                "password_hash": hash_password(admin_password),
+                "full_name": "Admin",
+                "workspace_id": str(uuid.uuid4()),
                 "is_admin": True,
                 "is_active": True,
-                "password_hash": hash_password(admin_password)
-            }}
-        )
-        logger.info(f"Admin user synced: {admin_email}")
+                "created_at": datetime.now(timezone.utc),
+            }
+            await db.users.insert_one(admin_doc)
+            logger.info(f"Admin user created: {admin_email}")
+        else:
+            await db.users.update_one(
+                {"email": admin_email},
+                {"$set": {
+                    "is_admin": True,
+                    "is_active": True,
+                    "password_hash": hash_password(admin_password)
+                }}
+            )
+            logger.info(f"Admin user synced: {admin_email}")
+    except Exception as e:
+        logger.error(f"Failed to seed admin user: {e}")
+        logger.warning("Application will continue without admin seeding")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():

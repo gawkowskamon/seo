@@ -19,7 +19,9 @@ logger = logging.getLogger(__name__)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # JWT configuration
-SECRET_KEY = os.environ.get("JWT_SECRET") or os.environ.get("JWT_SECRET_KEY") or os.environ.get("SECRET_KEY") or "kurdynowski-seo-jwt-secret-key-2026-change-in-production"
+SECRET_KEY = os.environ.get("JWT_SECRET") or os.environ.get("JWT_SECRET_KEY") or os.environ.get("SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError("JWT_SECRET environment variable must be set")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_HOURS = 24
 
