@@ -336,10 +336,18 @@ async def _run_generation_job(job_id: str, request_data: dict, user: dict):
         )
         
     except Exception as e:
+        err_msg = str(e)
+        # Make error message user-friendly
+        if "502" in err_msg or "bad gateway" in err_msg.lower():
+            err_msg = "Usluga AI tymczasowo niedostepna (blad 502). Sprawdz saldo Universal Key (Profile > Universal Key > Add Balance) lub sprobuj za chwile."
+        elif "429" in err_msg or "rate" in err_msg.lower():
+            err_msg = "Przekroczono limit zapytan AI. Sprobuj za kilka minut."
+        elif "401" in err_msg or "auth" in err_msg.lower():
+            err_msg = "Blad autoryzacji klucza AI. Skontaktuj sie z administratorem."
         logging.error(f"Background generation error: {e}")
         await db.generation_jobs.update_one(
             {"job_id": job_id},
-            {"$set": {"status": "failed", "error": str(e)}}
+            {"$set": {"status": "failed", "error": err_msg}}
         )
 
 

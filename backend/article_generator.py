@@ -141,50 +141,71 @@ async def generate_article(topic: str, primary_keyword: str, secondary_keywords:
             tone=tone
         )
     
-    # Try with retries - use gpt-4.1-mini (fast), single attempt per model
+    # Try with retries and backoff for transient errors (502, 503, etc.)
     models_to_try = [("openai", "gpt-4.1-mini")]
     last_error = None
+    max_retries = 3
     
     for provider, model in models_to_try:
-        try:
-            logger.info(f"Attempting article generation with {model}")
-            chat = LlmChat(
-                api_key=api_key,
-                session_id=f"article-gen-{hash(topic) % 100000}",
-                system_message=ARTICLE_SYSTEM_PROMPT
-            )
-            chat.with_model(provider, model)
-            
-            response = await chat.send_message(UserMessage(text=prompt))
-            
-            # Clean and parse JSON response
-            clean_response = response.strip()
-            if clean_response.startswith("```"):
-                clean_response = re.sub(r'^```(?:json)?\s*', '', clean_response)
-                clean_response = re.sub(r'\s*```$', '', clean_response)
-            
-            article = json.loads(clean_response)
-            
-            # Validate required fields
-            required_fields = ["title", "slug", "meta_title", "meta_description", "toc", "sections"]
-            missing = [f for f in required_fields if f not in article]
-            if missing:
-                raise ValueError(f"Article missing required fields: {missing}")
-            
-            # Add defaults for optional fields
-            article.setdefault("faq", [])
-            article.setdefault("sources", [])
-            article.setdefault("internal_link_suggestions", [])
-            
-            logger.info(f"Article generated successfully with {model}")
-            return article
-            
-        except Exception as e:
-            last_error = e
-            logger.warning(f"Attempt with {model} failed: {e}")
-            continue
+        for attempt in range(max_retries):
+            try:
+                logger.info(f"Attempting article generation with {model} (attempt {attempt+1}/{max_retries})")
+                chat = LlmChat(
+                    api_key=api_key,
+                    session_id=f"article-gen-{hash(topic) % 100000}-{attempt}",
+                    system_message=ARTICLE_SYSTEM_PROMPT
+                )
+                chat.with_model(provider, model)
+                
+                response = await chat.send_message(UserMessage(text=prompt))
+                
+                # Clean and parse JSON response
+                clean_response = response.strip()
+                if clean_response.startswith("```"):
+                    clean_response = re.sub(r'^```(?:json)?\s*', '', clean_response)
+                    clean_response = re.sub(r'\s*```$', '', clean_response)
+                
+                article = json.loads(clean_response)
+                
+                # Validate required fields
+                required_fields = ["title", "slug", "meta_title", "meta_description", "toc", "sections"]
+                missing = [f for f in required_fields if f not in article]
+                if missing:
+                    raise ValueError(f"Article missing required fields: {missing}")
+                
+                # Add defaults for optional fields
+                article.setdefault("faq", [])
+                article.setdefault("sources", [])
+                article.setdefault("internal_link_suggestions", [])
+                
+                logger.info(f"Article generated successfully with {model}")
+                return article
+                
+            except Exception as e:
+                last_error = e
+                err_str = str(e).lower()
+                is_transient = any(x in err_str for x in ["502", "503", "504", "bad gateway", "timeout", "rate_limit", "overloaded"])
+                
+                if is_transient and attempt < max_retries - 1:
+                    wait_time = (attempt + 1) * 5
+                    logger.warning(f"Transient error with {model} (attempt {attempt+1}): {e}. Retrying in {wait_time}s...")
+                    import asyncio
+                    await asyncio.sleep(wait_time)
+                    continue
+                else:
+                    logger.warning(f"Attempt with {model} failed: {e}")
+                    break
     
-    raise last_error or ValueError("Article generation failed")
+    # Format user-friendly error message
+    err_msg = str(last_error) if last_error else "Nieznany blad"
+    if "502" in err_msg or "bad gateway" in err_msg.lower():
+        raise ValueError("Usluga AI jest tymczasowo niedostepna (blad 502). Sprawdz saldo Universal Key w profilu (Profile > Universal Key > Add Balance) lub sprobuj ponownie za chwile.")
+    elif "401" in err_msg or "auth" in err_msg.lower():
+        raise ValueError("Blad autoryzacji klucza AI. Sprawdz konfiguracje EMERGENT_LLM_KEY.")
+    elif "429" in err_msg or "rate" in err_msg.lower():
+        raise ValueError("Przekroczono limit zapytan AI. Sprobuj ponownie za kilka minut.")
+    else:
+        raise last_error or ValueError("Generowanie artykulu nie powiodlo sie")
 
 
 async def suggest_topics(category: str = "ogólne", context: str = "aktualne tematy podatkowe") -> dict:
@@ -195,18 +216,24 @@ async def suggest_topics(category: str = "ogólne", context: str = "aktualne tem
     
     prompt = TOPIC_SUGGESTION_PROMPT.format(category=category, context=context)
     
-    chat = LlmChat(
-        api_key=api_key,
-        session_id=f"topic-suggest-{hash(category) % 100000}",
-        system_message="Jesteś ekspertem SEO od księgowości w Polsce. Odpowiadaj WYŁĄCZNIE poprawnym JSON-em."
-    )
-    chat.with_model("openai", "gpt-4.1-mini")
-    
-    response = await chat.send_message(UserMessage(text=prompt))
-    
-    clean_response = response.strip()
-    if clean_response.startswith("```"):
-        clean_response = re.sub(r'^```(?:json)?\s*', '', clean_response)
-        clean_response = re.sub(r'\s*```$', '', clean_response)
-    
-    return json.loads(clean_response)
+    try:
+        chat = LlmChat(
+            api_key=api_key,
+            session_id=f"topic-suggest-{hash(category) % 100000}",
+            system_message="Jesteś ekspertem SEO od księgowości w Polsce. Odpowiadaj WYŁĄCZNIE poprawnym JSON-em."
+        )
+        chat.with_model("openai", "gpt-4.1-mini")
+        
+        response = await chat.send_message(UserMessage(text=prompt))
+        
+        clean_response = response.strip()
+        if clean_response.startswith("```"):
+            clean_response = re.sub(r'^```(?:json)?\s*', '', clean_response)
+            clean_response = re.sub(r'\s*```$', '', clean_response)
+        
+        return json.loads(clean_response)
+    except Exception as e:
+        err_str = str(e).lower()
+        if "502" in err_str or "bad gateway" in err_str:
+            raise ValueError("Usluga AI tymczasowo niedostepna. Sprawdz saldo Universal Key lub sprobuj za chwile.")
+        raise
