@@ -28,6 +28,9 @@ Aplikacja do pisania artykulow blogowych zwiazanych z ksiegowoscia, zoptymalizow
 - [x] Generowanie artykulow AI (async z MongoDB job persistence)
 - [x] Edytor wizualny z HTML sync
 - [x] SEO scoring engine (flexible keyword matching)
+- [x] SEO AI Assistant (async z polling, GPT-5.2)
+- [x] Auto-optymalizacja SEO ("Zastosuj wszystkie" - jednorazowe aplikowanie sugestii)
+- [x] Smart find-and-replace sugestii SEO (nie append)
 - [x] Generator obrazow (single + multi reference)
 - [x] Szablony tresci
 - [x] Serie artykulow
@@ -48,31 +51,21 @@ Aplikacja do pisania artykulow blogowych zwiazanych z ksiegowoscia, zoptymalizow
 - [x] Panel admina (users CRUD)
 
 ## Production Deployment Fixes (Feb 2026)
-- [x] load_dotenv(override=False) - nie nadpisuje zmiennych Kubernetes
-- [x] Admin credentials przeniesione do env vars (ADMIN_EMAIL, ADMIN_PASSWORD)
-- [x] JWT secret wymaga env var (JWT_SECRET) - bez hardcoded fallback
+- [x] load_dotenv(override=False)
+- [x] Admin credentials w env vars (ADMIN_EMAIL, ADMIN_PASSWORD)
+- [x] JWT secret wymaga env var (JWT_SECRET)
 - [x] MongoDB client z serverSelectionTimeoutMS=5000
-- [x] seed_admin_user() w try/except - nie crashuje app jesli DB niedostepna
+- [x] seed_admin_user() w try/except
 - [x] os.environ.get() zamiast os.environ[] dla MONGO_URL
-- [x] N+1 query fix w admin users endpoint (aggregation)
-- [x] PDF font fallback (DejaVu -> Helvetica)
+- [x] N+1 query fix w admin users endpoint
+- [x] PDF font fallback
 
-## SEO AI Async Fix (Mar 10, 2026)
-- [x] SEO Assistant przeniesiony na async polling (POST start + GET status)
-- [x] LLM call uruchamiany w ThreadPoolExecutor (nie blokuje event loop)
-- [x] Sync PyMongo w watku (zamiast async Motor) - unika problemow z event loop
-- [x] Frontend polling co 3s, max 40 prob (2 min timeout)
-- [x] Tryb analyze i chat oba async
-- [x] Sugestie SEO: smart find-and-replace zamiast append
-  - Proba exact match current_value
-  - Fallback: stripped text match (bez tagow HTML)  
-  - Ostateczny fallback: append
-
-## Key Technical Details
-- **Root cause SEO timeout**: litellm.completion() jest synchroniczne wewnatrz async metody emergentintegrations
-- **Solution**: run_in_executor z ThreadPoolExecutor + sync PyMongo + asyncio.new_event_loop()
-- **Production proxy timeout**: 30 sekund (Kubernetes ingress)
-- **LLM response time**: ~50 sekund w watku
+## SEO AI Async + Auto-Optimize (Mar 10, 2026)
+- [x] SEO Assistant async polling (POST start + GET status)
+- [x] LLM w ThreadPoolExecutor (nie blokuje event loop)
+- [x] Sync PyMongo w watku
+- [x] Smart find-and-replace sugestii
+- [x] Przycisk "Zastosuj wszystkie" - aplikuje wszystkie sugestie jednorazowo
 
 ## Credentials
 - **Admin**: ADMIN_EMAIL / ADMIN_PASSWORD (z .env)

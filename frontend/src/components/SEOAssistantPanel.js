@@ -169,6 +169,22 @@ const SEOAssistantPanel = ({ articleId, article, onApplySuggestion }) => {
     }
   };
 
+  const handleApplyAll = () => {
+    const applicable = activeSuggestions.filter(
+      s => s.apply_target && s.apply_target !== 'none' && s.proposed_value
+    );
+    if (applicable.length === 0) return;
+    applicable.forEach(s => {
+      if (onApplySuggestion) onApplySuggestion(s);
+    });
+    setAppliedSuggestions(prev => {
+      const next = new Set(prev);
+      applicable.forEach(s => next.add(s.id));
+      return next;
+    });
+    toast.success(`Zastosowano ${applicable.length} sugestii`);
+  };
+
   const toggleSuggestion = (id) => {
     setExpandedSuggestion(expandedSuggestion === id ? null : id);
   };
@@ -280,6 +296,21 @@ const SEOAssistantPanel = ({ articleId, article, onApplySuggestion }) => {
               </div>
             ) : (
               <>
+                {/* Apply All Button */}
+                {activeSuggestions.filter(s => s.apply_target && s.apply_target !== 'none' && s.proposed_value).length > 1 && (
+                  <div style={{ padding: '10px 16px', borderBottom: '1px solid hsl(214, 18%, 93%)' }}>
+                    <Button
+                      size="sm"
+                      onClick={handleApplyAll}
+                      className="gap-1 w-full"
+                      style={{ background: 'hsl(158, 55%, 34%)', color: 'white', fontSize: 12, fontWeight: 600 }}
+                      data-testid="ai-assistant-apply-all-button"
+                    >
+                      <CheckCircle2 size={13} />
+                      Zastosuj wszystkie ({activeSuggestions.filter(s => s.apply_target && s.apply_target !== 'none' && s.proposed_value).length})
+                    </Button>
+                  </div>
+                )}
                 {/* Active Suggestions */}
                 {activeSuggestions.map((suggestion) => {
                   const impact = IMPACT_CONFIG[suggestion.impact] || IMPACT_CONFIG.low;
