@@ -837,15 +837,69 @@ async def list_image_styles():
     """Return all available image styles."""
     return get_all_image_styles()
 
+def _sync_generate_image(job_id: str, user_id: str, prompt: str, style: str, article_id: str,
+                          variation_type: str, ref_images_data: list):
+    """Run image generation in a separate thread to avoid blocking event loop."""
+    import pymongo
+    sync_client = pymongo.MongoClient(os.environ.get('MONGO_URL'), serverSelectionTimeoutMS=5000)
+    sync_db = sync_client[os.environ.get('DB_NAME', 'seo_article_writer')]
+    try:
+        article_context = None
+        if article_id:
+            article = sync_db.articles.find_one({"id": article_id}, {"_id": 0, "topic": 1, "primary_keyword": 1})
+            if article:
+                article_context = article
+
+        loop = asyncio.new_event_loop()
+        try:
+            if variation_type:
+                result = loop.run_until_complete(generate_image_variant(
+                    original_prompt=prompt, style=style, variation_type=variation_type,
+                    article_context=article_context, reference_images=ref_images_data
+                ))
+            else:
+                result = loop.run_until_complete(generate_image(
+                    prompt=prompt, style=style, article_context=article_context,
+                    reference_images=ref_images_data
+                ))
+        finally:
+            loop.close()
+
+        image_id = str(uuid.uuid4())
+        image_doc = {
+            "id": image_id, "user_id": user_id, "prompt": prompt, "style": style,
+            "article_id": article_id, "variation_type": variation_type,
+            "mime_type": result["mime_type"], "data": result["data"],
+            "has_reference": ref_images_data is not None,
+            "num_references": len(ref_images_data) if ref_images_data else 0,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        sync_db.images.insert_one(image_doc)
+
+        sync_db.image_generation_jobs.update_one(
+            {"job_id": job_id},
+            {"$set": {"status": "completed", "result": {
+                "id": image_id, "prompt": prompt, "style": style,
+                "mime_type": result["mime_type"], "data": result["data"],
+                "created_at": image_doc["created_at"]
+            }, "updated_at": datetime.now(timezone.utc)}}
+        )
+    except Exception as e:
+        logging.error(f"Image generation job {job_id} failed: {e}")
+        sync_db.image_generation_jobs.update_one(
+            {"job_id": job_id},
+            {"$set": {"status": "failed", "error": str(e), "updated_at": datetime.now(timezone.utc)}}
+        )
+    finally:
+        sync_client.close()
+
+
 @api_router.post("/images/generate")
 async def generate_image_endpoint(request: ImageGenerateRequest, user: dict = Depends(get_current_user)):
-    """Generate an image using Gemini Nano Banana model."""
+    """Generate an image using Gemini Nano Banana model (async with polling)."""
     try:
-        # Build list of reference images from both fields (backward compat + new multi)
         allowed_mime = ["image/png", "image/jpeg", "image/jpg", "image/webp"]
         ref_images_list = []
-        
-        # New field: multiple reference images
         if request.reference_images:
             for ref in request.reference_images:
                 if ref.mime_type not in allowed_mime:
@@ -853,7 +907,6 @@ async def generate_image_endpoint(request: ImageGenerateRequest, user: dict = De
                 if len(ref.data) > 7_000_000:
                     raise HTTPException(status_code=400, detail="Jeden z plikow jest zbyt duzy. Maksymalny rozmiar: 5MB")
                 ref_images_list.append({"data": ref.data, "mime_type": ref.mime_type})
-        # Backward compat: single reference_image
         elif request.reference_image:
             if request.reference_image.mime_type not in allowed_mime:
                 raise HTTPException(status_code=400, detail="Nieobslugiwany format pliku. Dozwolone: PNG, JPG, WEBP")
@@ -862,63 +915,38 @@ async def generate_image_endpoint(request: ImageGenerateRequest, user: dict = De
             ref_images_list.append({"data": request.reference_image.data, "mime_type": request.reference_image.mime_type})
 
         ref_images_data = ref_images_list if ref_images_list else None
+        job_id = str(uuid.uuid4())
+        await db.image_generation_jobs.insert_one({
+            "job_id": job_id, "status": "processing",
+            "created_at": datetime.now(timezone.utc), "updated_at": datetime.now(timezone.utc)
+        })
 
-        # Get article context if article_id provided
-        article_context = None
-        if request.article_id:
-            article = await db.articles.find_one({"id": request.article_id}, {"_id": 0, "topic": 1, "primary_keyword": 1})
-            if article:
-                article_context = article
-        
-        # Generate main or variant
-        if request.variation_type:
-            result = await generate_image_variant(
-                original_prompt=request.prompt,
-                style=request.style,
-                variation_type=request.variation_type,
-                article_context=article_context,
-                reference_images=ref_images_data
-            )
-        else:
-            result = await generate_image(
-                prompt=request.prompt,
-                style=request.style,
-                article_context=article_context,
-                reference_images=ref_images_data
-            )
-        
-        # Save image to DB
-        image_id = str(uuid.uuid4())
-        image_doc = {
-            "id": image_id,
-            "user_id": user["id"],
-            "prompt": request.prompt,
-            "style": request.style,
-            "article_id": request.article_id,
-            "variation_type": request.variation_type,
-            "mime_type": result["mime_type"],
-            "data": result["data"],
-            "has_reference": ref_images_data is not None,
-            "num_references": len(ref_images_list),
-            "created_at": datetime.now(timezone.utc).isoformat()
-        }
-        
-        await db.images.insert_one(image_doc)
-        
-        return {
-            "id": image_id,
-            "prompt": request.prompt,
-            "style": request.style,
-            "mime_type": result["mime_type"],
-            "data": result["data"],
-            "created_at": image_doc["created_at"]
-        }
-        
+        asyncio.get_event_loop().run_in_executor(
+            None, _sync_generate_image, job_id, user["id"], request.prompt, request.style,
+            request.article_id, request.variation_type, ref_images_data
+        )
+        return {"job_id": job_id, "status": "processing"}
+
     except HTTPException:
         raise
     except Exception as e:
         logging.error(f"Image generation error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/images/generate/status/{job_id}")
+async def image_generation_status(job_id: str):
+    """Poll image generation job status."""
+    job = await db.image_generation_jobs.find_one({"job_id": job_id}, {"_id": 0})
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if job["status"] == "completed":
+        await db.image_generation_jobs.delete_one({"job_id": job_id})
+        return {"status": "completed", "result": job.get("result", {})}
+    if job["status"] == "failed":
+        await db.image_generation_jobs.delete_one({"job_id": job_id})
+        return {"status": "failed", "error": job.get("error", "Unknown error")}
+    return {"status": "processing"}
 
 
 @api_router.get("/images/{image_id}")

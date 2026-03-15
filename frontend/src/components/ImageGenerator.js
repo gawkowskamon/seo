@@ -182,12 +182,30 @@ const ImageGenerator = ({ articleId, article, onInsertImage }) => {
         }));
       }
 
-      const res = await axios.post(`${BACKEND_URL}/api/images/generate`, payload, { timeout: 120000 });
-      
-      setGeneratedImage(res.data);
-      setShowVariants(true);
-      await loadGallery();
-      toast.success(variationType ? 'Wariant wygenerowany' : 'Obraz wygenerowany');
+      const startRes = await axios.post(`${BACKEND_URL}/api/images/generate`, payload);
+      const jobId = startRes.data.job_id;
+      if (!jobId) {
+        toast.error('Blad: brak job_id');
+        return;
+      }
+
+      // Poll for result
+      for (let i = 0; i < 40; i++) {
+        await new Promise(r => setTimeout(r, 3000));
+        const statusRes = await axios.get(`${BACKEND_URL}/api/images/generate/status/${jobId}`);
+        if (statusRes.data.status === 'completed') {
+          setGeneratedImage(statusRes.data.result);
+          setShowVariants(true);
+          await loadGallery();
+          toast.success(variationType ? 'Wariant wygenerowany' : 'Obraz wygenerowany');
+          return;
+        }
+        if (statusRes.data.status === 'failed') {
+          toast.error(statusRes.data.error || 'Blad generowania obrazu');
+          return;
+        }
+      }
+      toast.error('Przekroczono czas oczekiwania');
     } catch (err) {
       const msg = err.response?.data?.detail || 'Blad generowania obrazu';
       toast.error(msg);

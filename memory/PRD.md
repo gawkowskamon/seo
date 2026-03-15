@@ -3,59 +3,37 @@
 ## Original Problem Statement
 Aplikacja do pisania artykulow blogowych zwiazanych z ksiegowoscia, zoptymalizowana pod SEO AI.
 
-## Core Requirements
-- Generowanie artykulow zoptymalizowanych pod SEO (cel: 99%+)
-- Edytor wizualny z paskiem formatowania i widokiem HTML
-- Sugestie tematow artykulow
-- Asystent AI do poprawy wynikow SEO
-- Generator obrazow (Nano Banana) z obsluga wielu obrazow referencyjnych
-- Rozne szablony tresci (standard, listicle, case study)
-- Generowanie serii powiazanych artykulow
-- Uwierzytelnianie JWT, wieloklientowe workspace, rola admina
-- Eksport PDF i HTML
-- Integracja z WordPress (publikowanie, import, stylizacja)
-- System subskrypcji z TPay
-- Nowoczesny, profesjonalny design
-
 ## Tech Stack
 - Backend: FastAPI + MongoDB (Motor async + PyMongo sync for threads)
 - Frontend: React + Shadcn UI
 - AI: OpenAI gpt-4.1-mini (text), gpt-5.2 (SEO assistant), Gemini nano-banana (images) via Emergent LLM Key
-- Payments: TPay
-- CMS: WordPress REST API
 
 ## Completed Features
-- [x] Generowanie artykulow AI (async z MongoDB job persistence)
-- [x] Edytor wizualny z HTML sync
-- [x] SEO scoring engine (flexible keyword matching)
-- [x] SEO AI Assistant (async z polling, GPT-5.2)
+- [x] Generowanie artykulow AI (async)
+- [x] SEO AI Assistant (async polling)
 - [x] Auto-optymalizacja SEO ("Zastosuj wszystkie")
 - [x] Smart find-and-replace sugestii SEO (z walidacja HTML)
-- [x] Generator obrazow (single + multi reference)
-- [x] Szablony tresci
-- [x] Serie artykulow
-- [x] JWT auth + admin role (auto-seeding z env vars)
-- [x] Eksport PDF/HTML/Facebook/Google Business
-- [x] WordPress publish z inline styling
+- [x] Generator obrazow Nano Banana (async polling)
+- [x] Edytor wizualny z HTML sync
+- [x] SEO scoring engine
+- [x] Szablony tresci, Serie artykulow
+- [x] JWT auth + admin role (env vars)
+- [x] Eksport PDF/HTML/WordPress
 - [x] WordPress import z autodiscovery REST API
-- [x] Kalendarz tresci
-- [x] Zaplanowane publikacje WordPress
+- [x] Kalendarz tresci, Zaplanowane publikacje
 - [x] Automatyczne linkowanie wewnetrzne
 - [x] Import artykulow z URL
-- [x] AI Chat Assistant
-- [x] Dark Mode
-- [x] Keyword Analytics Dashboard
-- [x] AI Rewriter
-- [x] Generator Newsletterow
+- [x] AI Chat, Dark Mode, Keyword Analytics, AI Rewriter, Newsletter
 - [x] System subskrypcji TPay
-- [x] Panel admina (users CRUD)
+- [x] Panel admina
 
-## Bug Fix: Sugestie wklejane jako tekst (Mar 10, 2026)
-Problem: AI SEO Assistant generowal instrukcje ("Zmien strukture...", "Proponowany uklad H2...") zamiast gotowego HTML, ktore byly wklejane jako surowy tekst do artykulu.
-Rozwiazanie (dwuwarstwowe):
-1. Backend prompt: AI teraz ustawia apply_target="none" dla sugestii instrukcyjnych, apply_target="html_content" TYLKO z gotowym HTML
-2. Frontend walidacja: handleApplySuggestion odrzuca html_content bez tagow HTML (/<[a-z][^>]*>/i)
-3. Usunieto fallback append — jesli nie ma match, content nie jest zmieniany
+## Async Pattern (ThreadPoolExecutor)
+All LLM-calling endpoints now use async polling to avoid production proxy timeouts (30s):
+- Article generation: POST /api/articles/generate -> GET /api/articles/generate/status/{job_id}
+- SEO Assistant: POST /api/articles/{id}/seo-assistant -> GET /api/seo-assistant/status/{job_id}
+- Image generation: POST /api/images/generate -> GET /api/images/generate/status/{job_id}
+Root cause: emergentintegrations uses litellm.completion() (sync) inside async methods, blocking the event loop.
+Solution: run_in_executor with sync PyMongo + asyncio.new_event_loop() in threads.
 
 ## Credentials
 - Admin: ADMIN_EMAIL / ADMIN_PASSWORD (z .env)
