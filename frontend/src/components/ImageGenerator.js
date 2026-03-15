@@ -236,11 +236,29 @@ const ImageGenerator = ({ articleId, article, onInsertImage }) => {
           name: rf.name
         }));
       }
-      const res = await axios.post(`${BACKEND_URL}/api/images/generate-batch`, payload, { timeout: 300000 });
-      setBatchResults(res.data);
-      await loadGallery();
-      const successCount = res.data.variants.filter(v => !v.error).length;
-      toast.success(`Wygenerowano ${successCount} z 4 wariantow`);
+      const startRes = await axios.post(`${BACKEND_URL}/api/images/generate-batch`, payload);
+      const jobId = startRes.data.job_id;
+      if (!jobId) {
+        toast.error('Blad: brak job_id');
+        return;
+      }
+      // Poll for result
+      for (let i = 0; i < 60; i++) {
+        await new Promise(r => setTimeout(r, 3000));
+        const statusRes = await axios.get(`${BACKEND_URL}/api/images/generate/status/${jobId}`);
+        if (statusRes.data.status === 'completed') {
+          setBatchResults(statusRes.data.result);
+          await loadGallery();
+          const successCount = (statusRes.data.result.variants || []).filter(v => !v.error).length;
+          toast.success(`Wygenerowano ${successCount} z 4 wariantow`);
+          return;
+        }
+        if (statusRes.data.status === 'failed') {
+          toast.error(statusRes.data.error || 'Blad generowania wariantow');
+          return;
+        }
+      }
+      toast.error('Przekroczono czas oczekiwania');
     } catch (err) {
       const msg = err.response?.data?.detail || 'Blad generowania wariantow';
       toast.error(msg);

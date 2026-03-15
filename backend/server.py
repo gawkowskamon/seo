@@ -1150,16 +1150,81 @@ class MultiVariantRequest(BaseModel):
     reference_image: Optional[ReferenceImageData] = None  # backward compat
     reference_images: Optional[List[ReferenceImageData]] = None  # multiple attachments
 
+def _sync_generate_batch(job_id: str, user_id: str, prompt: str, style: str,
+                          article_id: str, num_variants: int, ref_images_data: list):
+    """Run batch image generation in a separate thread."""
+    import pymongo
+    sync_client = pymongo.MongoClient(os.environ.get('MONGO_URL'), serverSelectionTimeoutMS=5000)
+    sync_db = sync_client[os.environ.get('DB_NAME', 'seo_article_writer')]
+    try:
+        article_context = None
+        if article_id:
+            article = sync_db.articles.find_one({"id": article_id}, {"_id": 0, "topic": 1, "primary_keyword": 1})
+            if article:
+                article_context = article
+
+        variant_suffixes = [
+            "",
+            " Create a different composition with alternative layout.",
+            " Use a warmer, more inviting color palette.",
+            " Make it more minimalist and clean with extra white space."
+        ]
+
+        saved = []
+        for i in range(num_variants):
+            modified_prompt = prompt + variant_suffixes[i]
+            loop = asyncio.new_event_loop()
+            try:
+                result = loop.run_until_complete(generate_image(
+                    prompt=modified_prompt, style=style,
+                    article_context=article_context, reference_images=ref_images_data
+                ))
+            except Exception as e:
+                saved.append({"error": str(e), "variant_index": i})
+                continue
+            finally:
+                loop.close()
+
+            image_id = str(uuid.uuid4())
+            image_doc = {
+                "id": image_id, "user_id": user_id, "prompt": prompt, "style": style,
+                "article_id": article_id, "variation_type": f"batch_{i}",
+                "mime_type": result["mime_type"], "data": result["data"],
+                "tags": ["batch"], "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            sync_db.images.insert_one(image_doc)
+            saved.append({
+                "id": image_id, "prompt": prompt, "style": style, "variant_index": i,
+                "mime_type": result["mime_type"], "data": result["data"],
+                "created_at": image_doc["created_at"]
+            })
+            # Update progress
+            sync_db.image_generation_jobs.update_one(
+                {"job_id": job_id},
+                {"$set": {"progress": i + 1, "updated_at": datetime.now(timezone.utc)}}
+            )
+
+        sync_db.image_generation_jobs.update_one(
+            {"job_id": job_id},
+            {"$set": {"status": "completed", "result": {"variants": saved, "total": len(saved)}, "updated_at": datetime.now(timezone.utc)}}
+        )
+    except Exception as e:
+        logging.error(f"Batch generation job {job_id} failed: {e}")
+        sync_db.image_generation_jobs.update_one(
+            {"job_id": job_id},
+            {"$set": {"status": "failed", "error": str(e), "updated_at": datetime.now(timezone.utc)}}
+        )
+    finally:
+        sync_client.close()
+
+
 @api_router.post("/images/generate-batch")
 async def generate_batch_endpoint(request: MultiVariantRequest, user: dict = Depends(get_current_user)):
-    """Generate multiple image variants at once."""
-    import asyncio
-    
+    """Generate multiple image variants at once (async with polling)."""
     if request.num_variants < 1 or request.num_variants > 4:
         raise HTTPException(status_code=400, detail="Liczba wariantow musi byc od 1 do 4")
-    
+
     try:
-        # Build list of reference images
         allowed_mime = ["image/png", "image/jpeg", "image/jpg", "image/webp"]
         ref_images_list = []
         if request.reference_images:
@@ -1171,65 +1236,19 @@ async def generate_batch_endpoint(request: MultiVariantRequest, user: dict = Dep
             if request.reference_image.mime_type not in allowed_mime:
                 raise HTTPException(status_code=400, detail="Nieobslugiwany format pliku")
             ref_images_list.append({"data": request.reference_image.data, "mime_type": request.reference_image.mime_type})
-        
         ref_images_data = ref_images_list if ref_images_list else None
-        
-        article_context = None
-        if request.article_id:
-            article = await db.articles.find_one({"id": request.article_id}, {"_id": 0, "topic": 1, "primary_keyword": 1})
-            if article:
-                article_context = article
-        
-        # Generate variants with slight prompt modifications
-        variant_suffixes = [
-            "",
-            " Create a different composition with alternative layout.",
-            " Use a warmer, more inviting color palette.",
-            " Make it more minimalist and clean with extra white space."
-        ]
-        
-        async def gen_one(suffix):
-            modified_prompt = request.prompt + suffix
-            return await generate_image(
-                prompt=modified_prompt,
-                style=request.style,
-                article_context=article_context,
-                reference_images=ref_images_data
-            )
-        
-        tasks = [gen_one(variant_suffixes[i]) for i in range(request.num_variants)]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-        
-        saved = []
-        for i, result in enumerate(results):
-            if isinstance(result, Exception):
-                saved.append({"error": str(result), "variant_index": i})
-                continue
-            image_id = str(uuid.uuid4())
-            image_doc = {
-                "id": image_id,
-                "user_id": user["id"],
-                "prompt": request.prompt,
-                "style": request.style,
-                "article_id": request.article_id,
-                "variation_type": f"batch_{i}",
-                "mime_type": result["mime_type"],
-                "data": result["data"],
-                "tags": ["batch"],
-                "created_at": datetime.now(timezone.utc).isoformat()
-            }
-            await db.images.insert_one(image_doc)
-            saved.append({
-                "id": image_id,
-                "prompt": request.prompt,
-                "style": request.style,
-                "variant_index": i,
-                "mime_type": result["mime_type"],
-                "data": result["data"],
-                "created_at": image_doc["created_at"]
-            })
-        
-        return {"variants": saved, "total": len(saved)}
+
+        job_id = str(uuid.uuid4())
+        await db.image_generation_jobs.insert_one({
+            "job_id": job_id, "status": "processing", "progress": 0,
+            "total": request.num_variants,
+            "created_at": datetime.now(timezone.utc), "updated_at": datetime.now(timezone.utc)
+        })
+        asyncio.get_event_loop().run_in_executor(
+            None, _sync_generate_batch, job_id, user["id"], request.prompt, request.style,
+            request.article_id, request.num_variants, ref_images_data
+        )
+        return {"job_id": job_id, "status": "processing", "total": request.num_variants}
     except HTTPException:
         raise
     except Exception as e:
