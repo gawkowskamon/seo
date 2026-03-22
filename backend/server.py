@@ -288,34 +288,41 @@ async def health():
 import asyncio
 
 
-async def _run_generation_job(job_id: str, request_data: dict, user: dict):
-    """Background task for article generation."""
+def _sync_run_generation_job(job_id: str, request_data: dict, user: dict):
+    """Run article generation in a separate thread to avoid blocking event loop."""
+    import pymongo
+    sync_client = pymongo.MongoClient(os.environ.get('MONGO_URL'), serverSelectionTimeoutMS=5000)
+    sync_db = sync_client[os.environ.get('DB_NAME', 'seo_article_writer')]
     try:
-        await db.generation_jobs.update_one(
+        sync_db.generation_jobs.update_one(
             {"job_id": job_id},
             {"$set": {"status": "generating", "stage": 1}}
         )
-        
-        article_data = await generate_article(
-            topic=request_data["topic"],
-            primary_keyword=request_data["primary_keyword"],
-            secondary_keywords=request_data["secondary_keywords"],
-            target_length=request_data["target_length"],
-            tone=request_data["tone"],
-            template=request_data["template"]
-        )
-        
-        await db.generation_jobs.update_one(
+
+        loop = asyncio.new_event_loop()
+        try:
+            article_data = loop.run_until_complete(generate_article(
+                topic=request_data["topic"],
+                primary_keyword=request_data["primary_keyword"],
+                secondary_keywords=request_data["secondary_keywords"],
+                target_length=request_data["target_length"],
+                tone=request_data["tone"],
+                template=request_data["template"]
+            ))
+        finally:
+            loop.close()
+
+        sync_db.generation_jobs.update_one(
             {"job_id": job_id},
             {"$set": {"stage": 3}}
         )
-        
+
         seo_score = compute_seo_score(
             article_data,
             request_data["primary_keyword"],
             request_data["secondary_keywords"]
         )
-        
+
         article_id = str(uuid.uuid4())
         article_doc = {
             "id": article_id,
@@ -341,10 +348,10 @@ async def _run_generation_job(job_id: str, request_data: dict, user: dict):
             "created_at": datetime.now(timezone.utc).isoformat(),
             "updated_at": datetime.now(timezone.utc).isoformat()
         }
-        
-        await db.articles.insert_one(article_doc)
-        
-        await db.generation_jobs.update_one(
+
+        sync_db.articles.insert_one(article_doc)
+
+        sync_db.generation_jobs.update_one(
             {"job_id": job_id},
             {"$set": {
                 "status": "completed",
@@ -352,21 +359,24 @@ async def _run_generation_job(job_id: str, request_data: dict, user: dict):
                 "article_id": article_id
             }}
         )
-        
+
     except Exception as e:
         err_msg = str(e)
-        # Make error message user-friendly
-        if "502" in err_msg or "bad gateway" in err_msg.lower():
-            err_msg = "Usluga AI tymczasowo niedostepna (blad 502). Sprawdz saldo Universal Key (Profile > Universal Key > Add Balance) lub sprobuj za chwile."
+        if "budget" in err_msg.lower() or "exceeded" in err_msg.lower():
+            err_msg = "Budzet Universal Key wyczerpany. Doladuj w Profile > Universal Key > Add Balance."
+        elif "502" in err_msg or "bad gateway" in err_msg.lower():
+            err_msg = "Usluga AI tymczasowo niedostepna (blad 502). Sprawdz saldo Universal Key lub sprobuj za chwile."
         elif "429" in err_msg or "rate" in err_msg.lower():
             err_msg = "Przekroczono limit zapytan AI. Sprobuj za kilka minut."
         elif "401" in err_msg or "auth" in err_msg.lower():
             err_msg = "Blad autoryzacji klucza AI. Skontaktuj sie z administratorem."
         logging.error(f"Background generation error: {e}")
-        await db.generation_jobs.update_one(
+        sync_db.generation_jobs.update_one(
             {"job_id": job_id},
             {"$set": {"status": "failed", "error": err_msg}}
         )
+    finally:
+        sync_client.close()
 
 
 @api_router.post("/articles/generate")
@@ -394,7 +404,9 @@ async def generate_article_endpoint(request: ArticleGenerateRequest, user: dict 
         "template": request.template
     }
     
-    asyncio.create_task(_run_generation_job(job_id, request_data, user))
+    asyncio.get_event_loop().run_in_executor(
+        None, _sync_run_generation_job, job_id, request_data, user
+    )
     
     return {"job_id": job_id, "status": "queued"}
 
@@ -408,12 +420,12 @@ async def get_generation_status(job_id: str, user: dict = Depends(get_current_us
     if job["user_id"] != user["id"]:
         raise HTTPException(status_code=403, detail="Brak dostepu")
     
-    # Detect stale jobs: if generating for more than 3 minutes, mark as failed
+    # Detect stale jobs: if generating for more than 5 minutes, mark as failed
     if job["status"] == "generating":
         from datetime import datetime as dt
         created = dt.fromisoformat(job["created_at"].replace("Z", "+00:00")) if isinstance(job["created_at"], str) else job["created_at"]
         elapsed = (datetime.now(timezone.utc) - created).total_seconds()
-        if elapsed > 180:
+        if elapsed > 300:
             await db.generation_jobs.update_one(
                 {"job_id": job_id},
                 {"$set": {"status": "failed", "error": "Generowanie przekroczylo limit czasu (3 min)"}}
@@ -1785,28 +1797,31 @@ class SEOAuditRequest(BaseModel):
 # Background job storage for SEO audit
 _seo_audit_jobs = {}
 
-async def _run_seo_audit_job(job_id: str, url: str, emergent_key: str, user_id: str):
-    """Background task for SEO audit."""
+def _sync_run_seo_audit(job_id: str, url: str, emergent_key: str, user_id: str):
+    """Run SEO audit in thread to avoid blocking event loop."""
+    import pymongo
+    sync_client = pymongo.MongoClient(os.environ.get('MONGO_URL'), serverSelectionTimeoutMS=5000)
+    sync_db = sync_client[os.environ.get('DB_NAME', 'seo_article_writer')]
     try:
         _seo_audit_jobs[job_id]["status"] = "running"
-        result = await run_seo_audit(url, emergent_key)
-        
+        loop = asyncio.new_event_loop()
+        try:
+            result = loop.run_until_complete(run_seo_audit(url, emergent_key))
+        finally:
+            loop.close()
         audit_id = str(uuid.uuid4())
-        audit_doc = {
-            "id": audit_id,
-            "user_id": user_id,
-            "url": url,
-            "result": result,
-            "created_at": datetime.now(timezone.utc).isoformat()
-        }
-        await db.seo_audits.insert_one(audit_doc)
-        
+        sync_db.seo_audits.insert_one({
+            "id": audit_id, "user_id": user_id, "url": url,
+            "result": result, "created_at": datetime.now(timezone.utc).isoformat()
+        })
         _seo_audit_jobs[job_id]["status"] = "completed"
         _seo_audit_jobs[job_id]["result"] = {"id": audit_id, **result}
     except Exception as e:
         logging.error(f"SEO audit background error: {e}")
         _seo_audit_jobs[job_id]["status"] = "failed"
         _seo_audit_jobs[job_id]["error"] = str(e)
+    finally:
+        sync_client.close()
 
 @api_router.post("/seo-audit")
 async def run_audit(request: SEOAuditRequest, user: dict = Depends(get_current_user)):
@@ -1823,7 +1838,7 @@ async def run_audit(request: SEOAuditRequest, user: dict = Depends(get_current_u
         "user_id": user["id"]
     }
     
-    asyncio.create_task(_run_seo_audit_job(job_id, request.url, emergent_key, user["id"]))
+    asyncio.get_event_loop().run_in_executor(None, _sync_run_seo_audit, job_id, request.url, emergent_key, user["id"])
     
     return {"job_id": job_id, "status": "queued"}
 
@@ -1866,11 +1881,15 @@ class CompetitionRequest(BaseModel):
 # Background job storage for competition analysis
 _competition_jobs = {}
 
-async def _run_competition_job(job_id: str, article: dict, competitor_url: str, emergent_key: str, user_id: str):
-    """Background task for competition analysis."""
+def _sync_run_competition(job_id: str, article: dict, competitor_url: str, emergent_key: str, user_id: str):
+    """Run competition analysis in thread."""
     try:
         _competition_jobs[job_id]["status"] = "running"
-        result = await analyze_competition(article, competitor_url, emergent_key)
+        loop = asyncio.new_event_loop()
+        try:
+            result = loop.run_until_complete(analyze_competition(article, competitor_url, emergent_key))
+        finally:
+            loop.close()
         _competition_jobs[job_id]["status"] = "completed"
         _competition_jobs[job_id]["result"] = result
     except Exception as e:
@@ -1897,7 +1916,7 @@ async def analyze_comp(request: CompetitionRequest, user: dict = Depends(get_cur
         "user_id": user["id"]
     }
     
-    asyncio.create_task(_run_competition_job(job_id, article, request.competitor_url, emergent_key, user["id"]))
+    asyncio.get_event_loop().run_in_executor(None, _sync_run_competition, job_id, article, request.competitor_url, emergent_key, user["id"])
     
     return {"job_id": job_id, "status": "queued"}
 
@@ -1930,8 +1949,11 @@ class KeywordAnalyticsRequest(BaseModel):
 
 _keyword_analytics_jobs = {}
 
-async def _run_keyword_analytics_job(job_id: str, keywords: list, industry: str, emergent_key: str, user_id: str):
-    """Background task for keyword analytics."""
+def _sync_run_keyword_analytics(job_id: str, keywords: list, industry: str, emergent_key: str, user_id: str):
+    """Run keyword analytics in thread."""
+    import pymongo
+    sync_client = pymongo.MongoClient(os.environ.get('MONGO_URL'), serverSelectionTimeoutMS=5000)
+    sync_db = sync_client[os.environ.get('DB_NAME', 'seo_article_writer')]
     try:
         _keyword_analytics_jobs[job_id]["status"] = "running"
         from emergentintegrations.llm.chat import LlmChat, UserMessage
@@ -1961,7 +1983,11 @@ Dla każdego słowa kluczowego podaj:
 
 Odpowiedz TYLKO prawidłowym JSON: {{"keywords": [...]}}"""
         
-        response = await chat.send_message(UserMessage(text=prompt))
+        loop = asyncio.new_event_loop()
+        try:
+            response = loop.run_until_complete(chat.send_message(UserMessage(text=prompt)))
+        finally:
+            loop.close()
         text = response.strip()
         if text.startswith("```"):
             text = text.split("\n", 1)[1].rsplit("```", 1)[0]
@@ -1972,18 +1998,16 @@ Odpowiedz TYLKO prawidłowym JSON: {{"keywords": [...]}}"""
         _keyword_analytics_jobs[job_id]["status"] = "completed"
         _keyword_analytics_jobs[job_id]["result"] = data
         
-        # Save to DB
-        await db.keyword_analytics.insert_one({
-            "id": job_id,
-            "user_id": user_id,
-            "keywords": keywords,
-            "result": data,
-            "created_at": datetime.now(timezone.utc).isoformat()
+        sync_db.keyword_analytics.insert_one({
+            "id": job_id, "user_id": user_id, "keywords": keywords,
+            "result": data, "created_at": datetime.now(timezone.utc).isoformat()
         })
     except Exception as e:
         logging.error(f"Keyword analytics error: {e}")
         _keyword_analytics_jobs[job_id]["status"] = "failed"
         _keyword_analytics_jobs[job_id]["error"] = str(e)
+    finally:
+        sync_client.close()
 
 @api_router.post("/keyword-analytics/analyze")
 async def analyze_keywords(request: KeywordAnalyticsRequest, user: dict = Depends(get_current_user)):
@@ -1994,7 +2018,7 @@ async def analyze_keywords(request: KeywordAnalyticsRequest, user: dict = Depend
     
     job_id = str(uuid.uuid4())
     _keyword_analytics_jobs[job_id] = {"status": "queued", "result": None, "error": None, "user_id": user["id"]}
-    asyncio.create_task(_run_keyword_analytics_job(job_id, request.keywords, request.industry, emergent_key, user["id"]))
+    asyncio.get_event_loop().run_in_executor(None, _sync_run_keyword_analytics, job_id, request.keywords, request.industry, emergent_key, user["id"])
     return {"job_id": job_id, "status": "queued"}
 
 @api_router.get("/keyword-analytics/status/{job_id}")
@@ -2028,8 +2052,8 @@ class RewriteRequest(BaseModel):
 
 _rewrite_jobs = {}
 
-async def _run_rewrite_job(job_id: str, text: str, style: str, emergent_key: str):
-    """Background rewrite task."""
+def _sync_run_rewrite(job_id: str, text: str, style: str, emergent_key: str):
+    """Run rewrite in thread."""
     try:
         _rewrite_jobs[job_id]["status"] = "running"
         from emergentintegrations.llm.chat import LlmChat, UserMessage
@@ -2060,7 +2084,11 @@ WAŻNE:
 - Nie dodawaj komentarzy, zwróć TYLKO przepisany tekst
 - Zachowaj wszystkie dane liczbowe i faktograficzne"""
 
-        response = await chat.send_message(UserMessage(text=prompt))
+        loop = asyncio.new_event_loop()
+        try:
+            response = loop.run_until_complete(chat.send_message(UserMessage(text=prompt)))
+        finally:
+            loop.close()
         _rewrite_jobs[job_id]["status"] = "completed"
         _rewrite_jobs[job_id]["result"] = {"rewritten_text": response.strip(), "style": style}
     except Exception as e:
@@ -2079,7 +2107,7 @@ async def rewrite_text(request: RewriteRequest, user: dict = Depends(get_current
     
     job_id = str(uuid.uuid4())
     _rewrite_jobs[job_id] = {"status": "queued", "result": None, "error": None}
-    asyncio.create_task(_run_rewrite_job(job_id, request.text, request.style, emergent_key))
+    asyncio.get_event_loop().run_in_executor(None, _sync_run_rewrite, job_id, request.text, request.style, emergent_key)
     return {"job_id": job_id, "status": "queued"}
 
 @api_router.get("/rewrite/status/{job_id}")
