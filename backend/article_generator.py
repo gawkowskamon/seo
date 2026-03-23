@@ -166,22 +166,27 @@ async def generate_article(topic: str, primary_keyword: str, secondary_keywords:
             current_year=current_year
         )
     
-    models_to_try = [("openai", "gpt-4.1-mini")]
+    models_to_try = [
+        ("openai", "gpt-4.1-mini", 2),
+        ("openai", "gpt-5.2", 2),
+        ("gemini", "gemini-2.0-flash", 3),
+    ]
     last_error = None
-    max_retries = 3
     
-    for provider, model in models_to_try:
+    for model_idx, (provider, model, max_retries) in enumerate(models_to_try):
+        logger.info(f"=== Model {model_idx+1}/{len(models_to_try)}: {provider}/{model} (max {max_retries} retries) ===")
         for attempt in range(max_retries):
             try:
-                logger.info(f"Attempting article generation with {model} (attempt {attempt+1}/{max_retries})")
+                logger.info(f"[{model}] Attempt {attempt+1}/{max_retries} - sending request...")
                 chat = LlmChat(
                     api_key=api_key,
-                    session_id=f"article-gen-{hash(topic) % 100000}-{attempt}",
+                    session_id=f"article-gen-{hash(topic) % 100000}-m{model_idx}-a{attempt}",
                     system_message=ARTICLE_SYSTEM_PROMPT
                 )
-                chat.with_model(provider, model).with_params(timeout=90)
+                chat.with_model(provider, model).with_params(timeout=180)
                 
                 response = await chat.send_message(UserMessage(text=prompt))
+                logger.info(f"[{model}] Got response ({len(response)} chars). Parsing JSON...")
                 
                 clean_response = response.strip()
                 if clean_response.startswith("```"):
@@ -199,23 +204,25 @@ async def generate_article(topic: str, primary_keyword: str, secondary_keywords:
                 article.setdefault("sources", [])
                 article.setdefault("internal_link_suggestions", [])
                 
-                logger.info(f"Article generated successfully with {model}")
+                logger.info(f"SUCCESS: Article generated with {provider}/{model} on attempt {attempt+1}")
                 return article
                 
             except Exception as e:
                 last_error = e
                 err_str = str(e).lower()
-                is_transient = any(x in err_str for x in ["502", "503", "504", "bad gateway", "timeout", "rate_limit", "overloaded"])
+                is_transient = any(x in err_str for x in ["502", "503", "504", "bad gateway", "timeout", "rate_limit", "overloaded", "connection", "reset"])
                 
                 if is_transient and attempt < max_retries - 1:
-                    wait_time = (attempt + 1) * 5
-                    logger.warning(f"Transient error with {model} (attempt {attempt+1}): {e}. Retrying in {wait_time}s...")
+                    wait_time = 5 * (2 ** attempt)  # exponential: 5s, 10s, 20s
+                    logger.warning(f"[{model}] Transient error (attempt {attempt+1}): {e}. Retrying in {wait_time}s...")
                     import asyncio
                     await asyncio.sleep(wait_time)
                     continue
                 else:
-                    logger.warning(f"Attempt with {model} failed: {e}")
+                    logger.warning(f"[{model}] Failed after attempt {attempt+1}: {e}")
                     break
+        
+        logger.info(f"[{model}] Exhausted. Switching to next model...")
     
     err_msg = str(last_error) if last_error else "Nieznany blad"
     if "502" in err_msg or "bad gateway" in err_msg.lower():
@@ -236,24 +243,28 @@ async def suggest_topics(category: str = "ogólne", context: str = "aktualne tem
     
     prompt = TOPIC_SUGGESTION_PROMPT.format(category=category, context=context)
     
-    try:
-        chat = LlmChat(
-            api_key=api_key,
-            session_id=f"topic-suggest-{hash(category) % 100000}",
-            system_message="Jesteś ekspertem SEO od księgowości w Polsce. Odpowiadaj WYŁĄCZNIE poprawnym JSON-em."
-        )
-        chat.with_model("openai", "gpt-4.1-mini")
-        
-        response = await chat.send_message(UserMessage(text=prompt))
-        
-        clean_response = response.strip()
-        if clean_response.startswith("```"):
-            clean_response = re.sub(r'^```(?:json)?\s*', '', clean_response)
-            clean_response = re.sub(r'\s*```$', '', clean_response)
-        
-        return json.loads(clean_response)
-    except Exception as e:
-        err_str = str(e).lower()
-        if "502" in err_str or "bad gateway" in err_str:
-            raise ValueError("Usluga AI tymczasowo niedostepna. Sprawdz saldo Universal Key lub sprobuj za chwile.")
-        raise
+    models = [("openai", "gpt-4.1-mini"), ("openai", "gpt-5.2"), ("gemini", "gemini-2.0-flash")]
+    last_error = None
+    for provider, model in models:
+        try:
+            chat = LlmChat(
+                api_key=api_key,
+                session_id=f"topic-suggest-{hash(category) % 100000}",
+                system_message="Jesteś ekspertem SEO od księgowości w Polsce. Odpowiadaj WYŁĄCZNIE poprawnym JSON-em."
+            )
+            chat.with_model(provider, model).with_params(timeout=120)
+            
+            response = await chat.send_message(UserMessage(text=prompt))
+            
+            clean_response = response.strip()
+            if clean_response.startswith("```"):
+                clean_response = re.sub(r'^```(?:json)?\s*', '', clean_response)
+                clean_response = re.sub(r'\s*```$', '', clean_response)
+            
+            return json.loads(clean_response)
+        except Exception as e:
+            last_error = e
+            logger.warning(f"[suggest_topics] {model} failed: {e}")
+            continue
+    
+    raise last_error or ValueError("Nie udalo sie wygenerowac sugestii tematow")

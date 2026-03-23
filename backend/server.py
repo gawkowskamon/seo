@@ -425,7 +425,7 @@ async def get_generation_status(job_id: str, user: dict = Depends(get_current_us
         from datetime import datetime as dt
         created = dt.fromisoformat(job["created_at"].replace("Z", "+00:00")) if isinstance(job["created_at"], str) else job["created_at"]
         elapsed = (datetime.now(timezone.utc) - created).total_seconds()
-        if elapsed > 300:
+        if elapsed > 180:
             await db.generation_jobs.update_one(
                 {"job_id": job_id},
                 {"$set": {"status": "failed", "error": "Generowanie przekroczylo limit czasu (3 min)"}}
@@ -3831,6 +3831,20 @@ async def seed_admin_user():
     except Exception as e:
         logger.error(f"Failed to seed admin user: {e}")
         logger.warning("Application will continue without admin seeding")
+
+@app.on_event("startup")
+async def cleanup_stale_generation_jobs():
+    """Mark any stuck 'generating' jobs as failed on startup (server restart recovery)."""
+    try:
+        result = await db.generation_jobs.update_many(
+            {"status": "generating"},
+            {"$set": {"status": "failed", "error": "Zadanie przerwane przez restart serwera. Sprobuj ponownie."}}
+        )
+        if result.modified_count > 0:
+            logger.info(f"Cleaned up {result.modified_count} stale generation jobs on startup")
+    except Exception as e:
+        logger.error(f"Failed to cleanup stale jobs: {e}")
+
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
