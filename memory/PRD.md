@@ -6,15 +6,11 @@ Aplikacja do pisania artykulow blogowych zwiazanych z ksiegowoscia, zoptymalizow
 ## Tech Stack
 - Backend: FastAPI + MongoDB (Motor async + PyMongo sync for threads)
 - Frontend: React + Shadcn UI + Recharts
-- AI: OpenAI gpt-4.1-mini, gpt-5.2, Gemini nano-banana via Emergent LLM Key
+- AI: OpenAI gpt-4.1-mini via Emergent LLM Key
+- Scraping: httpx + BeautifulSoup (DuckDuckGo HTML)
 
 ## Critical Architecture: ThreadPoolExecutor for ALL LLM calls
 All LLM-calling background tasks use run_in_executor + sync PyMongo + asyncio.new_event_loop()
-
-Migrated endpoints:
-- Article generation, SEO Assistant, Image generation, Batch image generation
-- SEO Audit, Competition analysis, Keyword analytics, AI Rewriter
-- AI Article Suggestions, Plagiarism Checker, Content Verification
 
 ## Credentials
 - Admin: ADMIN_EMAIL / ADMIN_PASSWORD (z .env)
@@ -27,7 +23,7 @@ Migrated endpoints:
 - formatting (8), readability (6), freshness (3), meta_title (3)
 
 ## Completed Features
-- [x] Article generation with AI (GPT) - enhanced prompts for reliability
+- [x] Article generation with AI (enhanced for reliability - legal refs, concrete data, E-E-A-T)
 - [x] Visual editor with formatting toolbar + HTML view
 - [x] Topic suggestions
 - [x] AI SEO Assistant with Apply All
@@ -36,10 +32,9 @@ Migrated endpoints:
 - [x] Series article generation
 - [x] JWT authentication, multi-client workspaces, admin role
 - [x] PDF and HTML export
-- [x] WordPress integration
+- [x] WordPress integration (with inline styled export)
 - [x] Subscription system (TPay)
-- [x] Content Calendar
-- [x] Scheduled WordPress Publishing
+- [x] Content Calendar + Scheduled WordPress Publishing
 - [x] Automatic Internal Link Building
 - [x] Article Import from URL
 - [x] AI Chat Assistant
@@ -48,17 +43,16 @@ Migrated endpoints:
 - [x] AI Rewriter
 - [x] Newsletter Generator
 - [x] AI Article Suggestions (2026-03-23)
-- [x] Performance Dashboard (2026-03-23)
+- [x] Performance Dashboard - admin metrics (2026-03-23)
 - [x] Plagiarism Checker (2026-03-23)
-- [x] Enhanced SEO Scorer - E-E-A-T, slug, formatting, freshness, readability (2026-03-23)
-- [x] Enhanced Article Generator - legal refs, concrete data, credible sources (2026-03-23)
+- [x] Enhanced SEO Scorer - E-E-A-T, slug, formatting, freshness (2026-03-23)
 - [x] Content Verification / Fact-Check panel (2026-03-23)
+- [x] Auto Competition Analysis - scrapes top Google results, AI comparison (2026-03-23)
+- [x] A/B Title Testing - 5 variants, CTR/SEO/Emotion/Clarity scores, apply winner (2026-03-23)
 
-## Backlog (P2+)
-- [ ] Powiadomienia email o potrzebie aktualizacji artykulow
-- [ ] WordPress export stylizacja (identyczna jak edytor)
-- [ ] A/B Testing tytulow
+## Backlog
 - [ ] Integracja Social Media
 - [ ] Masowe operacje na artykulach
 - [ ] Historia wersji artykulow
 - [ ] Auto generowanie meta tagow
+- [ ] Powiadomienia email o potrzebie aktualizacji artykulow
