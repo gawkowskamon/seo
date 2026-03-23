@@ -9,8 +9,9 @@ Aplikacja do pisania artykulow blogowych zwiazanych z ksiegowoscia, zoptymalizow
 - AI: OpenAI gpt-4.1-mini via Emergent LLM Key
 - Scraping: httpx + BeautifulSoup (DuckDuckGo HTML)
 
-## Critical Architecture: ThreadPoolExecutor for ALL LLM calls
-All LLM-calling background tasks use run_in_executor + sync PyMongo + asyncio.new_event_loop()
+## Critical Architecture
+All LLM tasks use ThreadPoolExecutor + sync PyMongo + asyncio.new_event_loop()
+Frontend polls GET /status/{job_id} endpoints until completed/failed
 
 ## Credentials
 - Admin: ADMIN_EMAIL / ADMIN_PASSWORD (z .env)
@@ -18,41 +19,38 @@ All LLM-calling background tasks use run_in_executor + sync PyMongo + asyncio.ne
 - WordPress URL: https://kurdynowski.com.pl/cms-biuro
 
 ## SEO Scoring (14 dimensions, max 104 pts)
-- title (12), meta_description (8), content_length (8), headings (12), keywords (12)
-- toc (6), faq (8), internal_links (4), sources_eeat (10), slug (4)
-- formatting (8), readability (6), freshness (3), meta_title (3)
+title(12), meta_description(8), content_length(8), headings(12), keywords(12), toc(6), faq(8), internal_links(4), sources_eeat(10), slug(4), formatting(8), readability(6), freshness(3), meta_title(3)
 
-## Completed Features
-- [x] Article generation with AI (enhanced for reliability - legal refs, concrete data, E-E-A-T)
-- [x] Visual editor with formatting toolbar + HTML view
-- [x] Topic suggestions
-- [x] AI SEO Assistant with Apply All
-- [x] Image generator (Nano Banana)
+## All Completed Features
+- [x] AI Article generation (enhanced E-E-A-T, legal refs, concrete data)
+- [x] Visual editor + HTML view + formatting toolbar
+- [x] Topic suggestions + AI Article Suggestions
+- [x] AI SEO Assistant + Apply All
+- [x] Image generator (Nano Banana) + batch
 - [x] Content templates (standard, listicle, case study)
 - [x] Series article generation
-- [x] JWT authentication, multi-client workspaces, admin role
+- [x] JWT auth, multi-client workspaces, admin role (auto-seeded)
 - [x] PDF and HTML export
-- [x] WordPress integration (with inline styled export)
-- [x] Subscription system (TPay)
+- [x] WordPress integration (styled inline export)
+- [x] Subscription system (TPay - mocked)
 - [x] Content Calendar + Scheduled WordPress Publishing
 - [x] Automatic Internal Link Building
 - [x] Article Import from URL
-- [x] AI Chat Assistant
+- [x] AI Chat Assistant, AI Rewriter
 - [x] Dark Mode
 - [x] Keyword Analytics Dashboard
-- [x] AI Rewriter
 - [x] Newsletter Generator
-- [x] AI Article Suggestions (2026-03-23)
-- [x] Performance Dashboard - admin metrics (2026-03-23)
-- [x] Plagiarism Checker (2026-03-23)
-- [x] Enhanced SEO Scorer - E-E-A-T, slug, formatting, freshness (2026-03-23)
-- [x] Content Verification / Fact-Check panel (2026-03-23)
-- [x] Auto Competition Analysis - scrapes top Google results, AI comparison (2026-03-23)
-- [x] A/B Title Testing - 5 variants, CTR/SEO/Emotion/Clarity scores, apply winner (2026-03-23)
+- [x] Performance Dashboard (admin, DAU/MAU, charts)
+- [x] Plagiarism Checker
+- [x] Content Verification / Fact-Check
+- [x] Enhanced SEO Scorer (14 dimensions)
+- [x] Auto Competition Analysis (DuckDuckGo scraping + AI comparison)
+- [x] A/B Title Testing (5 variants, CTR/SEO/Emotion/Clarity scores)
+- [x] Bulk Article Operations (select, delete, categorize) (2026-03-23)
+- [x] Auto Meta Tag Generation (3 title + 3 desc variants + recommended) (2026-03-23)
+- [x] Article Version History (auto-save on edit, view/restore) (2026-03-23)
+- [x] Smart Publishing Schedule (AI suggests best day/time) (2026-03-23)
 
 ## Backlog
-- [ ] Integracja Social Media
-- [ ] Masowe operacje na artykulach
-- [ ] Historia wersji artykulow
-- [ ] Auto generowanie meta tagow
-- [ ] Powiadomienia email o potrzebie aktualizacji artykulow
+- [ ] Integracja Social Media (generowanie postów promujących)
+- [ ] Powiadomienia email o potrzebie aktualizacji artykułów
