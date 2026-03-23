@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Save, Eye, Code, BarChart3, Share2, ChevronLeft, Loader2, RefreshCw, Wand2, Cloud, CloudOff, Image as ImageIcon, Sparkles, Link2, CalendarClock, MessageSquare, PenLine, Shield, FileCheck, Search, FlaskConical } from 'lucide-react';
+import { Save, Eye, Code, BarChart3, Share2, ChevronLeft, Loader2, RefreshCw, Wand2, Cloud, CloudOff, Image as ImageIcon, Sparkles, Link2, CalendarClock, MessageSquare, PenLine, Shield, FileCheck, Search, FlaskConical, History } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { toast } from 'sonner';
@@ -18,6 +18,9 @@ import PlagiarismPanel from '../components/PlagiarismPanel';
 import ContentVerificationPanel from '../components/ContentVerificationPanel';
 import AutoCompetitionPanel from '../components/AutoCompetitionPanel';
 import ABTitleTestPanel from '../components/ABTitleTestPanel';
+import VersionHistoryPanel from '../components/VersionHistoryPanel';
+import SmartSchedulePanel from '../components/SmartSchedulePanel';
+import AutoMetaPanel from '../components/AutoMetaPanel';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -687,6 +690,30 @@ const ArticleEditor = () => {
             <FlaskConical size={14} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
             A/B Tytuł
           </button>
+          <button 
+            className={`right-panel-tab ${rightTab === 'meta' ? 'active' : ''}`}
+            onClick={() => setRightTab('meta')}
+            data-testid="article-meta-tab"
+          >
+            <Wand2 size={14} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
+            Meta
+          </button>
+          <button 
+            className={`right-panel-tab ${rightTab === 'schedule' ? 'active' : ''}`}
+            onClick={() => setRightTab('schedule')}
+            data-testid="article-schedule-tab"
+          >
+            <CalendarClock size={14} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
+            Harmonogram
+          </button>
+          <button 
+            className={`right-panel-tab ${rightTab === 'history' ? 'active' : ''}`}
+            onClick={() => setRightTab('history')}
+            data-testid="article-history-tab"
+          >
+            <History size={14} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
+            Wersje
+          </button>
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -910,6 +937,26 @@ const ArticleEditor = () => {
             <div data-testid="article-abtitle-wrapper" style={{ padding: 12 }}>
               <ABTitleTestPanel articleId={articleId} currentTitle={article?.title} onApplyTitle={(newTitle) => {
                 setArticle(prev => ({ ...prev, title: newTitle }));
+              }} />
+            </div>
+          )}
+          {rightTab === 'meta' && (
+            <div data-testid="article-meta-wrapper" style={{ padding: 12 }}>
+              <AutoMetaPanel articleId={articleId} currentMetaTitle={article?.meta_title} currentMetaDesc={article?.meta_description} onApply={(mt, md) => {
+                setArticle(prev => ({ ...prev, meta_title: mt, meta_description: md }));
+              }} />
+            </div>
+          )}
+          {rightTab === 'schedule' && (
+            <div data-testid="article-schedule-wrapper" style={{ padding: 12 }}>
+              <SmartSchedulePanel articleId={articleId} />
+            </div>
+          )}
+          {rightTab === 'history' && (
+            <div data-testid="article-history-wrapper" style={{ padding: 12 }}>
+              <VersionHistoryPanel articleId={articleId} onRestore={(restoredArticle) => {
+                setArticle(restoredArticle);
+                toast.success('Wersja przywrócona');
               }} />
             </div>
           )}
