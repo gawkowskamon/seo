@@ -167,9 +167,9 @@ async def generate_article(topic: str, primary_keyword: str, secondary_keywords:
         )
     
     models_to_try = [
-        ("openai", "gpt-4.1-mini", 2),
-        ("openai", "gpt-5.2", 2),
         ("gemini", "gemini-2.0-flash", 3),
+        ("openai", "gpt-4.1-mini", 1),
+        ("openai", "gpt-5.2", 1),
     ]
     last_error = None
     
@@ -243,7 +243,7 @@ async def suggest_topics(category: str = "ogólne", context: str = "aktualne tem
     
     prompt = TOPIC_SUGGESTION_PROMPT.format(category=category, context=context)
     
-    models = [("openai", "gpt-4.1-mini"), ("openai", "gpt-5.2"), ("gemini", "gemini-2.0-flash")]
+    models = [("gemini", "gemini-2.0-flash"), ("openai", "gpt-4.1-mini"), ("openai", "gpt-5.2")]
     last_error = None
     for provider, model in models:
         try:

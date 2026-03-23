@@ -10,9 +10,9 @@ from emergentintegrations.llm.chat import LlmChat, UserMessage
 logger = logging.getLogger(__name__)
 
 FALLBACK_MODELS = [
+    ("gemini", "gemini-2.0-flash"),
     ("openai", "gpt-4.1-mini"),
     ("openai", "gpt-5.2"),
-    ("gemini", "gemini-2.0-flash"),
 ]
 
 
