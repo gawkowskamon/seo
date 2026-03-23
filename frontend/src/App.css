@@ -1178,6 +1178,48 @@
   background: hsl(214, 18%, 70%);
 }
 
+/* ============ A/B Title Test ============ */
+.ab-winner-card {
+  background: linear-gradient(135deg, hsl(45, 95%, 97%), hsl(45, 90%, 93%));
+  border: 1px solid hsl(45, 80%, 75%);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.ab-variant-card {
+  background: var(--bg-muted);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.ab-variant-card:hover {
+  border-color: var(--border);
+}
+
+/* ============ Scrollable Right Panel Tabs ============ */
+.right-panel-tabs {
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+  -webkit-overflow-scrolling: touch;
+  flex-shrink: 0;
+}
+
+.right-panel-tabs::-webkit-scrollbar {
+  height: 3px;
+}
+
+.right-panel-tabs::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.right-panel-tabs::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 2px;
+}
+
+
 /* ============ Content Verification Panel ============ */
 .verify-score-bar {
   display: flex;

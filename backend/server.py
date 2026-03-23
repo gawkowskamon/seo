@@ -2950,6 +2950,349 @@ async def verification_history(article_id: str, user: dict = Depends(get_current
     return docs
 
 
+# --- Auto Competition Analysis (Top Google Results) ---
+
+class AutoCompetitionRequest(BaseModel):
+    article_id: str
+
+_auto_competition_jobs = {}
+
+def _sync_run_auto_competition(job_id: str, article_data: dict, emergent_key: str, user_id: str):
+    """Scrape top search results for keyword, extract content, compare with article via AI."""
+    import pymongo
+    import httpx as httpx_sync
+    from bs4 import BeautifulSoup
+    sync_client = pymongo.MongoClient(os.environ.get('MONGO_URL'), serverSelectionTimeoutMS=5000)
+    sync_db = sync_client[os.environ.get('DB_NAME', 'seo_article_writer')]
+    try:
+        _auto_competition_jobs[job_id]["status"] = "running"
+
+        keyword = article_data.get("primary_keyword", "")
+        my_title = article_data.get("title", "")
+        my_sections = [s.get("heading", "") for s in article_data.get("sections", [])]
+        my_word_count = 0
+        my_text = ""
+        for section in article_data.get("sections", []):
+            text = re.sub(r'<[^>]+>', ' ', section.get("content", ""))
+            my_text += " " + text
+            for sub in section.get("subsections", []):
+                my_text += " " + re.sub(r'<[^>]+>', ' ', sub.get("content", ""))
+        my_word_count = len(my_text.split())
+
+        # Scrape search results using DuckDuckGo HTML (no API key needed)
+        search_url = f"https://html.duckduckgo.com/html/?q={keyword.replace(' ', '+')}+poradnik+polska"
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
+
+        competitors = []
+        try:
+            import httpx
+            with httpx.Client(timeout=20.0, follow_redirects=True, verify=False) as client:
+                resp = client.get(search_url, headers=headers)
+                soup = BeautifulSoup(resp.text, "html.parser")
+                results = soup.select(".result__a")
+                urls = []
+                from urllib.parse import unquote, urlparse, parse_qs
+                for r in results[:8]:
+                    href = r.get("href", "")
+                    if not href:
+                        continue
+                    # Extract actual URL from DDG redirect first
+                    if "uddg=" in href:
+                        try:
+                            parsed = parse_qs(urlparse(href).query)
+                            href = unquote(parsed.get("uddg", [href])[0])
+                        except Exception:
+                            continue
+                    # Skip DDG internal and ad URLs
+                    if "duckduckgo" in href or not href.startswith("http"):
+                        continue
+                    urls.append(href)
+                urls = urls[:5]
+
+                # Scrape each competitor
+                for url in urls:
+                    try:
+                        page = client.get(url, headers=headers, timeout=10.0)
+                        page_soup = BeautifulSoup(page.text, "html.parser")
+                        page_title = page_soup.find("title")
+                        page_title_text = page_title.get_text(strip=True) if page_title else ""
+                        meta_desc = ""
+                        md = page_soup.find("meta", attrs={"name": "description"})
+                        if md:
+                            meta_desc = md.get("content", "")
+                        headings = []
+                        for tag in ["h1", "h2", "h3"]:
+                            for h in page_soup.find_all(tag)[:10]:
+                                headings.append(f"{tag.upper()}: {h.get_text(strip=True)}")
+                        for tag in page_soup(["script", "style", "nav", "footer", "header", "aside"]):
+                            tag.decompose()
+                        article_el = page_soup.find("article") or page_soup.find("main") or page_soup.find("body")
+                        content = article_el.get_text(separator=" ", strip=True)[:2000] if article_el else ""
+                        competitors.append({
+                            "url": url,
+                            "title": page_title_text[:200],
+                            "meta_desc": meta_desc[:300],
+                            "headings": headings[:12],
+                            "word_count": len(content.split()),
+                            "content_sample": content[:1500]
+                        })
+                    except Exception:
+                        continue
+        except Exception as e:
+            logging.warning(f"Search scraping failed: {e}")
+
+        # AI analysis
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        chat = LlmChat(
+            api_key=emergent_key,
+            session_id=f"auto-comp-{job_id[:8]}",
+            system_message="Jesteś ekspertem SEO. Analizujesz artykuły konkurencji i wskazujesz luki w treści. Odpowiadaj WYŁĄCZNIE poprawnym JSON-em."
+        )
+
+        comp_str = ""
+        for i, c in enumerate(competitors[:5], 1):
+            comp_str += f"\n--- KONKURENT {i} ---\n"
+            comp_str += f"URL: {c['url']}\nTytuł: {c['title']}\n"
+            comp_str += f"Meta opis: {c['meta_desc']}\n"
+            comp_str += f"Nagłówki: {'; '.join(c['headings'][:8])}\n"
+            comp_str += f"Słów: ~{c['word_count']}\n"
+            comp_str += f"Fragment: {c['content_sample'][:600]}\n"
+
+        prompt = f"""Przeanalizuj mój artykuł w porównaniu z TOP wynikami wyszukiwania dla słowa kluczowego: "{keyword}"
+
+MÓJ ARTYKUŁ:
+Tytuł: {my_title}
+Sekcje: {', '.join(my_sections)}
+Słów: ~{my_word_count}
+Meta opis: {article_data.get('meta_description', '')}
+
+WYNIKI KONKURENCJI:
+{comp_str if comp_str else 'Nie udało się pobrać wyników konkurencji - analizuj sam artykuł.'}
+
+Odpowiedz TYLKO prawidłowym JSON:
+{{
+    "competitors_found": {len(competitors)},
+    "overall_position": "silniejszy" lub "porównywalny" lub "słabszy",
+    "content_gaps": [
+        {{
+            "topic": "Temat/aspekt którego brakuje w moim artykule",
+            "found_in": "URL lub 'wielu konkurentów'",
+            "importance": "wysoka" lub "średnia" lub "niska",
+            "suggestion": "Konkretna sugestia co dodać (1-2 zdania)",
+            "suggested_heading": "Proponowany nagłówek H2/H3 do dodania"
+        }}
+    ],
+    "keyword_opportunities": [
+        {{
+            "keyword": "Słowo kluczowe używane przez konkurencję",
+            "frequency": "jak często występuje u konkurencji",
+            "my_usage": "czy występuje w moim artykule",
+            "action": "Dodaj/Wzmocnij/Ignoruj"
+        }}
+    ],
+    "structural_comparison": {{
+        "my_sections": {len(my_sections)},
+        "avg_competitor_sections": 0,
+        "my_word_count": {my_word_count},
+        "avg_competitor_word_count": 0,
+        "recommendation": "Co zmienić w strukturze"
+    }},
+    "strengths": ["Mocne strony mojego artykułu vs konkurencja"],
+    "weaknesses": ["Słabe strony wymagające poprawy"],
+    "action_plan": [
+        {{
+            "priority": 1,
+            "action": "Konkretne działanie do podjęcia",
+            "expected_impact": "wysoki" lub "średni" lub "niski"
+        }}
+    ],
+    "summary": "Podsumowanie analizy (2-3 zdania)"
+}}"""
+
+        loop = asyncio.new_event_loop()
+        try:
+            response = loop.run_until_complete(chat.send_message(UserMessage(text=prompt)))
+        finally:
+            loop.close()
+
+        text_resp = response.strip()
+        if text_resp.startswith("```"):
+            text_resp = text_resp.split("\n", 1)[1].rsplit("```", 1)[0]
+
+        import json as json_mod
+        data = json_mod.loads(text_resp)
+        data["competitors_scraped"] = [{"url": c["url"], "title": c["title"], "word_count": c["word_count"]} for c in competitors]
+
+        _auto_competition_jobs[job_id]["status"] = "completed"
+        _auto_competition_jobs[job_id]["result"] = data
+    except Exception as e:
+        logging.error(f"Auto competition error: {e}")
+        _auto_competition_jobs[job_id]["status"] = "failed"
+        _auto_competition_jobs[job_id]["error"] = str(e)
+    finally:
+        sync_client.close()
+
+@api_router.post("/competition/auto-analyze")
+async def auto_competition_analysis(request: AutoCompetitionRequest, user: dict = Depends(get_current_user)):
+    """Start auto competition analysis - scrapes top results for keyword."""
+    emergent_key = os.environ.get("EMERGENT_LLM_KEY")
+    if not emergent_key:
+        raise HTTPException(status_code=500, detail="Brak klucza AI")
+    article = await db.articles.find_one({"id": request.article_id}, {"_id": 0})
+    if not article:
+        raise HTTPException(status_code=404, detail="Artykuł nie znaleziony")
+    job_id = str(uuid.uuid4())
+    _auto_competition_jobs[job_id] = {"status": "queued", "result": None, "error": None}
+    asyncio.get_event_loop().run_in_executor(None, _sync_run_auto_competition, job_id, article, emergent_key, user["id"])
+    return {"job_id": job_id, "status": "queued"}
+
+@api_router.get("/competition/auto-status/{job_id}")
+async def auto_competition_status(job_id: str, user: dict = Depends(get_current_user)):
+    """Poll auto competition analysis status."""
+    job = _auto_competition_jobs.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job nie znaleziony")
+    result = {"job_id": job_id, "status": job["status"]}
+    if job["status"] == "completed":
+        result["result"] = job["result"]
+        del _auto_competition_jobs[job_id]
+    elif job["status"] == "failed":
+        result["error"] = job["error"]
+        del _auto_competition_jobs[job_id]
+    return result
+
+
+# --- A/B Title Testing ---
+
+class ABTitleRequest(BaseModel):
+    article_id: str
+    custom_variants: list = []  # optional user-provided variants
+
+_ab_title_jobs = {}
+
+def _sync_run_ab_title_test(job_id: str, article_data: dict, custom_variants: list, emergent_key: str):
+    """Generate and evaluate title variants using AI."""
+    try:
+        _ab_title_jobs[job_id]["status"] = "running"
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+
+        chat = LlmChat(
+            api_key=emergent_key,
+            session_id=f"ab-title-{job_id[:8]}",
+            system_message="Jesteś ekspertem od copywritingu SEO i CTR. Generujesz i oceniasz warianty tytułów artykułów. Odpowiadaj WYŁĄCZNIE poprawnym JSON-em."
+        )
+
+        current_title = article_data.get("title", "")
+        keyword = article_data.get("primary_keyword", "")
+        topic = article_data.get("topic", "")
+        meta_desc = article_data.get("meta_description", "")
+
+        custom_str = ""
+        if custom_variants:
+            custom_str = "\n\nDODATKOWE WARIANTY OD UŻYTKOWNIKA (też oceń):\n" + "\n".join([f"- {v}" for v in custom_variants])
+
+        prompt = f"""Przeanalizuj obecny tytuł artykułu i zaproponuj 5 alternatywnych wariantów. Oceń każdy wariant.
+
+OBECNY TYTUŁ: "{current_title}"
+SŁOWO KLUCZOWE: "{keyword}"
+TEMAT: "{topic}"
+META OPIS: "{meta_desc}"
+{custom_str}
+
+Dla każdego wariantu (włącznie z obecnym) oceń:
+1. CTR Potential (0-100) - jak bardzo tytuł zachęca do kliknięcia
+2. SEO Score (0-100) - optymalizacja pod wyszukiwarki (keyword placement, length)
+3. Emotional Appeal (0-100) - siła emocjonalna, ciekawość, urgency
+4. Clarity (0-100) - jasność przekazu, zrozumiałość
+
+Odpowiedz TYLKO prawidłowym JSON:
+{{
+    "current_title": {{
+        "text": "{current_title}",
+        "scores": {{
+            "ctr": 70,
+            "seo": 80,
+            "emotion": 60,
+            "clarity": 85
+        }},
+        "total": 74,
+        "feedback": "Krótka ocena obecnego tytułu"
+    }},
+    "variants": [
+        {{
+            "text": "Nowy wariant tytułu",
+            "strategy": "power_words" lub "question" lub "numbers" lub "how_to" lub "list" lub "urgency",
+            "scores": {{
+                "ctr": 85,
+                "seo": 90,
+                "emotion": 75,
+                "clarity": 88
+            }},
+            "total": 85,
+            "feedback": "Dlaczego ten wariant jest lepszy/gorszy",
+            "changes_made": "Co zostało zmienione i dlaczego"
+        }}
+    ],
+    "winner": {{
+        "text": "Najlepszy wariant",
+        "total": 92,
+        "reason": "Dlaczego ten wariant jest najlepszy"
+    }},
+    "tips": [
+        "Ogólna porada dotycząca tytułów w tej branży"
+    ]
+}}"""
+
+        loop = asyncio.new_event_loop()
+        try:
+            response = loop.run_until_complete(chat.send_message(UserMessage(text=prompt)))
+        finally:
+            loop.close()
+
+        text_resp = response.strip()
+        if text_resp.startswith("```"):
+            text_resp = text_resp.split("\n", 1)[1].rsplit("```", 1)[0]
+
+        import json as json_mod
+        data = json_mod.loads(text_resp)
+
+        _ab_title_jobs[job_id]["status"] = "completed"
+        _ab_title_jobs[job_id]["result"] = data
+    except Exception as e:
+        logging.error(f"A/B title test error: {e}")
+        _ab_title_jobs[job_id]["status"] = "failed"
+        _ab_title_jobs[job_id]["error"] = str(e)
+
+@api_router.post("/articles/ab-title-test")
+async def ab_title_test(request: ABTitleRequest, user: dict = Depends(get_current_user)):
+    """Start A/B title test for an article."""
+    emergent_key = os.environ.get("EMERGENT_LLM_KEY")
+    if not emergent_key:
+        raise HTTPException(status_code=500, detail="Brak klucza AI")
+    article = await db.articles.find_one({"id": request.article_id}, {"_id": 0})
+    if not article:
+        raise HTTPException(status_code=404, detail="Artykuł nie znaleziony")
+    job_id = str(uuid.uuid4())
+    _ab_title_jobs[job_id] = {"status": "queued", "result": None, "error": None}
+    asyncio.get_event_loop().run_in_executor(None, _sync_run_ab_title_test, job_id, article, request.custom_variants, emergent_key)
+    return {"job_id": job_id, "status": "queued"}
+
+@api_router.get("/articles/ab-title-status/{job_id}")
+async def ab_title_status(job_id: str, user: dict = Depends(get_current_user)):
+    """Poll A/B title test status."""
+    job = _ab_title_jobs.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job nie znaleziony")
+    result = {"job_id": job_id, "status": job["status"]}
+    if job["status"] == "completed":
+        result["result"] = job["result"]
+        del _ab_title_jobs[job_id]
+    elif job["status"] == "failed":
+        result["error"] = job["error"]
+        del _ab_title_jobs[job_id]
+    return result
+
+
 # Include the router in the main app
 app.include_router(api_router)
 

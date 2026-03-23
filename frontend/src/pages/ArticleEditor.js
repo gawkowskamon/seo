@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Save, Eye, Code, BarChart3, Share2, ChevronLeft, Loader2, RefreshCw, Wand2, Cloud, CloudOff, Image as ImageIcon, Sparkles, Link2, CalendarClock, MessageSquare, PenLine, Shield, FileCheck } from 'lucide-react';
+import { Save, Eye, Code, BarChart3, Share2, ChevronLeft, Loader2, RefreshCw, Wand2, Cloud, CloudOff, Image as ImageIcon, Sparkles, Link2, CalendarClock, MessageSquare, PenLine, Shield, FileCheck, Search, FlaskConical } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { toast } from 'sonner';
@@ -16,6 +16,8 @@ import AIChatPanel from '../components/AIChatPanel';
 import AIRewriter from '../components/AIRewriter';
 import PlagiarismPanel from '../components/PlagiarismPanel';
 import ContentVerificationPanel from '../components/ContentVerificationPanel';
+import AutoCompetitionPanel from '../components/AutoCompetitionPanel';
+import ABTitleTestPanel from '../components/ABTitleTestPanel';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -669,6 +671,22 @@ const ArticleEditor = () => {
             <FileCheck size={14} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
             Weryfikacja
           </button>
+          <button 
+            className={`right-panel-tab ${rightTab === 'competition' ? 'active' : ''}`}
+            onClick={() => setRightTab('competition')}
+            data-testid="article-competition-tab"
+          >
+            <Search size={14} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
+            Konkurencja
+          </button>
+          <button 
+            className={`right-panel-tab ${rightTab === 'abtitle' ? 'active' : ''}`}
+            onClick={() => setRightTab('abtitle')}
+            data-testid="article-abtitle-tab"
+          >
+            <FlaskConical size={14} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
+            A/B Tytuł
+          </button>
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -881,6 +899,18 @@ const ArticleEditor = () => {
           {rightTab === 'verify' && (
             <div data-testid="article-verify-wrapper" style={{ padding: 12 }}>
               <ContentVerificationPanel articleId={articleId} />
+            </div>
+          )}
+          {rightTab === 'competition' && (
+            <div data-testid="article-competition-wrapper" style={{ padding: 12 }}>
+              <AutoCompetitionPanel articleId={articleId} />
+            </div>
+          )}
+          {rightTab === 'abtitle' && (
+            <div data-testid="article-abtitle-wrapper" style={{ padding: 12 }}>
+              <ABTitleTestPanel articleId={articleId} currentTitle={article?.title} onApplyTitle={(newTitle) => {
+                setArticle(prev => ({ ...prev, title: newTitle }));
+              }} />
             </div>
           )}
         </div>
