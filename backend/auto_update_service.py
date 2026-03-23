@@ -87,16 +87,8 @@ async def check_articles_for_updates(articles: list, emergent_key: str) -> dict:
         articles_data="\n".join(articles_data)
     )
 
-    chat = LlmChat(
-        api_key=emergent_key,
-        session_id=f"auto-update-{now.strftime('%Y%m%d')}",
-        system_message="Jestes ekspertem od polskiego prawa podatkowego i ksiegowosci. "
-                       "Znasz najnowsze przepisy, stawki i terminy na 2026 rok. "
-                       "Odpowiadaj WYLACZNIE JSON-em."
-    )
-    chat.with_model("openai", "gpt-4.1-mini")
-
-    response = await chat.send_message(UserMessage(text=prompt))
+    from llm_helper import llm_chat
+    response = await llm_chat(prompt, system_message="Jestes ekspertem od polskiego prawa podatkowego i ksiegowosci. Znasz najnowsze przepisy, stawki i terminy na 2026 rok. Odpowiadaj WYLACZNIE JSON-em.", session_id=f"auto-update-{now.strftime('%Y%m%d')}", timeout=120)
     text = response.strip() if isinstance(response, str) else str(response)
     if text.startswith("```"):
         text = text.split("\n", 1)[1] if "\n" in text else text[3:]

@@ -184,14 +184,8 @@ async def optimize_imported_article(title: str, content_html: str, emergent_key:
     
     prompt = OPTIMIZE_PROMPT.format(title=title, content=content_truncated)
     
-    chat = LlmChat(
-        api_key=emergent_key,
-        session_id=f"import-optimize",
-        system_message="Jestes ekspertem SEO. Optymalizujesz artykuly pod wyszukiwarki. Odpowiadaj WYLACZNIE JSON-em."
-    )
-    chat.with_model("openai", "gpt-4.1-mini")
-    
-    response = await chat.send_message(UserMessage(text=prompt))
+    from llm_helper import llm_chat
+    response = await llm_chat(prompt, system_message="Jestes ekspertem SEO. Optymalizujesz artykuly pod wyszukiwarki. Odpowiadaj WYLACZNIE JSON-em.", session_id="import-optimize", timeout=120)
     
     text = response.strip()
     if text.startswith("```"):

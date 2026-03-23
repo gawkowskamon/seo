@@ -176,14 +176,8 @@ async def analyze_article_seo(article: dict) -> dict:
     
     session_id = f"seo-assistant-{article.get('id', 'unknown')}-{uuid.uuid4().hex[:6]}"
     
-    chat = LlmChat(
-        api_key=api_key,
-        session_id=session_id,
-        system_message=SEO_ASSISTANT_SYSTEM_PROMPT
-    )
-    chat.with_model("openai", "gpt-5.2")
-    
-    response = await chat.send_message(UserMessage(text=prompt))
+    from llm_helper import llm_chat
+    response = await llm_chat(prompt, system_message=SEO_ASSISTANT_SYSTEM_PROMPT, session_id=session_id, timeout=120)
     result = _clean_json_response(response)
     
     # Validate structure
@@ -232,14 +226,8 @@ async def chat_about_seo(article: dict, user_message: str, conversation_history:
     
     session_id = f"seo-chat-{article.get('id', 'unknown')}-{uuid.uuid4().hex[:6]}"
     
-    chat = LlmChat(
-        api_key=api_key,
-        session_id=session_id,
-        system_message=SEO_ASSISTANT_SYSTEM_PROMPT
-    )
-    chat.with_model("openai", "gpt-5.2")
-    
-    response = await chat.send_message(UserMessage(text=prompt))
+    from llm_helper import llm_chat
+    response = await llm_chat(prompt, system_message=SEO_ASSISTANT_SYSTEM_PROMPT, session_id=session_id, timeout=120)
     result = _clean_json_response(response)
     
     # Validate

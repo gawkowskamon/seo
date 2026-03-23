@@ -85,14 +85,8 @@ async def generate_content_calendar(period: str, current_month: int, current_yea
         existing_titles=titles_str
     )
     
-    chat = LlmChat(
-        api_key=emergent_key,
-        session_id=f"calendar-{current_month}-{current_year}",
-        system_message=CALENDAR_SYSTEM_PROMPT
-    )
-    chat.with_model("openai", "gpt-4.1-mini")
-    
-    response = await chat.send_message(UserMessage(text=prompt))
+    from llm_helper import llm_chat
+    response = await llm_chat(prompt, system_message=CALENDAR_SYSTEM_PROMPT, session_id=f"calendar-{current_month}-{current_year}", timeout=120)
     
     text = response.strip()
     if text.startswith("```"):

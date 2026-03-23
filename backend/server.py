@@ -285,7 +285,6 @@ async def health():
 
 # --- Article Generation ---
 
-import asyncio
 
 
 def _sync_run_generation_job(job_id: str, request_data: dict, user: dict):
@@ -751,7 +750,7 @@ async def regenerate_section(article_id: str, request: RegenerateRequest):
     
     try:
         from article_generator import ARTICLE_SYSTEM_PROMPT
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        from llm_helper import llm_chat
         
         api_key = os.environ.get("EMERGENT_LLM_KEY")
         if not api_key:
@@ -783,14 +782,13 @@ Odpowiedz WYŁĄCZNIE w formacie JSON (bez markdown):
         else:
             raise HTTPException(status_code=400, detail=f"Unknown section: {request.section}")
         
-        chat = LlmChat(
-            api_key=api_key,
-            session_id=f"regen-{article_id}-{request.section}",
-            system_message="Jesteś ekspertem SEO od księgowości w Polsce. Odpowiadaj WYŁĄCZNIE poprawnym JSON-em."
-        )
-        chat.with_model("openai", "gpt-4.1-mini")
         
-        response = await chat.send_message(UserMessage(text=prompt))
+        response = await llm_chat(
+            prompt,
+            system_message="Jesteś ekspertem SEO od księgowości w Polsce. Odpowiadaj WYŁĄCZNIE poprawnym JSON-em.",
+            session_id=f"regen-{article_id}-{request.section}",
+            timeout=120
+        )
         
         import re
         clean_response = response.strip()
@@ -1980,12 +1978,7 @@ def _sync_run_keyword_analytics(job_id: str, keywords: list, industry: str, emer
     sync_db = sync_client[os.environ.get('DB_NAME', 'seo_article_writer')]
     try:
         _keyword_analytics_jobs[job_id]["status"] = "running"
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
-        chat = LlmChat(
-            api_key=emergent_key,
-            session_id=f"kw-analytics-{job_id[:8]}",
-            system_message="Jesteś ekspertem SEO i analityki słów kluczowych w Polsce. Odpowiadaj WYŁĄCZNIE poprawnym JSON-em."
-        )
+        from llm_helper import llm_chat_sync
         
         kw_list = ", ".join(keywords[:10]) if keywords else "ulgi podatkowe, VAT 2026, ZUS, PIT, CIT, księgowość online, biuro rachunkowe, faktury elektroniczne"
         
@@ -2007,12 +2000,8 @@ Dla każdego słowa kluczowego podaj:
 
 Odpowiedz TYLKO prawidłowym JSON: {{"keywords": [...]}}"""
         
-        loop = asyncio.new_event_loop()
-        try:
-            response = loop.run_until_complete(chat.send_message(UserMessage(text=prompt)))
-        finally:
-            loop.close()
-        text = response.strip()
+        text = llm_chat_sync(prompt, system_message="Jesteś ekspertem SEO i analityki słów kluczowych w Polsce. Odpowiadaj WYŁĄCZNIE poprawnym JSON-em.", session_id=f"kw-analytics-{job_id[:8]}", timeout=120)
+        text = text.strip()
         if text.startswith("```"):
             text = text.split("\n", 1)[1].rsplit("```", 1)[0]
         
@@ -2080,12 +2069,7 @@ def _sync_run_rewrite(job_id: str, text: str, style: str, emergent_key: str):
     """Run rewrite in thread."""
     try:
         _rewrite_jobs[job_id]["status"] = "running"
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
-        chat = LlmChat(
-            api_key=emergent_key,
-            session_id=f"rewrite-{job_id[:8]}",
-            system_message="Jesteś ekspertem od pisania treści w języku polskim. Przepisuj tekst zgodnie z instrukcjami."
-        )
+        from llm_helper import llm_chat_sync
         
         style_prompts = {
             "profesjonalny": "Przepisz tekst w profesjonalnym, eksperckim tonie. Używaj fachowej terminologii podatkowej i księgowej. Zachowaj precyzję i powagę.",
@@ -2108,11 +2092,7 @@ WAŻNE:
 - Nie dodawaj komentarzy, zwróć TYLKO przepisany tekst
 - Zachowaj wszystkie dane liczbowe i faktograficzne"""
 
-        loop = asyncio.new_event_loop()
-        try:
-            response = loop.run_until_complete(chat.send_message(UserMessage(text=prompt)))
-        finally:
-            loop.close()
+        response = llm_chat_sync(prompt, system_message="Jesteś ekspertem od pisania treści w języku polskim. Przepisuj tekst zgodnie z instrukcjami.", session_id=f"rewrite-{job_id[:8]}", timeout=120)
         _rewrite_jobs[job_id]["status"] = "completed"
         _rewrite_jobs[job_id]["result"] = {"rewritten_text": response.strip(), "style": style}
     except Exception as e:
@@ -2177,12 +2157,7 @@ async def generate_newsletter(request: NewsletterRequest, user: dict = Depends(g
     for a in articles:
         articles_summary += f"\n- Tytuł: {a.get('title','')}\n  Meta opis: {a.get('meta_description','')}\n  SEO: {a.get('seo_score',{}).get('percentage',0)}%\n"
     
-    from emergentintegrations.llm.chat import LlmChat, UserMessage
-    chat = LlmChat(
-        api_key=emergent_key,
-        session_id=f"newsletter-{uuid.uuid4().hex[:8]}",
-        system_message="Jesteś ekspertem od email marketingu dla biur rachunkowych w Polsce. Tworzysz profesjonalne newslettery w HTML."
-    )
+    from llm_helper import llm_chat
     
     title = request.title or "Cotygodniowy newsletter podatkowy"
     
@@ -2203,7 +2178,7 @@ Wygeneruj:
 Format: kompletny HTML email z inline CSS. Kolory: #04389E (główny), #0B1220 (tekst), #F7F8FA (tło).
 Zwróć TYLKO kod HTML."""
     
-    response = await chat.send_message(UserMessage(text=prompt))
+    response = await llm_chat(prompt, system_message="Jesteś ekspertem od email marketingu dla biur rachunkowych w Polsce. Tworzysz profesjonalne newslettery w HTML.", session_id=f"newsletter-{uuid.uuid4().hex[:8]}", timeout=120)
     html = response.strip()
     if html.startswith("```"):
         html = html.split("\n", 1)[1].rsplit("```", 1)[0]
@@ -2375,12 +2350,7 @@ def _sync_run_ai_suggestions(job_id: str, existing_articles: list, focus: str, c
     sync_db = sync_client[os.environ.get('DB_NAME', 'seo_article_writer')]
     try:
         _ai_suggestions_jobs[job_id]["status"] = "running"
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
-        chat = LlmChat(
-            api_key=emergent_key,
-            session_id=f"ai-suggestions-{job_id[:8]}",
-            system_message="Jesteś ekspertem SEO i content strategistą dla polskiej branży księgowej i podatkowej. Odpowiadaj WYŁĄCZNIE poprawnym JSON-em."
-        )
+        from llm_helper import llm_chat_sync
 
         existing_titles = [a.get("title", "") for a in existing_articles[:20]]
         existing_keywords = list(set([a.get("primary_keyword", "") for a in existing_articles[:20] if a.get("primary_keyword")]))
@@ -2410,13 +2380,8 @@ Dla każdej sugestii podaj:
 
 Odpowiedz TYLKO prawidłowym JSON: {{"suggestions": [...]}}"""
 
-        loop = asyncio.new_event_loop()
-        try:
-            response = loop.run_until_complete(chat.send_message(UserMessage(text=prompt)))
-        finally:
-            loop.close()
-
-        text = response.strip()
+        text = llm_chat_sync(prompt, system_message="Jesteś ekspertem SEO i content strategistą dla polskiej branży księgowej i podatkowej. Odpowiadaj WYŁĄCZNIE poprawnym JSON-em.", session_id=f"ai-suggestions-{job_id[:8]}", timeout=120)
+        text = text.strip()
         if text.startswith("```"):
             text = text.split("\n", 1)[1].rsplit("```", 1)[0]
 
@@ -2627,7 +2592,7 @@ def _sync_run_plagiarism_check(job_id: str, article_data: dict, emergent_key: st
     sync_db = sync_client[os.environ.get('DB_NAME', 'seo_article_writer')]
     try:
         _plagiarism_jobs[job_id]["status"] = "running"
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        from llm_helper import llm_chat_sync
 
         # Extract text content from sections
         text_parts = []
@@ -2647,12 +2612,6 @@ def _sync_run_plagiarism_check(job_id: str, article_data: dict, emergent_key: st
         words = full_text.split()
         if len(words) > 3000:
             full_text = " ".join(words[:3000])
-
-        chat = LlmChat(
-            api_key=emergent_key,
-            session_id=f"plagiarism-{job_id[:8]}",
-            system_message="Jesteś ekspertem od analizy treści i wykrywania plagiatu. Analizujesz tekst pod kątem oryginalności. Odpowiadaj WYŁĄCZNIE poprawnym JSON-em."
-        )
 
         prompt = f"""Przeanalizuj poniższy tekst artykułu pod kątem oryginalności i potencjalnego plagiatu.
 
@@ -2693,13 +2652,8 @@ Odpowiedz TYLKO prawidłowym JSON:
     ]
 }}"""
 
-        loop = asyncio.new_event_loop()
-        try:
-            response = loop.run_until_complete(chat.send_message(UserMessage(text=prompt)))
-        finally:
-            loop.close()
-
-        text_resp = response.strip()
+        text_resp = llm_chat_sync(prompt, system_message="Jesteś ekspertem od analizy treści i wykrywania plagiatu. Analizujesz tekst pod kątem oryginalności. Odpowiadaj WYŁĄCZNIE poprawnym JSON-em.", session_id=f"plagiarism-{job_id[:8]}", timeout=120)
+        text_resp = text_resp.strip()
         if text_resp.startswith("```"):
             text_resp = text_resp.split("\n", 1)[1].rsplit("```", 1)[0]
 
@@ -2795,7 +2749,7 @@ def _sync_run_content_verification(job_id: str, article_data: dict, emergent_key
     sync_db = sync_client[os.environ.get('DB_NAME', 'seo_article_writer')]
     try:
         _verification_jobs[job_id]["status"] = "running"
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        from llm_helper import llm_chat_sync
 
         # Extract text content from sections
         text_parts = []
@@ -2823,11 +2777,7 @@ def _sync_run_content_verification(job_id: str, article_data: dict, emergent_key
         for f in article_data.get("faq", []):
             faq_str += f"Q: {f.get('question','')}\nA: {f.get('answer','')[:150]}\n\n"
 
-        chat = LlmChat(
-            api_key=emergent_key,
-            session_id=f"verify-{job_id[:8]}",
-            system_message="Jesteś doświadczonym BIEGŁYM REWIDENTEM i doradcą podatkowym w Polsce. Weryfikujesz treści pod kątem zgodności z obowiązującym prawem podatkowym i księgowym (stan na 2026 r.). Odpowiadaj WYŁĄCZNIE poprawnym JSON-em."
-        )
+        chat_sys = "Jesteś doświadczonym BIEGŁYM REWIDENTEM i doradcą podatkowym w Polsce. Weryfikujesz treści pod kątem zgodności z obowiązującym prawem podatkowym i księgowym (stan na 2026 r.). Odpowiadaj WYŁĄCZNIE poprawnym JSON-em."
 
         prompt = f"""Zweryfikuj poniższy artykuł blogowy z zakresu księgowości/podatków pod kątem RZETELNOŚCI MERYTORYCZNEJ.
 
@@ -2903,13 +2853,8 @@ Odpowiedz TYLKO prawidłowym JSON:
     ]
 }}"""
 
-        loop = asyncio.new_event_loop()
-        try:
-            response = loop.run_until_complete(chat.send_message(UserMessage(text=prompt)))
-        finally:
-            loop.close()
-
-        text_resp = response.strip()
+        text_resp = llm_chat_sync(prompt, system_message=chat_sys, session_id=f"verify-{job_id[:8]}", timeout=120)
+        text_resp = text_resp.strip()
         if text_resp.startswith("```"):
             text_resp = text_resp.split("\n", 1)[1].rsplit("```", 1)[0]
 
@@ -3066,12 +3011,7 @@ def _sync_run_auto_competition(job_id: str, article_data: dict, emergent_key: st
             logging.warning(f"Search scraping failed: {e}")
 
         # AI analysis
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
-        chat = LlmChat(
-            api_key=emergent_key,
-            session_id=f"auto-comp-{job_id[:8]}",
-            system_message="Jesteś ekspertem SEO. Analizujesz artykuły konkurencji i wskazujesz luki w treści. Odpowiadaj WYŁĄCZNIE poprawnym JSON-em."
-        )
+        from llm_helper import llm_chat_sync
 
         comp_str = ""
         for i, c in enumerate(competitors[:5], 1):
@@ -3133,13 +3073,8 @@ Odpowiedz TYLKO prawidłowym JSON:
     "summary": "Podsumowanie analizy (2-3 zdania)"
 }}"""
 
-        loop = asyncio.new_event_loop()
-        try:
-            response = loop.run_until_complete(chat.send_message(UserMessage(text=prompt)))
-        finally:
-            loop.close()
-
-        text_resp = response.strip()
+        text_resp = llm_chat_sync(prompt, system_message="Jesteś ekspertem SEO. Analizujesz artykuły konkurencji i wskazujesz luki w treści. Odpowiadaj WYŁĄCZNIE poprawnym JSON-em.", session_id=f"auto-comp-{job_id[:8]}", timeout=120)
+        text_resp = text_resp.strip()
         if text_resp.startswith("```"):
             text_resp = text_resp.split("\n", 1)[1].rsplit("```", 1)[0]
 
@@ -3198,13 +3133,7 @@ def _sync_run_ab_title_test(job_id: str, article_data: dict, custom_variants: li
     """Generate and evaluate title variants using AI."""
     try:
         _ab_title_jobs[job_id]["status"] = "running"
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
-
-        chat = LlmChat(
-            api_key=emergent_key,
-            session_id=f"ab-title-{job_id[:8]}",
-            system_message="Jesteś ekspertem od copywritingu SEO i CTR. Generujesz i oceniasz warianty tytułów artykułów. Odpowiadaj WYŁĄCZNIE poprawnym JSON-em."
-        )
+        from llm_helper import llm_chat_sync
 
         current_title = article_data.get("title", "")
         keyword = article_data.get("primary_keyword", "")
@@ -3267,13 +3196,8 @@ Odpowiedz TYLKO prawidłowym JSON:
     ]
 }}"""
 
-        loop = asyncio.new_event_loop()
-        try:
-            response = loop.run_until_complete(chat.send_message(UserMessage(text=prompt)))
-        finally:
-            loop.close()
-
-        text_resp = response.strip()
+        text_resp = llm_chat_sync(prompt, system_message="Jesteś ekspertem od copywritingu SEO i CTR. Generujesz i oceniasz warianty tytułów artykułów. Odpowiadaj WYŁĄCZNIE poprawnym JSON-em.", session_id=f"ab-title-{job_id[:8]}", timeout=120)
+        text_resp = text_resp.strip()
         if text_resp.startswith("```"):
             text_resp = text_resp.split("\n", 1)[1].rsplit("```", 1)[0]
 
@@ -3425,7 +3349,7 @@ def _sync_run_auto_meta(job_id: str, article_data: dict, emergent_key: str):
     """Generate optimized meta tags using AI."""
     try:
         _auto_meta_jobs[job_id]["status"] = "running"
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        from llm_helper import llm_chat_sync
 
         title = article_data.get("title", "")
         keyword = article_data.get("primary_keyword", "")
@@ -3435,12 +3359,6 @@ def _sync_run_auto_meta(job_id: str, article_data: dict, emergent_key: str):
             clean = re.sub(r'<[^>]+>', '', section.get("content", ""))
             text_parts.append(clean[:200])
         content_summary = " ".join(text_parts)[:1000]
-
-        chat = LlmChat(
-            api_key=emergent_key,
-            session_id=f"auto-meta-{job_id[:8]}",
-            system_message="Jesteś ekspertem SEO. Generujesz zoptymalizowane meta tagi dla artykułów o księgowości. Odpowiadaj WYŁĄCZNIE poprawnym JSON-em."
-        )
 
         prompt = f"""Wygeneruj zoptymalizowane meta tagi SEO dla artykułu:
 
@@ -3480,13 +3398,8 @@ Odpowiedz TYLKO prawidłowym JSON:
     }}
 }}"""
 
-        loop = asyncio.new_event_loop()
-        try:
-            response = loop.run_until_complete(chat.send_message(UserMessage(text=prompt)))
-        finally:
-            loop.close()
-
-        text_resp = response.strip()
+        text_resp = llm_chat_sync(prompt, system_message="Jesteś ekspertem SEO. Generujesz zoptymalizowane meta tagi dla artykułów o księgowości. Odpowiadaj WYŁĄCZNIE poprawnym JSON-em.", session_id=f"auto-meta-{job_id[:8]}", timeout=120)
+        text_resp = text_resp.strip()
         if text_resp.startswith("```"):
             text_resp = text_resp.split("\n", 1)[1].rsplit("```", 1)[0]
 
@@ -3540,7 +3453,7 @@ def _sync_run_schedule_suggestion(job_id: str, article_data: dict, emergent_key:
     """AI suggests best publishing time based on industry and content type."""
     try:
         _schedule_jobs[job_id]["status"] = "running"
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        from llm_helper import llm_chat_sync
 
         title = article_data.get("title", "")
         keyword = article_data.get("primary_keyword", "")
@@ -3548,11 +3461,7 @@ def _sync_run_schedule_suggestion(job_id: str, article_data: dict, emergent_key:
         faq_count = len(article_data.get("faq", []))
         word_count = sum(len(re.sub(r'<[^>]+>', '', s.get("content", "")).split()) for s in article_data.get("sections", []))
 
-        chat = LlmChat(
-            api_key=emergent_key,
-            session_id=f"schedule-{job_id[:8]}",
-            system_message="Jesteś ekspertem od content marketingu i analityki publikacji dla polskiej branży finansowej/księgowej. Odpowiadaj WYŁĄCZNIE poprawnym JSON-em."
-        )
+        schedule_sys = "Jesteś ekspertem od content marketingu i analityki publikacji dla polskiej branży finansowej/księgowej. Odpowiadaj WYŁĄCZNIE poprawnym JSON-em."
 
         prompt = f"""Zaproponuj optymalny harmonogram publikacji dla tego artykułu na blogu biura rachunkowego.
 
@@ -3606,13 +3515,8 @@ Odpowiedz TYLKO prawidłowym JSON:
     "summary": "Krótkie podsumowanie rekomendacji (2-3 zdania)"
 }}"""
 
-        loop = asyncio.new_event_loop()
-        try:
-            response = loop.run_until_complete(chat.send_message(UserMessage(text=prompt)))
-        finally:
-            loop.close()
-
-        text_resp = response.strip()
+        text_resp = llm_chat_sync(prompt, system_message=schedule_sys, session_id=f"schedule-{job_id[:8]}", timeout=120)
+        text_resp = text_resp.strip()
         if text_resp.startswith("```"):
             text_resp = text_resp.split("\n", 1)[1].rsplit("```", 1)[0]
 
@@ -3666,7 +3570,7 @@ def _sync_run_social_posts(job_id: str, article_data: dict, emergent_key: str):
     """Generate social media posts for all platforms using AI."""
     try:
         _social_posts_jobs[job_id]["status"] = "running"
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        from llm_helper import llm_chat_sync
 
         title = article_data.get("title", "")
         keyword = article_data.get("primary_keyword", "")
@@ -3678,11 +3582,7 @@ def _sync_run_social_posts(job_id: str, article_data: dict, emergent_key: str):
             key_points.append(" ".join(clean.split()[:50]))
         content_summary = "\n".join(key_points)[:800]
 
-        chat = LlmChat(
-            api_key=emergent_key,
-            session_id=f"social-{job_id[:8]}",
-            system_message="Jesteś ekspertem od social media marketingu dla polskiej branży finansowej/księgowej. Tworzysz angażujące posty promujące artykuły blogowe. Odpowiadaj WYŁĄCZNIE poprawnym JSON-em."
-        )
+        social_sys = "Jesteś ekspertem od social media marketingu dla polskiej branży finansowej/księgowej. Tworzysz angażujące posty promujące artykuły blogowe. Odpowiadaj WYŁĄCZNIE poprawnym JSON-em."
 
         prompt = f"""Wygeneruj posty na social media promujące artykuł blogowy biura rachunkowego.
 
@@ -3721,13 +3621,8 @@ Odpowiedz TYLKO prawidłowym JSON:
     "tips": ["Porada dotycząca publikacji"]
 }}"""
 
-        loop = asyncio.new_event_loop()
-        try:
-            response = loop.run_until_complete(chat.send_message(UserMessage(text=prompt)))
-        finally:
-            loop.close()
-
-        text_resp = response.strip()
+        text_resp = llm_chat_sync(prompt, system_message=social_sys, session_id=f"social-{job_id[:8]}", timeout=120)
+        text_resp = text_resp.strip()
         if text_resp.startswith("```"):
             text_resp = text_resp.split("\n", 1)[1].rsplit("```", 1)[0]
 

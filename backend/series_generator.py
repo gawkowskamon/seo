@@ -79,14 +79,8 @@ async def generate_series_outline(topic: str, primary_keyword: str, num_parts: i
     
     session_id = f"series-{uuid.uuid4().hex[:8]}"
     
-    chat = LlmChat(
-        api_key=api_key,
-        session_id=session_id,
-        system_message="Jestes ekspertem SEO planujacym serie artykulow dla polskiego biura rachunkowego. Odpowiadaj WYLACZNIE poprawnym JSON-em."
-    )
-    chat.with_model("openai", "gpt-5.2")
-    
-    response = await chat.send_message(UserMessage(text=prompt))
+    from llm_helper import llm_chat
+    response = await llm_chat(prompt, system_message="Jestes ekspertem SEO planujacym serie artykulow dla polskiego biura rachunkowego. Odpowiadaj WYLACZNIE poprawnym JSON-em.", session_id=session_id, timeout=180)
     
     # Clean and parse JSON
     clean = response.strip()

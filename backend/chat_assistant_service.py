@@ -47,21 +47,39 @@ async def chat_with_assistant(session_id: str, message: str, article_context: di
             ctx_parts.append(f"Wynik SEO: {score.get('percentage', '?')}%")
     
     context_str = "\n".join(ctx_parts) if ctx_parts else "Brak kontekstu artykulu."
+    system_msg = ASSISTANT_SYSTEM + f"\n\nKONTEKST ARTYKULU:\n{context_str}"
     
-    # Create or reuse chat session
-    if session_id not in _chat_sessions:
-        chat = LlmChat(
-            api_key=emergent_key,
-            session_id=session_id,
-            system_message=ASSISTANT_SYSTEM + f"\n\nKONTEKST ARTYKULU:\n{context_str}"
-        )
-        chat.with_model("openai", "gpt-4.1-mini")
-        _chat_sessions[session_id] = chat
+    # Try with existing session first, fallback to new session with different model
+    from llm_helper import FALLBACK_MODELS
     
-    chat = _chat_sessions[session_id]
+    if session_id in _chat_sessions:
+        try:
+            chat = _chat_sessions[session_id]
+            response = await chat.send_message(UserMessage(text=message))
+            return response.strip() if isinstance(response, str) else str(response)
+        except Exception as e:
+            logger.warning(f"Chat session {session_id} failed: {e}, trying fallback models...")
+            _chat_sessions.pop(session_id, None)
     
-    response = await chat.send_message(UserMessage(text=message))
-    return response.strip() if isinstance(response, str) else str(response)
+    # Try each model
+    last_error = None
+    for provider, model in FALLBACK_MODELS:
+        try:
+            chat = LlmChat(
+                api_key=emergent_key,
+                session_id=f"{session_id}-{model}",
+                system_message=system_msg
+            )
+            chat.with_model(provider, model).with_params(timeout=120)
+            response = await chat.send_message(UserMessage(text=message))
+            _chat_sessions[session_id] = chat
+            return response.strip() if isinstance(response, str) else str(response)
+        except Exception as e:
+            last_error = e
+            logger.warning(f"Chat assistant {model} failed: {e}")
+            continue
+    
+    raise last_error or ValueError("Asystent AI jest tymczasowo niedostepny")
 
 
 def clear_chat_session(session_id: str):

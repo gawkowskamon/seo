@@ -77,14 +77,8 @@ async def analyze_internal_links(current_article: dict, all_articles: list, emer
         other_articles=other_str
     )
     
-    chat = LlmChat(
-        api_key=emergent_key,
-        session_id=f"linkbuild-{current_article.get('id', 'unknown')}",
-        system_message="Jestes ekspertem SEO specjalizujacym sie w linkowaniu wewnetrznym. Odpowiadaj WYLACZNIE JSON-em."
-    )
-    chat.with_model("openai", "gpt-4.1-mini")
-    
-    response = await chat.send_message(UserMessage(text=prompt))
+    from llm_helper import llm_chat
+    response = await llm_chat(prompt, system_message="Jestes ekspertem SEO specjalizujacym sie w linkowaniu wewnetrznym. Odpowiadaj WYLACZNIE JSON-em.", session_id=f"linkbuild-{current_article.get('id', 'unknown')}", timeout=120)
     
     text = response.strip()
     if text.startswith("```"):

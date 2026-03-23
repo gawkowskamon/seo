@@ -63,3 +63,24 @@ async def llm_chat(
                     break
 
     raise last_error or ValueError("All LLM models failed")
+
+
+def llm_chat_sync(
+    prompt: str,
+    system_message: str,
+    session_id: str = "default",
+    timeout: int = 120,
+    max_retries: int = 2,
+    models: list = None,
+) -> str:
+    """
+    Synchronous version of llm_chat for use in ThreadPoolExecutor threads.
+    Creates its own event loop.
+    """
+    loop = asyncio.new_event_loop()
+    try:
+        return loop.run_until_complete(
+            llm_chat(prompt, system_message, session_id, timeout, max_retries, models)
+        )
+    finally:
+        loop.close()
