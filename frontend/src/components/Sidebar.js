@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, PenTool, Lightbulb, LogOut, User, Layers, Users, Image as ImageIcon, Sparkles, Settings, CreditCard, Calendar, Download, Search, RefreshCw, Moon, Sun, BarChart3, Mail } from 'lucide-react';
+import { LayoutDashboard, PenTool, Lightbulb, LogOut, User, Layers, Users, Image as ImageIcon, Sparkles, Settings, CreditCard, Calendar, Download, Search, RefreshCw, Moon, Sun, BarChart3, Mail, Brain, Activity, Shield } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 const Sidebar = () => {
@@ -22,6 +22,7 @@ const Sidebar = () => {
     { path: '/generator-obrazow', label: 'Generator obrazow', icon: Sparkles, testId: 'sidebar-nav-image-generator' },
     { path: '/biblioteka', label: 'Biblioteka', icon: ImageIcon, testId: 'sidebar-nav-library' },
     { path: '/topics', label: 'Tematy', icon: Lightbulb, testId: 'sidebar-nav-topics' },
+    { path: '/sugestie-ai', label: 'Sugestie AI', icon: Brain, testId: 'sidebar-nav-ai-suggestions' },
     { path: '/kalendarz', label: 'Kalendarz', icon: Calendar, testId: 'sidebar-nav-calendar' },
     { path: '/import', label: 'Import', icon: Download, testId: 'sidebar-nav-import' },
     { path: '/audyt-seo', label: 'Audyt SEO', icon: Search, testId: 'sidebar-nav-audit' },
@@ -32,6 +33,7 @@ const Sidebar = () => {
   ];
 
   const adminItems = [
+    { path: '/wydajnosc', label: 'Wydajność', icon: Activity, testId: 'sidebar-nav-performance' },
     { path: '/admin/users', label: 'Uzytkownicy', icon: Users, testId: 'sidebar-nav-admin-users' },
     { path: '/admin/settings', label: 'Ustawienia', icon: Settings, testId: 'sidebar-nav-admin-settings' },
   ];

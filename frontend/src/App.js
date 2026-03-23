@@ -20,6 +20,8 @@ import SEOAuditPage from './pages/SEOAuditPage';
 import AutoUpdatePage from './pages/AutoUpdatePage';
 import KeywordAnalytics from './pages/KeywordAnalytics';
 import NewsletterPage from './pages/NewsletterPage';
+import PerformanceDashboard from './pages/PerformanceDashboard';
+import AIArticleSuggestions from './pages/AIArticleSuggestions';
 import AuthPage from './pages/AuthPage';
 import './App.css';
 
@@ -128,6 +130,12 @@ function AppRoutes() {
       } />
       <Route path="/newsletter" element={
         <ProtectedLayout><NewsletterPage /></ProtectedLayout>
+      } />
+      <Route path="/sugestie-ai" element={
+        <ProtectedLayout><AIArticleSuggestions /></ProtectedLayout>
+      } />
+      <Route path="/wydajnosc" element={
+        <ProtectedLayout requireAdmin><PerformanceDashboard /></ProtectedLayout>
       } />
       <Route path="/admin/users" element={
         <ProtectedLayout requireAdmin><AdminUsers /></ProtectedLayout>

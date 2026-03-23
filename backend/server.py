@@ -2336,6 +2336,427 @@ async def get_subscription_status(user: dict = Depends(get_current_user)):
     }
 
 
+# --- AI Article Suggestions (Smart) ---
+
+class AIArticleSuggestionsRequest(BaseModel):
+    count: int = 6
+    focus: str = ""  # optional focus area
+
+_ai_suggestions_jobs = {}
+
+def _sync_run_ai_suggestions(job_id: str, existing_articles: list, focus: str, count: int, emergent_key: str, user_id: str):
+    """Run AI article suggestions in thread."""
+    import pymongo
+    sync_client = pymongo.MongoClient(os.environ.get('MONGO_URL'), serverSelectionTimeoutMS=5000)
+    sync_db = sync_client[os.environ.get('DB_NAME', 'seo_article_writer')]
+    try:
+        _ai_suggestions_jobs[job_id]["status"] = "running"
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        chat = LlmChat(
+            api_key=emergent_key,
+            session_id=f"ai-suggestions-{job_id[:8]}",
+            system_message="Jesteś ekspertem SEO i content strategistą dla polskiej branży księgowej i podatkowej. Odpowiadaj WYŁĄCZNIE poprawnym JSON-em."
+        )
+
+        existing_titles = [a.get("title", "") for a in existing_articles[:20]]
+        existing_keywords = list(set([a.get("primary_keyword", "") for a in existing_articles[:20] if a.get("primary_keyword")]))
+        titles_str = "\n".join([f"- {t}" for t in existing_titles]) if existing_titles else "Brak artykułów"
+        keywords_str = ", ".join(existing_keywords[:15]) if existing_keywords else "brak"
+        focus_str = f"\nSkup się szczególnie na: {focus}" if focus else ""
+
+        prompt = f"""Przeanalizuj istniejące artykuły na blogu biura rachunkowego i zaproponuj {count} NOWYCH tematów artykułów, które uzupełnią luki w treści i przyciągną ruch.
+
+Istniejące artykuły:
+{titles_str}
+
+Użyte słowa kluczowe: {keywords_str}
+{focus_str}
+
+Dla każdej sugestii podaj:
+- title: tytuł artykułu (przyciągający, SEO-friendly, po polsku)
+- primary_keyword: główne słowo kluczowe (2-4 słowa)
+- secondary_keywords: lista 3-5 dodatkowych słów kluczowych
+- description: krótki opis artykułu (2-3 zdania)
+- rationale: dlaczego warto napisać ten artykuł (uzupełnia lukę, sezonowość, trending, itp.)
+- estimated_traffic: szacunkowy miesięczny ruch (np. "500-1000")
+- difficulty: "łatwa", "średnia", "trudna"
+- priority: "wysoki", "średni", "niski"
+- content_type: "poradnik", "analiza", "case study", "lista", "aktualności"
+- seasonal: true/false (czy temat jest sezonowy)
+
+Odpowiedz TYLKO prawidłowym JSON: {{"suggestions": [...]}}"""
+
+        loop = asyncio.new_event_loop()
+        try:
+            response = loop.run_until_complete(chat.send_message(UserMessage(text=prompt)))
+        finally:
+            loop.close()
+
+        text = response.strip()
+        if text.startswith("```"):
+            text = text.split("\n", 1)[1].rsplit("```", 1)[0]
+
+        import json as json_mod
+        data = json_mod.loads(text)
+
+        _ai_suggestions_jobs[job_id]["status"] = "completed"
+        _ai_suggestions_jobs[job_id]["result"] = data
+
+        sync_db.ai_suggestions.insert_one({
+            "id": job_id, "user_id": user_id,
+            "result": data, "focus": focus,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+    except Exception as e:
+        logging.error(f"AI suggestions error: {e}")
+        _ai_suggestions_jobs[job_id]["status"] = "failed"
+        _ai_suggestions_jobs[job_id]["error"] = str(e)
+    finally:
+        sync_client.close()
+
+@api_router.post("/articles/ai-suggestions")
+async def ai_article_suggestions(request: AIArticleSuggestionsRequest, user: dict = Depends(get_current_user)):
+    """Start async AI article suggestions based on existing content."""
+    emergent_key = os.environ.get("EMERGENT_LLM_KEY")
+    if not emergent_key:
+        raise HTTPException(status_code=500, detail="Brak klucza AI")
+
+    query = {} if user.get("is_admin") else {"user_id": user["id"]}
+    existing = await db.articles.find(query, {"_id": 0, "title": 1, "primary_keyword": 1, "seo_score": 1}).sort("created_at", -1).limit(20).to_list(20)
+
+    job_id = str(uuid.uuid4())
+    _ai_suggestions_jobs[job_id] = {"status": "queued", "result": None, "error": None}
+    asyncio.get_event_loop().run_in_executor(None, _sync_run_ai_suggestions, job_id, existing, request.focus, request.count, emergent_key, user["id"])
+    return {"job_id": job_id, "status": "queued"}
+
+@api_router.get("/articles/ai-suggestions/status/{job_id}")
+async def ai_suggestions_status(job_id: str, user: dict = Depends(get_current_user)):
+    """Poll AI suggestions job status."""
+    job = _ai_suggestions_jobs.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job nie znaleziony")
+    result = {"job_id": job_id, "status": job["status"]}
+    if job["status"] == "completed":
+        result["result"] = job["result"]
+        del _ai_suggestions_jobs[job_id]
+    elif job["status"] == "failed":
+        result["error"] = job["error"]
+        del _ai_suggestions_jobs[job_id]
+    return result
+
+@api_router.get("/articles/ai-suggestions/history")
+async def ai_suggestions_history(user: dict = Depends(get_current_user)):
+    """Get AI suggestions history."""
+    docs = await db.ai_suggestions.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1).limit(10).to_list(10)
+    return docs
+
+
+# --- Performance Dashboard ---
+
+@api_router.get("/performance/dashboard")
+async def performance_dashboard(user: dict = Depends(get_current_user)):
+    """Get comprehensive performance metrics."""
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Dostęp tylko dla administratorów")
+
+    now = datetime.now(timezone.utc)
+
+    # Total users
+    total_users = await db.users.count_documents({})
+
+    # Active users in last 24h (DAU) - based on articles created/updated
+    from datetime import timedelta
+    day_ago = (now - timedelta(days=1)).isoformat()
+    week_ago = (now - timedelta(days=7)).isoformat()
+    month_ago = (now - timedelta(days=30)).isoformat()
+
+    # DAU - unique users who created/updated articles in last 24h
+    dau_pipeline = [
+        {"$match": {"$or": [
+            {"created_at": {"$gte": day_ago}},
+            {"updated_at": {"$gte": day_ago}}
+        ]}},
+        {"$group": {"_id": "$user_id"}},
+        {"$count": "count"}
+    ]
+    dau_result = await db.articles.aggregate(dau_pipeline).to_list(1)
+    dau = dau_result[0]["count"] if dau_result else 0
+
+    # MAU - unique users who created/updated articles in last 30 days
+    mau_pipeline = [
+        {"$match": {"$or": [
+            {"created_at": {"$gte": month_ago}},
+            {"updated_at": {"$gte": month_ago}}
+        ]}},
+        {"$group": {"_id": "$user_id"}},
+        {"$count": "count"}
+    ]
+    mau_result = await db.articles.aggregate(mau_pipeline).to_list(1)
+    mau = mau_result[0]["count"] if mau_result else 0
+
+    # Total articles
+    total_articles = await db.articles.count_documents({})
+
+    # Articles created in last 7 days
+    articles_this_week = await db.articles.count_documents({"created_at": {"$gte": week_ago}})
+
+    # Articles created in last 30 days
+    articles_this_month = await db.articles.count_documents({"created_at": {"$gte": month_ago}})
+
+    # Average SEO score
+    seo_pipeline = [
+        {"$match": {"seo_score.percentage": {"$exists": True}}},
+        {"$group": {"_id": None, "avg": {"$avg": "$seo_score.percentage"}, "max": {"$max": "$seo_score.percentage"}, "min": {"$min": "$seo_score.percentage"}}}
+    ]
+    seo_result = await db.articles.aggregate(seo_pipeline).to_list(1)
+    avg_seo = round(seo_result[0]["avg"]) if seo_result else 0
+    max_seo = round(seo_result[0]["max"]) if seo_result else 0
+    min_seo = round(seo_result[0]["min"]) if seo_result else 0
+
+    # Articles by SEO score range
+    high_seo = await db.articles.count_documents({"seo_score.percentage": {"$gte": 80}})
+    medium_seo = await db.articles.count_documents({"seo_score.percentage": {"$gte": 50, "$lt": 80}})
+    low_seo = await db.articles.count_documents({"seo_score.percentage": {"$lt": 50, "$exists": True}})
+    no_seo = await db.articles.count_documents({"$or": [{"seo_score": {"$exists": False}}, {"seo_score.percentage": {"$exists": False}}]})
+
+    # Top 5 articles by SEO score
+    top_articles = await db.articles.find(
+        {"seo_score.percentage": {"$exists": True}},
+        {"_id": 0, "id": 1, "title": 1, "seo_score": 1, "primary_keyword": 1, "created_at": 1}
+    ).sort("seo_score.percentage", -1).limit(5).to_list(5)
+
+    # Recent articles (last 5)
+    recent_articles = await db.articles.find(
+        {}, {"_id": 0, "id": 1, "title": 1, "seo_score": 1, "created_at": 1, "user_id": 1}
+    ).sort("created_at", -1).limit(5).to_list(5)
+
+    # Articles created per day (last 14 days)
+    articles_per_day = []
+    for i in range(13, -1, -1):
+        day_start = (now - timedelta(days=i)).replace(hour=0, minute=0, second=0, microsecond=0)
+        day_end = (now - timedelta(days=i)).replace(hour=23, minute=59, second=59, microsecond=999999)
+        count = await db.articles.count_documents({
+            "created_at": {"$gte": day_start.isoformat(), "$lte": day_end.isoformat()}
+        })
+        articles_per_day.append({
+            "date": day_start.strftime("%d.%m"),
+            "count": count
+        })
+
+    # Total images generated
+    total_images = await db.images.count_documents({})
+
+    # Total newsletters
+    total_newsletters = await db.newsletters.count_documents({})
+
+    # WordPress published count
+    wp_published = await db.articles.count_documents({"wordpress_published": True})
+
+    # Active subscriptions
+    active_subs = await db.subscriptions.count_documents({"status": "active"})
+
+    return {
+        "users": {
+            "total": total_users,
+            "dau": dau,
+            "mau": mau,
+        },
+        "articles": {
+            "total": total_articles,
+            "this_week": articles_this_week,
+            "this_month": articles_this_month,
+            "per_day": articles_per_day,
+        },
+        "seo": {
+            "average": avg_seo,
+            "max": max_seo,
+            "min": min_seo,
+            "high": high_seo,
+            "medium": medium_seo,
+            "low": low_seo,
+            "no_score": no_seo,
+        },
+        "top_articles": top_articles,
+        "recent_articles": recent_articles,
+        "content": {
+            "images": total_images,
+            "newsletters": total_newsletters,
+            "wp_published": wp_published,
+        },
+        "subscriptions": {
+            "active": active_subs,
+        }
+    }
+
+
+# --- Plagiarism Checker ---
+
+class PlagiarismCheckRequest(BaseModel):
+    article_id: str
+
+_plagiarism_jobs = {}
+
+def _sync_run_plagiarism_check(job_id: str, article_data: dict, emergent_key: str, user_id: str):
+    """Run plagiarism check in thread using AI analysis."""
+    import pymongo
+    sync_client = pymongo.MongoClient(os.environ.get('MONGO_URL'), serverSelectionTimeoutMS=5000)
+    sync_db = sync_client[os.environ.get('DB_NAME', 'seo_article_writer')]
+    try:
+        _plagiarism_jobs[job_id]["status"] = "running"
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+
+        # Extract text content from sections
+        text_parts = []
+        for section in article_data.get("sections", []):
+            text_parts.append(section.get("heading", ""))
+            content = section.get("content", "")
+            clean = re.sub(r'<[^>]+>', '', content)
+            text_parts.append(clean)
+            for sub in section.get("subsections", []):
+                text_parts.append(sub.get("heading", ""))
+                sub_content = sub.get("content", "")
+                clean_sub = re.sub(r'<[^>]+>', '', sub_content)
+                text_parts.append(clean_sub)
+
+        full_text = "\n".join(text_parts)
+        # Limit to ~3000 words for analysis
+        words = full_text.split()
+        if len(words) > 3000:
+            full_text = " ".join(words[:3000])
+
+        chat = LlmChat(
+            api_key=emergent_key,
+            session_id=f"plagiarism-{job_id[:8]}",
+            system_message="Jesteś ekspertem od analizy treści i wykrywania plagiatu. Analizujesz tekst pod kątem oryginalności. Odpowiadaj WYŁĄCZNIE poprawnym JSON-em."
+        )
+
+        prompt = f"""Przeanalizuj poniższy tekst artykułu pod kątem oryginalności i potencjalnego plagiatu.
+
+Tytuł: {article_data.get("title", "")}
+Słowo kluczowe: {article_data.get("primary_keyword", "")}
+
+Tekst artykułu:
+{full_text}
+
+Wykonaj następujące analizy:
+1. Sprawdź czy tekst wygląda na oryginalny czy skopiowany
+2. Zidentyfikuj fragmenty które mogą być popularnymi frazami lub szablonami
+3. Oceń unikalność stylu pisania
+4. Sprawdź czy są fragmenty które brzmią jak typowe treści AI bez personalizacji
+5. Oceń jakość i oryginalność treści
+
+Odpowiedz TYLKO prawidłowym JSON:
+{{
+    "overall_score": 85,
+    "verdict": "oryginalny" lub "podejrzany" lub "prawdopodobny plagiat",
+    "summary": "Krótkie podsumowanie analizy (2-3 zdania)",
+    "details": {{
+        "originality": 85,
+        "style_uniqueness": 80,
+        "ai_detection_risk": 20,
+        "template_phrases_detected": 10
+    }},
+    "flagged_sections": [
+        {{
+            "text": "Fragment tekstu...",
+            "reason": "Powód oznaczenia",
+            "risk_level": "niski" lub "średni" lub "wysoki"
+        }}
+    ],
+    "recommendations": [
+        "Sugestia poprawy 1",
+        "Sugestia poprawy 2"
+    ]
+}}"""
+
+        loop = asyncio.new_event_loop()
+        try:
+            response = loop.run_until_complete(chat.send_message(UserMessage(text=prompt)))
+        finally:
+            loop.close()
+
+        text_resp = response.strip()
+        if text_resp.startswith("```"):
+            text_resp = text_resp.split("\n", 1)[1].rsplit("```", 1)[0]
+
+        import json as json_mod
+        data = json_mod.loads(text_resp)
+
+        _plagiarism_jobs[job_id]["status"] = "completed"
+        _plagiarism_jobs[job_id]["result"] = data
+
+        sync_db.plagiarism_checks.insert_one({
+            "id": job_id,
+            "user_id": user_id,
+            "article_id": article_data.get("id", ""),
+            "result": data,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+    except Exception as e:
+        logging.error(f"Plagiarism check error: {e}")
+        _plagiarism_jobs[job_id]["status"] = "failed"
+        _plagiarism_jobs[job_id]["error"] = str(e)
+    finally:
+        sync_client.close()
+
+@api_router.post("/plagiarism/check")
+async def check_plagiarism(request: PlagiarismCheckRequest, user: dict = Depends(get_current_user)):
+    """Start async plagiarism check for an article."""
+    emergent_key = os.environ.get("EMERGENT_LLM_KEY")
+    if not emergent_key:
+        raise HTTPException(status_code=500, detail="Brak klucza AI")
+
+    article = await db.articles.find_one({"id": request.article_id}, {"_id": 0})
+    if not article:
+        raise HTTPException(status_code=404, detail="Artykuł nie znaleziony")
+
+    job_id = str(uuid.uuid4())
+    _plagiarism_jobs[job_id] = {"status": "queued", "result": None, "error": None}
+    asyncio.get_event_loop().run_in_executor(None, _sync_run_plagiarism_check, job_id, article, emergent_key, user["id"])
+    return {"job_id": job_id, "status": "queued"}
+
+@api_router.get("/plagiarism/status/{job_id}")
+async def plagiarism_status(job_id: str, user: dict = Depends(get_current_user)):
+    """Poll plagiarism check status."""
+    job = _plagiarism_jobs.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job nie znaleziony")
+    result = {"job_id": job_id, "status": job["status"]}
+    if job["status"] == "completed":
+        result["result"] = job["result"]
+        del _plagiarism_jobs[job_id]
+    elif job["status"] == "failed":
+        result["error"] = job["error"]
+        del _plagiarism_jobs[job_id]
+    return result
+
+@api_router.get("/plagiarism/history/{article_id}")
+async def plagiarism_history(article_id: str, user: dict = Depends(get_current_user)):
+    """Get plagiarism check history for an article."""
+    docs = await db.plagiarism_checks.find(
+        {"article_id": article_id},
+        {"_id": 0}
+    ).sort("created_at", -1).limit(5).to_list(5)
+    return docs
+
+
+# --- User Activity Tracking ---
+
+@api_router.post("/activity/track")
+async def track_activity(user: dict = Depends(get_current_user)):
+    """Track user activity for DAU/MAU calculations."""
+    await db.user_activity.update_one(
+        {"user_id": user["id"], "date": datetime.now(timezone.utc).strftime("%Y-%m-%d")},
+        {"$set": {
+            "user_id": user["id"],
+            "date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+            "last_active": datetime.now(timezone.utc).isoformat()
+        }, "$inc": {"actions": 1}},
+        upsert=True
+    )
+    return {"status": "ok"}
+
+
 # Include the router in the main app
 app.include_router(api_router)
 
