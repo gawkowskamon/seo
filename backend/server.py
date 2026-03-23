@@ -3655,6 +3655,121 @@ async def smart_schedule_status(job_id: str, user: dict = Depends(get_current_us
     return result
 
 
+# --- Social Media Post Generator ---
+
+class SocialPostsRequest(BaseModel):
+    article_id: str
+
+_social_posts_jobs = {}
+
+def _sync_run_social_posts(job_id: str, article_data: dict, emergent_key: str):
+    """Generate social media posts for all platforms using AI."""
+    try:
+        _social_posts_jobs[job_id]["status"] = "running"
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+
+        title = article_data.get("title", "")
+        keyword = article_data.get("primary_keyword", "")
+        meta_desc = article_data.get("meta_description", "")
+        key_points = []
+        for section in article_data.get("sections", [])[:3]:
+            key_points.append(section.get("heading", ""))
+            clean = re.sub(r'<[^>]+>', ' ', section.get("content", ""))
+            key_points.append(" ".join(clean.split()[:50]))
+        content_summary = "\n".join(key_points)[:800]
+
+        chat = LlmChat(
+            api_key=emergent_key,
+            session_id=f"social-{job_id[:8]}",
+            system_message="Jesteś ekspertem od social media marketingu dla polskiej branży finansowej/księgowej. Tworzysz angażujące posty promujące artykuły blogowe. Odpowiadaj WYŁĄCZNIE poprawnym JSON-em."
+        )
+
+        prompt = f"""Wygeneruj posty na social media promujące artykuł blogowy biura rachunkowego.
+
+ARTYKUŁ:
+Tytuł: {title}
+Słowo kluczowe: {keyword}
+Meta opis: {meta_desc}
+Kluczowe punkty:
+{content_summary}
+
+Wygeneruj po 3 warianty dla KAŻDEJ platformy, w 3 różnych tonach:
+1. profesjonalny - merytoryczny, ekspercki
+2. zachęcający - korzyści, CTA, emocjonalny
+3. z pytaniem - angażujący, prowokujący dyskusję
+
+ZASADY:
+- LinkedIn: 150-300 słów, profesjonalny ton, hashtagi, emoji umiarkowanie
+- Twitter/X: max 280 znaków, zwięzły, hashtagi, placeholder [LINK]
+- Facebook: 100-200 słów, luźniejszy ton, emoji, pytania, CTA
+- Instagram: 150-250 słów, storytelling, dużo hashtagów (15-20), emoji
+
+Odpowiedz TYLKO prawidłowym JSON:
+{{
+    "linkedin": [
+        {{"tone": "profesjonalny", "text": "Tekst posta LinkedIn", "hashtags": ["#księgowość"], "estimated_engagement": "wysoki"}}
+    ],
+    "twitter": [
+        {{"tone": "profesjonalny", "text": "Tweet max 280 znaków [LINK]", "hashtags": ["#księgowość"], "estimated_engagement": "wysoki"}}
+    ],
+    "facebook": [
+        {{"tone": "profesjonalny", "text": "Post Facebook z CTA", "estimated_engagement": "wysoki"}}
+    ],
+    "instagram": [
+        {{"tone": "profesjonalny", "text": "Post Instagram ze storytellingiem", "hashtags": ["#księgowość"], "estimated_engagement": "wysoki"}}
+    ],
+    "tips": ["Porada dotycząca publikacji"]
+}}"""
+
+        loop = asyncio.new_event_loop()
+        try:
+            response = loop.run_until_complete(chat.send_message(UserMessage(text=prompt)))
+        finally:
+            loop.close()
+
+        text_resp = response.strip()
+        if text_resp.startswith("```"):
+            text_resp = text_resp.split("\n", 1)[1].rsplit("```", 1)[0]
+
+        import json as json_mod
+        data = json_mod.loads(text_resp)
+        _social_posts_jobs[job_id]["status"] = "completed"
+        _social_posts_jobs[job_id]["result"] = data
+    except Exception as e:
+        logging.error(f"Social posts error: {e}")
+        _social_posts_jobs[job_id]["status"] = "failed"
+        _social_posts_jobs[job_id]["error"] = str(e)
+
+@api_router.post("/articles/social-posts")
+async def generate_social_posts(request: SocialPostsRequest, user: dict = Depends(get_current_user)):
+    """Generate social media posts for an article."""
+    emergent_key = os.environ.get("EMERGENT_LLM_KEY")
+    if not emergent_key:
+        raise HTTPException(status_code=500, detail="Brak klucza AI")
+    article = await db.articles.find_one({"id": request.article_id}, {"_id": 0})
+    if not article:
+        raise HTTPException(status_code=404, detail="Artykuł nie znaleziony")
+    job_id = str(uuid.uuid4())
+    _social_posts_jobs[job_id] = {"status": "queued", "result": None, "error": None}
+    asyncio.get_event_loop().run_in_executor(None, _sync_run_social_posts, job_id, article, emergent_key)
+    return {"job_id": job_id, "status": "queued"}
+
+@api_router.get("/articles/social-posts/status/{job_id}")
+async def social_posts_status(job_id: str, user: dict = Depends(get_current_user)):
+    """Poll social posts generation status."""
+    job = _social_posts_jobs.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job nie znaleziony")
+    result = {"job_id": job_id, "status": job["status"]}
+    if job["status"] == "completed":
+        result["result"] = job["result"]
+        del _social_posts_jobs[job_id]
+    elif job["status"] == "failed":
+        result["error"] = job["error"]
+        del _social_posts_jobs[job_id]
+    return result
+
+
 # Include the router in the main app
 app.include_router(api_router)
 

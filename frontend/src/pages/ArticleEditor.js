@@ -21,6 +21,7 @@ import ABTitleTestPanel from '../components/ABTitleTestPanel';
 import VersionHistoryPanel from '../components/VersionHistoryPanel';
 import SmartSchedulePanel from '../components/SmartSchedulePanel';
 import AutoMetaPanel from '../components/AutoMetaPanel';
+import SocialMediaPanel from '../components/SocialMediaPanel';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -714,6 +715,14 @@ const ArticleEditor = () => {
             <History size={14} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
             Wersje
           </button>
+          <button 
+            className={`right-panel-tab ${rightTab === 'social' ? 'active' : ''}`}
+            onClick={() => setRightTab('social')}
+            data-testid="article-social-tab"
+          >
+            <Share2 size={14} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
+            Social
+          </button>
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -958,6 +967,11 @@ const ArticleEditor = () => {
                 setArticle(restoredArticle);
                 toast.success('Wersja przywrócona');
               }} />
+            </div>
+          )}
+          {rightTab === 'social' && (
+            <div data-testid="article-social-wrapper" style={{ padding: 12 }}>
+              <SocialMediaPanel articleId={articleId} />
             </div>
           )}
         </div>
