@@ -2757,6 +2757,199 @@ async def track_activity(user: dict = Depends(get_current_user)):
     return {"status": "ok"}
 
 
+# --- Content Verification (Fact-Check) ---
+
+class ContentVerifyRequest(BaseModel):
+    article_id: str
+
+_verification_jobs = {}
+
+def _sync_run_content_verification(job_id: str, article_data: dict, emergent_key: str, user_id: str):
+    """Run content verification/fact-check in thread using AI analysis."""
+    import pymongo
+    sync_client = pymongo.MongoClient(os.environ.get('MONGO_URL'), serverSelectionTimeoutMS=5000)
+    sync_db = sync_client[os.environ.get('DB_NAME', 'seo_article_writer')]
+    try:
+        _verification_jobs[job_id]["status"] = "running"
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+
+        # Extract text content from sections
+        text_parts = []
+        for section in article_data.get("sections", []):
+            text_parts.append(f"## {section.get('heading', '')}")
+            content = section.get("content", "")
+            clean = re.sub(r'<[^>]+>', ' ', content)
+            text_parts.append(clean)
+            for sub in section.get("subsections", []):
+                text_parts.append(f"### {sub.get('heading', '')}")
+                sub_content = sub.get("content", "")
+                clean_sub = re.sub(r'<[^>]+>', ' ', sub_content)
+                text_parts.append(clean_sub)
+
+        full_text = "\n".join(text_parts)
+        words = full_text.split()
+        if len(words) > 3000:
+            full_text = " ".join(words[:3000])
+
+        sources_str = ""
+        for s in article_data.get("sources", []):
+            sources_str += f"- {s.get('name', '')}: {s.get('url', '')}\n"
+
+        faq_str = ""
+        for f in article_data.get("faq", []):
+            faq_str += f"Q: {f.get('question','')}\nA: {f.get('answer','')[:150]}\n\n"
+
+        chat = LlmChat(
+            api_key=emergent_key,
+            session_id=f"verify-{job_id[:8]}",
+            system_message="Jesteś doświadczonym BIEGŁYM REWIDENTEM i doradcą podatkowym w Polsce. Weryfikujesz treści pod kątem zgodności z obowiązującym prawem podatkowym i księgowym (stan na 2026 r.). Odpowiadaj WYŁĄCZNIE poprawnym JSON-em."
+        )
+
+        prompt = f"""Zweryfikuj poniższy artykuł blogowy z zakresu księgowości/podatków pod kątem RZETELNOŚCI MERYTORYCZNEJ.
+
+Tytuł: {article_data.get("title", "")}
+Słowo kluczowe: {article_data.get("primary_keyword", "")}
+
+Treść artykułu:
+{full_text}
+
+Źródła podane w artykule:
+{sources_str or "Brak źródeł"}
+
+FAQ:
+{faq_str or "Brak FAQ"}
+
+SPRAWDŹ:
+1. Czy cytowane przepisy prawne istnieją i są aktualne (art., ust., Dz.U.)?
+2. Czy podane kwoty, stawki, terminy są prawidłowe (stan na 2026 r.)?
+3. Czy twierdzenia są zgodne z obowiązującym prawem?
+4. Czy źródła są wiarygodne i prowadzą do oficjalnych instytucji?
+5. Czy FAQ zawiera poprawne informacje?
+6. Czy brakuje istotnych zastrzeżeń prawnych (disclaimerów)?
+7. Czy artykuł mógłby wprowadzić czytelnika w błąd?
+
+Odpowiedz TYLKO prawidłowym JSON:
+{{
+    "overall_reliability_score": 85,
+    "verdict": "rzetelny" lub "wymaga poprawek" lub "nierzetelny",
+    "summary": "Krótkie podsumowanie weryfikacji (2-3 zdania)",
+    "legal_accuracy": {{
+        "score": 80,
+        "verified_references": [
+            {{
+                "reference": "art. X ust. Y ustawy o ...",
+                "status": "poprawny" lub "nieaktualny" lub "błędny" lub "nie do zweryfikowania",
+                "note": "Komentarz"
+            }}
+        ]
+    }},
+    "factual_accuracy": {{
+        "score": 85,
+        "verified_facts": [
+            {{
+                "claim": "Twierdzenie z artykułu",
+                "status": "poprawne" lub "nieprecyzyjne" lub "błędne" lub "nieaktualne",
+                "correction": "Poprawna informacja (jeśli błędne)",
+                "source": "Źródło poprawnej informacji"
+            }}
+        ]
+    }},
+    "completeness": {{
+        "score": 75,
+        "missing_info": [
+            "Brakująca istotna informacja 1",
+            "Brakująca istotna informacja 2"
+        ],
+        "missing_disclaimers": [
+            "Brakujące zastrzeżenie prawne"
+        ]
+    }},
+    "sources_quality": {{
+        "score": 80,
+        "assessment": "Ocena jakości źródeł",
+        "missing_sources": ["Sugestia brakującego źródła"]
+    }},
+    "recommendations": [
+        {{
+            "priority": "wysoki" lub "średni" lub "niski",
+            "area": "przepisy" lub "kwoty" lub "terminy" lub "źródła" lub "disclaimery" lub "kompletność",
+            "description": "Konkretna rekomendacja poprawy",
+            "suggested_text": "Proponowany tekst do wstawienia (jeśli dotyczy)"
+        }}
+    ]
+}}"""
+
+        loop = asyncio.new_event_loop()
+        try:
+            response = loop.run_until_complete(chat.send_message(UserMessage(text=prompt)))
+        finally:
+            loop.close()
+
+        text_resp = response.strip()
+        if text_resp.startswith("```"):
+            text_resp = text_resp.split("\n", 1)[1].rsplit("```", 1)[0]
+
+        import json as json_mod
+        data = json_mod.loads(text_resp)
+
+        _verification_jobs[job_id]["status"] = "completed"
+        _verification_jobs[job_id]["result"] = data
+
+        sync_db.content_verifications.insert_one({
+            "id": job_id,
+            "user_id": user_id,
+            "article_id": article_data.get("id", ""),
+            "result": data,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+    except Exception as e:
+        logging.error(f"Content verification error: {e}")
+        _verification_jobs[job_id]["status"] = "failed"
+        _verification_jobs[job_id]["error"] = str(e)
+    finally:
+        sync_client.close()
+
+@api_router.post("/verify/check")
+async def verify_content(request: ContentVerifyRequest, user: dict = Depends(get_current_user)):
+    """Start async content verification for an article."""
+    emergent_key = os.environ.get("EMERGENT_LLM_KEY")
+    if not emergent_key:
+        raise HTTPException(status_code=500, detail="Brak klucza AI")
+
+    article = await db.articles.find_one({"id": request.article_id}, {"_id": 0})
+    if not article:
+        raise HTTPException(status_code=404, detail="Artykuł nie znaleziony")
+
+    job_id = str(uuid.uuid4())
+    _verification_jobs[job_id] = {"status": "queued", "result": None, "error": None}
+    asyncio.get_event_loop().run_in_executor(None, _sync_run_content_verification, job_id, article, emergent_key, user["id"])
+    return {"job_id": job_id, "status": "queued"}
+
+@api_router.get("/verify/status/{job_id}")
+async def verification_status(job_id: str, user: dict = Depends(get_current_user)):
+    """Poll content verification status."""
+    job = _verification_jobs.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job nie znaleziony")
+    result = {"job_id": job_id, "status": job["status"]}
+    if job["status"] == "completed":
+        result["result"] = job["result"]
+        del _verification_jobs[job_id]
+    elif job["status"] == "failed":
+        result["error"] = job["error"]
+        del _verification_jobs[job_id]
+    return result
+
+@api_router.get("/verify/history/{article_id}")
+async def verification_history(article_id: str, user: dict = Depends(get_current_user)):
+    """Get verification history for an article."""
+    docs = await db.content_verifications.find(
+        {"article_id": article_id},
+        {"_id": 0}
+    ).sort("created_at", -1).limit(5).to_list(5)
+    return docs
+
+
 # Include the router in the main app
 app.include_router(api_router)
 

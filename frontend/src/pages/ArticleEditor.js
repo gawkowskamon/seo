@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Save, Eye, Code, BarChart3, Share2, ChevronLeft, Loader2, RefreshCw, Wand2, Cloud, CloudOff, Image as ImageIcon, Sparkles, Link2, CalendarClock, MessageSquare, PenLine, Shield } from 'lucide-react';
+import { Save, Eye, Code, BarChart3, Share2, ChevronLeft, Loader2, RefreshCw, Wand2, Cloud, CloudOff, Image as ImageIcon, Sparkles, Link2, CalendarClock, MessageSquare, PenLine, Shield, FileCheck } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { toast } from 'sonner';
@@ -15,6 +15,7 @@ import EditorToolbar from '../components/EditorToolbar';
 import AIChatPanel from '../components/AIChatPanel';
 import AIRewriter from '../components/AIRewriter';
 import PlagiarismPanel from '../components/PlagiarismPanel';
+import ContentVerificationPanel from '../components/ContentVerificationPanel';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -660,6 +661,14 @@ const ArticleEditor = () => {
             <Shield size={14} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
             Plagiat
           </button>
+          <button 
+            className={`right-panel-tab ${rightTab === 'verify' ? 'active' : ''}`}
+            onClick={() => setRightTab('verify')}
+            data-testid="article-verify-tab"
+          >
+            <FileCheck size={14} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
+            Weryfikacja
+          </button>
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -867,6 +876,11 @@ const ArticleEditor = () => {
           {rightTab === 'plagiarism' && (
             <div data-testid="article-plagiarism-wrapper" style={{ padding: 12 }}>
               <PlagiarismPanel articleId={articleId} />
+            </div>
+          )}
+          {rightTab === 'verify' && (
+            <div data-testid="article-verify-wrapper" style={{ padding: 12 }}>
+              <ContentVerificationPanel articleId={articleId} />
             </div>
           )}
         </div>

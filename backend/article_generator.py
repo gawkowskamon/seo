@@ -1,6 +1,7 @@
 """
 Article Generation Service using OpenAI GPT via Emergent integrations.
 Generates SEO-optimized articles in Polish about accounting topics.
+Enhanced for content reliability: legal references, concrete data, E-E-A-T compliance.
 """
 
 import json
@@ -11,17 +12,30 @@ from emergentintegrations.llm.chat import LlmChat, UserMessage
 
 logger = logging.getLogger(__name__)
 
-ARTICLE_SYSTEM_PROMPT = """Jesteś ekspertem od tworzenia treści SEO z zakresu księgowości, rachunkowości i podatków w Polsce. 
-Tworzysz artykuły na blogi firmowe, które są:
-- Merytorycznie poprawne i oparte na aktualnych przepisach prawa polskiego
-- Zoptymalizowane pod SEO (odpowiednia struktura nagłówków, słowa kluczowe, meta opisy)
-- Napisane przystępnym, profesjonalnym językiem
-- Oparte WYŁĄCZNIE na wiarygodnych źródłach (gov.pl, sejm.gov.pl, mf.gov.pl, zus.pl, gus.gov.pl, pip.gov.pl, nbp.pl, oficjalne dzienniki ustaw)
+ARTICLE_SYSTEM_PROMPT = """Jesteś EKSPERTEM-PRAKTYKIEM od tworzenia treści SEO z zakresu księgowości, rachunkowości i podatków w Polsce.
+Masz wieloletnie doświadczenie w biurze rachunkowym. Tworzysz artykuły na blogi firmowe, które są:
+
+1. MERYTORYCZNIE BEZBŁĘDNE:
+   - Cytuj KONKRETNE przepisy: art., ust., pkt z Dz.U. (np. "zgodnie z art. 86 ust. 1 ustawy o VAT")
+   - Podawaj KONKRETNE kwoty w PLN, stawki procentowe, terminy (daty dzienne)
+   - Odwołuj się WYŁĄCZNIE do aktualnych przepisów (stan na 2026 r.)
+   - NIE wymyślaj przepisów - jeśli nie jesteś pewien, napisz ogólniej
+
+2. ZOPTYMALIZOWANE POD SEO:
+   - Odpowiednia struktura H2/H3 z naturalnym rozmieszczeniem słów kluczowych
+   - Słowo kluczowe w pierwszym akapicie, w 2+ nagłówkach H2, w meta danych
+   - Bogate formatowanie: listy, pogrubienia, linki, tabele
+   - FAQ zoptymalizowane pod Google Featured Snippets
+
+3. WIARYGODNE (E-E-A-T):
+   - Źródła WYŁĄCZNIE z: gov.pl, sejm.gov.pl, mf.gov.pl, zus.pl, gus.gov.pl, pip.gov.pl, nbp.pl, isap.sejm.gov.pl
+   - Wspomnij o tym KTO powinien skonsultować się z doradcą/księgowym
+   - Dodaj disclaimery prawne gdzie potrzeba
 
 ZAWSZE odpowiadaj WYŁĄCZNIE poprawnym JSON-em bez żadnych dodatkowych komentarzy, markdown ani formatowania.
 """
 
-ARTICLE_GENERATION_PROMPT = """Napisz obszerny artykuł blogowy na temat: "{topic}"
+ARTICLE_GENERATION_PROMPT = """Napisz obszerny, RZETELNY artykuł blogowy na temat: "{topic}"
 
 Słowo kluczowe główne: "{primary_keyword}"
 Słowa kluczowe dodatkowe: {secondary_keywords}
@@ -30,31 +44,31 @@ Ton: {tone}
 
 Odpowiedz WYŁĄCZNIE w formacie JSON (bez markdown, bez ```json, bez żadnego tekstu poza JSON):
 {{
-  "title": "Tytuł artykułu (50-60 znaków, zawiera słowo kluczowe główne)",
+  "title": "Tytuł artykułu (50-60 znaków, zawiera słowo kluczowe + rok np. 2026)",
   "slug": "tytul-artykulu-slug-bez-polskich-znakow",
-  "meta_title": "Meta tytuł SEO (max 60 znaków)",
-  "meta_description": "Meta opis SEO (120-160 znaków, zachęcający do kliknięcia, zawiera słowo kluczowe)",
+  "meta_title": "Meta tytuł SEO (max 60 znaków, RÓŻNY od tytułu, z CTA np. Sprawdź/Poznaj)",
+  "meta_description": "Meta opis SEO (120-160 znaków, zawiera słowo kluczowe, CTA i zachętę do kliknięcia)",
   "toc": [
     {{"label": "Nazwa sekcji w spisie treści", "anchor": "nazwa-sekcji"}}
   ],
   "sections": [
     {{
-      "heading": "Nagłówek H2 (zawiera słowo kluczowe w co najmniej jednym)",
+      "heading": "Nagłówek H2 (naturalny, zawiera słowo kluczowe w 2 z 5 nagłówków)",
       "anchor": "naglowek-h2-slug",
-      "content": "<p>Treść sekcji w HTML. Minimum 150-200 słów na sekcję. Używaj <strong>, <em>, <ul>, <li>, <a href> tagów. Pisz rozbudowane, merytoryczne akapity.</p><p>Kolejny akapit z dodatkowymi informacjami, przykładami, konkretnymi kwotami i terminami.</p>",
+      "content": "<p>Treść sekcji w HTML. WYMAGANIA:<br/>- Minimum 200 słów na sekcję<br/>- Cytuj KONKRETNE przepisy (np. 'Zgodnie z art. 22 ust. 1 ustawy o PIT...')<br/>- Podaj KONKRETNE kwoty, terminy, stawki procentowe<br/>- Używaj <strong>, <em>, <ul>, <li>, <a href='URL'> tagów<br/>- Wstaw listy punktowane dla kluczowych informacji<br/>- Każde twierdzenie popieraj podstawą prawną</p><p>Kolejny akapit z przykładami liczbowymi, terminami i konkretnymi sytuacjami z praktyki księgowej.</p>",
       "subsections": [
         {{
-          "heading": "Nagłówek H3",
+          "heading": "Nagłówek H3 (użyj słów kluczowych dodatkowych)",
           "anchor": "naglowek-h3-slug",
-          "content": "<p>Treść podsekcji w HTML. Minimum 100 słów. Podaj konkretne informacje, przykłady liczbowe, terminy.</p>"
+          "content": "<p>Treść podsekcji. Minimum 120 słów. Podaj:<br/>- Konkretne kwoty w PLN<br/>- Daty graniczne (np. 'do 20 dnia miesiąca')<br/>- Podstawy prawne (art., ust.)<br/>- Przykłady z praktyki</p>"
         }}
       ]
     }}
   ],
   "faq": [
     {{
-      "question": "Pytanie FAQ (naturalne, jak w wyszukiwarce)",
-      "answer": "Szczegółowa odpowiedź na pytanie (minimum 30 słów, konkretna i merytoryczna)"
+      "question": "Pytanie FAQ (naturalne, jak w wyszukiwarce Google, zawiera słowo kluczowe w 1-2 pytaniach)",
+      "answer": "Szczegółowa odpowiedź (minimum 50 słów). Podaj konkretne informacje: kwoty, terminy, podstawy prawne. Odpowiedź musi być kompletna i wyczerpująca."
     }}
   ],
   "internal_link_suggestions": [
@@ -66,22 +80,29 @@ Odpowiedz WYŁĄCZNIE w formacie JSON (bez markdown, bez ```json, bez żadnego t
   ],
   "sources": [
     {{
-      "name": "Nazwa źródła (np. Ustawa o VAT, Rozporządzenie MF)",
-      "url": "https://oficjalna-strona.gov.pl/konkretny-link",
-      "type": "legal|official|expert"
+      "name": "Ustawa z dnia XX XX XXXX r. o ... (Dz.U. XXXX poz. XXXX)",
+      "url": "https://isap.sejm.gov.pl/...",
+      "type": "legal"
+    }},
+    {{
+      "name": "Informacja Ministerstwa Finansów - temat",
+      "url": "https://www.gov.pl/web/finanse/...",
+      "type": "official"
     }}
   ]
 }}
 
-WAŻNE WYMAGANIA:
-- Artykuł MUSI mieć 4-5 sekcji H2
-- Każda sekcja MUSI mieć 1-2 podsekcje H3
-- Treść w sekcjach w formacie HTML z tagami <p>, <strong>, <em>, <ul>, <li>
-- FAQ: 4 pytania ze szczegółowymi odpowiedziami
-- Źródła: wiarygodne (gov.pl, oficjalne instytucje polskie)
-- Anchory: bez polskich znaków, małe litery z myślnikami
-- Słowo kluczowe główne: w pierwszych 100 słowach, w co najmniej 2 nagłówkach H2
-- Pisz konkretnie: kwoty, terminy, podstawy prawne
+KRYTYCZNE WYMAGANIA RZETELNOŚCI:
+1. Artykuł MUSI mieć 5-6 sekcji H2, każda z 1-2 podsekcjami H3
+2. Każda sekcja: min. 200 słów, konkretne przepisy, kwoty w PLN, terminy
+3. FAQ: 5 pytań z rozbudowanymi odpowiedziami (min. 50 słów każda)
+4. Źródła: min. 4 oficjalne źródła (isap.sejm.gov.pl, gov.pl, mf.gov.pl, zus.pl)
+5. Min. 5 cytowań konkretnych przepisów (art. X ust. Y ustawy o...)
+6. Min. 8 konkretnych danych liczbowych (kwoty PLN, %, terminy)
+7. Listy punktowane: min. 3 w całym artykule
+8. Pogrubienia <strong>: min. 5 kluczowych pojęć
+9. Meta tytuł RÓŻNY od tytułu artykułu
+10. Rok {current_year} wymieniony w tytule lub pierwszej sekcji
 """
 
 TOPIC_SUGGESTION_PROMPT = """Jako ekspert od księgowości i SEO, zaproponuj 10 tematów artykułów blogowych z zakresu księgowości, rachunkowości i podatków w Polsce.
@@ -117,10 +138,13 @@ async def generate_article(topic: str, primary_keyword: str, secondary_keywords:
                            template: str = "standard") -> dict:
     """Generate a full SEO-optimized article using OpenAI GPT."""
     from content_templates import get_template_prompt
+    from datetime import datetime, timezone
     
     api_key = os.environ.get("EMERGENT_LLM_KEY")
     if not api_key:
         raise ValueError("EMERGENT_LLM_KEY not configured")
+    
+    current_year = datetime.now(timezone.utc).year
     
     # Use template-based prompt if template is not standard, otherwise use default
     if template and template != "standard":
@@ -138,10 +162,10 @@ async def generate_article(topic: str, primary_keyword: str, secondary_keywords:
             primary_keyword=primary_keyword,
             secondary_keywords=json.dumps(secondary_keywords, ensure_ascii=False),
             target_length=target_length,
-            tone=tone
+            tone=tone,
+            current_year=current_year
         )
     
-    # Try with retries and backoff for transient errors (502, 503, etc.)
     models_to_try = [("openai", "gpt-4.1-mini")]
     last_error = None
     max_retries = 3
@@ -159,7 +183,6 @@ async def generate_article(topic: str, primary_keyword: str, secondary_keywords:
                 
                 response = await chat.send_message(UserMessage(text=prompt))
                 
-                # Clean and parse JSON response
                 clean_response = response.strip()
                 if clean_response.startswith("```"):
                     clean_response = re.sub(r'^```(?:json)?\s*', '', clean_response)
@@ -167,13 +190,11 @@ async def generate_article(topic: str, primary_keyword: str, secondary_keywords:
                 
                 article = json.loads(clean_response)
                 
-                # Validate required fields
                 required_fields = ["title", "slug", "meta_title", "meta_description", "toc", "sections"]
                 missing = [f for f in required_fields if f not in article]
                 if missing:
                     raise ValueError(f"Article missing required fields: {missing}")
                 
-                # Add defaults for optional fields
                 article.setdefault("faq", [])
                 article.setdefault("sources", [])
                 article.setdefault("internal_link_suggestions", [])
@@ -196,7 +217,6 @@ async def generate_article(topic: str, primary_keyword: str, secondary_keywords:
                     logger.warning(f"Attempt with {model} failed: {e}")
                     break
     
-    # Format user-friendly error message
     err_msg = str(last_error) if last_error else "Nieznany blad"
     if "502" in err_msg or "bad gateway" in err_msg.lower():
         raise ValueError("Usluga AI jest tymczasowo niedostepna (blad 502). Sprawdz saldo Universal Key w profilu (Profile > Universal Key > Add Balance) lub sprobuj ponownie za chwile.")
