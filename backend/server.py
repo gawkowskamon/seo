@@ -51,7 +51,7 @@ mongo_url = os.environ.get('MONGO_URL')
 if not mongo_url:
     raise RuntimeError("MONGO_URL environment variable is required")
 client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=5000)
-db = client[os.environ.get('DB_NAME')]
+db = client[os.environ.get('DB_NAME', 'seo_article_writer')]
 
 # Validate EMERGENT_LLM_KEY at startup
 _llm_key = os.environ.get('EMERGENT_LLM_KEY')
@@ -291,7 +291,7 @@ def _sync_run_generation_job(job_id: str, request_data: dict, user: dict):
     """Run article generation in a separate thread to avoid blocking event loop."""
     import pymongo
     sync_client = pymongo.MongoClient(os.environ.get('MONGO_URL'), serverSelectionTimeoutMS=5000)
-    sync_db = sync_client[os.environ.get('DB_NAME')]
+    sync_db = sync_client[os.environ.get('DB_NAME', 'seo_article_writer')]
     try:
         sync_db.generation_jobs.update_one(
             {"job_id": job_id},
@@ -876,7 +876,7 @@ def _sync_generate_image(job_id: str, user_id: str, prompt: str, style: str, art
     """Run image generation in a separate thread to avoid blocking event loop."""
     import pymongo
     sync_client = pymongo.MongoClient(os.environ.get('MONGO_URL'), serverSelectionTimeoutMS=5000)
-    sync_db = sync_client[os.environ.get('DB_NAME')]
+    sync_db = sync_client[os.environ.get('DB_NAME', 'seo_article_writer')]
     try:
         article_context = None
         if article_id:
@@ -1189,7 +1189,7 @@ def _sync_generate_batch(job_id: str, user_id: str, prompt: str, style: str,
     """Run batch image generation in a separate thread."""
     import pymongo
     sync_client = pymongo.MongoClient(os.environ.get('MONGO_URL'), serverSelectionTimeoutMS=5000)
-    sync_db = sync_client[os.environ.get('DB_NAME')]
+    sync_db = sync_client[os.environ.get('DB_NAME', 'seo_article_writer')]
     try:
         article_context = None
         if article_id:
@@ -1459,7 +1459,7 @@ def _sync_seo_assistant(job_id: str, article_id: str, mode: str, message: str = 
     litellm.completion() is synchronous, so it must run in a thread pool."""
     import pymongo
     sync_client = pymongo.MongoClient(os.environ.get('MONGO_URL'), serverSelectionTimeoutMS=5000)
-    sync_db = sync_client[os.environ.get('DB_NAME')]
+    sync_db = sync_client[os.environ.get('DB_NAME', 'seo_article_writer')]
     try:
         article = sync_db.articles.find_one({"id": article_id}, {"_id": 0})
         if not article:
@@ -1823,7 +1823,7 @@ def _sync_run_seo_audit(job_id: str, url: str, emergent_key: str, user_id: str):
     """Run SEO audit in thread to avoid blocking event loop."""
     import pymongo
     sync_client = pymongo.MongoClient(os.environ.get('MONGO_URL'), serverSelectionTimeoutMS=5000)
-    sync_db = sync_client[os.environ.get('DB_NAME')]
+    sync_db = sync_client[os.environ.get('DB_NAME', 'seo_article_writer')]
     try:
         _seo_audit_jobs[job_id]["status"] = "running"
         loop = asyncio.new_event_loop()
@@ -1975,7 +1975,7 @@ def _sync_run_keyword_analytics(job_id: str, keywords: list, industry: str, emer
     """Run keyword analytics in thread."""
     import pymongo
     sync_client = pymongo.MongoClient(os.environ.get('MONGO_URL'), serverSelectionTimeoutMS=5000)
-    sync_db = sync_client[os.environ.get('DB_NAME')]
+    sync_db = sync_client[os.environ.get('DB_NAME', 'seo_article_writer')]
     try:
         _keyword_analytics_jobs[job_id]["status"] = "running"
         from llm_helper import llm_chat_sync
@@ -2347,7 +2347,7 @@ def _sync_run_ai_suggestions(job_id: str, existing_articles: list, focus: str, c
     """Run AI article suggestions in thread."""
     import pymongo
     sync_client = pymongo.MongoClient(os.environ.get('MONGO_URL'), serverSelectionTimeoutMS=5000)
-    sync_db = sync_client[os.environ.get('DB_NAME')]
+    sync_db = sync_client[os.environ.get('DB_NAME', 'seo_article_writer')]
     try:
         _ai_suggestions_jobs[job_id]["status"] = "running"
         from llm_helper import llm_chat_sync
@@ -2589,7 +2589,7 @@ def _sync_run_plagiarism_check(job_id: str, article_data: dict, emergent_key: st
     """Run plagiarism check in thread using AI analysis."""
     import pymongo
     sync_client = pymongo.MongoClient(os.environ.get('MONGO_URL'), serverSelectionTimeoutMS=5000)
-    sync_db = sync_client[os.environ.get('DB_NAME')]
+    sync_db = sync_client[os.environ.get('DB_NAME', 'seo_article_writer')]
     try:
         _plagiarism_jobs[job_id]["status"] = "running"
         from llm_helper import llm_chat_sync
@@ -2746,7 +2746,7 @@ def _sync_run_content_verification(job_id: str, article_data: dict, emergent_key
     """Run content verification/fact-check in thread using AI analysis."""
     import pymongo
     sync_client = pymongo.MongoClient(os.environ.get('MONGO_URL'), serverSelectionTimeoutMS=5000)
-    sync_db = sync_client[os.environ.get('DB_NAME')]
+    sync_db = sync_client[os.environ.get('DB_NAME', 'seo_article_writer')]
     try:
         _verification_jobs[job_id]["status"] = "running"
         from llm_helper import llm_chat_sync
@@ -2932,7 +2932,7 @@ def _sync_run_auto_competition(job_id: str, article_data: dict, emergent_key: st
     import httpx as httpx_sync
     from bs4 import BeautifulSoup
     sync_client = pymongo.MongoClient(os.environ.get('MONGO_URL'), serverSelectionTimeoutMS=5000)
-    sync_db = sync_client[os.environ.get('DB_NAME')]
+    sync_db = sync_client[os.environ.get('DB_NAME', 'seo_article_writer')]
     try:
         _auto_competition_jobs[job_id]["status"] = "running"
 
