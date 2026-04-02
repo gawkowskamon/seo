@@ -751,6 +751,10 @@ const ArticleEditor = () => {
                 onScoreUpdate={(score) => {
                   setArticle(prev => ({...prev, surfer_score: score, seo_score: { percentage: score.percentage, breakdown: score.metrics, total_score: score.total_score, total_max: score.total_max }}));
                 }}
+                onArticleUpdate={(updated) => {
+                  setArticle(updated);
+                  if (updated.html_content) setEditorContent(updated.html_content);
+                }}
               />
             </div>
           )}

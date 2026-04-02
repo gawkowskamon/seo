@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Globe, Loader2, RefreshCw, ExternalLink, Search, FileText, Tag, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Globe, Loader2, RefreshCw, ExternalLink, Search, FileText, Tag, CheckCircle2, AlertTriangle, Download } from 'lucide-react';
 import { Button } from './ui/button';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -41,6 +41,7 @@ const WordPressPreviewPanel = ({ articleId, article }) => {
   const [loading, setLoading] = useState(false);
   const [previewHtml, setPreviewHtml] = useState(null);
   const [showSeo, setShowSeo] = useState(true);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   const metaTitle = article?.meta_title || '';
   const metaDesc = article?.meta_description || '';
@@ -80,6 +81,25 @@ const WordPressPreviewPanel = ({ articleId, article }) => {
     const fullHtml = `<!DOCTYPE html><html lang="pl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><style>body{margin:0;padding:24px;background:#f5f5f5;}</style></head><body>${previewHtml}</body></html>`;
     const blob = new Blob([fullHtml], { type: 'text/html' });
     window.open(URL.createObjectURL(blob), '_blank');
+  };
+
+  const downloadPdf = async () => {
+    if (!articleId) return;
+    setDownloadingPdf(true);
+    try {
+      const res = await axios.post(`${BACKEND_URL}/api/surfer/seo-report/${articleId}`, {}, { responseType: 'blob' });
+      const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `raport_seo_${(title || 'artykul').slice(0, 30).replace(/[^\w-]/g, '_')}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('Raport PDF pobrany');
+    } catch {
+      toast.error('Blad generowania PDF');
+    } finally {
+      setDownloadingPdf(false);
+    }
   };
 
   if (!previewHtml && !loading) {
@@ -144,6 +164,11 @@ const WordPressPreviewPanel = ({ articleId, article }) => {
         >
           SEO
         </button>
+        <Button variant="ghost" size="sm" onClick={downloadPdf} disabled={downloadingPdf}
+          style={{ padding: '3px 7px', height: 'auto' }} data-testid="wp-download-pdf-btn"
+          title="Pobierz raport SEO (PDF)">
+          {downloadingPdf ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+        </Button>
         <Button variant="ghost" size="sm" onClick={loadPreview} disabled={loading}
           style={{ padding: '3px 7px', height: 'auto' }} data-testid="wp-preview-refresh-btn">
           {loading ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}

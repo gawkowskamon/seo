@@ -3,9 +3,10 @@ import {
   Search, CheckCircle2, XCircle, MinusCircle, BarChart3, 
   FileText, Heading2, Image, List, Bold, HelpCircle, Link2,
   Loader2, RefreshCw, TrendingUp, Target, ChevronDown, ChevronUp,
-  Zap, Eye, Globe
+  Zap, Eye, Globe, Wand2, Check, X
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
+import { toast } from 'sonner';
 import axios from 'axios';
 
 const API = process.env.REACT_APP_BACKEND_URL;
@@ -80,11 +81,13 @@ const NlpTermItem = ({ term }) => {
   );
 };
 
-const SurferSEOPanel = ({ article, onScoreUpdate }) => {
+const SurferSEOPanel = ({ article, onScoreUpdate, onArticleUpdate }) => {
   const [surferData, setSurferData] = useState(article?.surfer_data || null);
   const [surferScore, setSurferScore] = useState(article?.surfer_score || null);
   const [analyzing, setAnalyzing] = useState(false);
   const [scoring, setScoring] = useState(false);
+  const [optimizing, setOptimizing] = useState(false);
+  const [optimizeResult, setOptimizeResult] = useState(null);
   const [expanded, setExpanded] = useState({ metrics: true, nlp: true, competitors: false, outline: false });
   const [nlpFilter, setNlpFilter] = useState('all');
 
@@ -138,6 +141,49 @@ const SurferSEOPanel = ({ article, onScoreUpdate }) => {
     setScoring(false);
   }, [surferData, article]);
 
+  const autoOptimize = useCallback(async () => {
+    if (!article?.id) return;
+    setOptimizing(true);
+    setOptimizeResult(null);
+    try {
+      const token = localStorage.getItem('token');
+      const { data } = await axios.post(`${API}/api/surfer/auto-optimize/${article.id}`, {},
+        { headers: { Authorization: `Bearer ${token}` } });
+      const jobId = data.job_id;
+      const poll = setInterval(async () => {
+        try {
+          const { data: status } = await axios.get(`${API}/api/surfer/auto-optimize/status/${jobId}`,
+            { headers: { Authorization: `Bearer ${token}` } });
+          if (status.status === 'completed') {
+            clearInterval(poll);
+            setOptimizeResult(status.result);
+            setOptimizing(false);
+            toast.success('Optymalizacja gotowa — sprawdz i zastosuj');
+          } else if (status.status === 'failed') {
+            clearInterval(poll);
+            setOptimizing(false);
+            toast.error('Blad optymalizacji: ' + (status.error || ''));
+          }
+        } catch { clearInterval(poll); setOptimizing(false); }
+      }, 5000);
+    } catch { setOptimizing(false); toast.error('Blad optymalizacji'); }
+  }, [article]);
+
+  const applyOptimization = useCallback(async () => {
+    if (!optimizeResult || !article?.id) return;
+    try {
+      const token = localStorage.getItem('token');
+      const { data } = await axios.post(`${API}/api/surfer/auto-optimize/apply/${article.id}`,
+        { optimized: optimizeResult },
+        { headers: { Authorization: `Bearer ${token}` } });
+      if (onArticleUpdate) onArticleUpdate(data.article);
+      setOptimizeResult(null);
+      toast.success('Zmiany zastosowane! Odswiez wynik SurferSEO.');
+      // Auto-rescore
+      scoreArticle();
+    } catch { toast.error('Blad aplikowania zmian'); }
+  }, [optimizeResult, article, onArticleUpdate, scoreArticle]);
+
   const toggle = (key) => setExpanded(p => ({ ...p, [key]: !p[key] }));
 
   // No data yet — show start screen
@@ -184,6 +230,15 @@ const SurferSEOPanel = ({ article, onScoreUpdate }) => {
                 Re-analiza
               </Button>
             </div>
+            {/* Auto-optimize button */}
+            <div style={{ marginTop: 10 }}>
+              <Button size="sm" onClick={autoOptimize} disabled={optimizing || !surferScore}
+                className="gap-1 w-full" data-testid="surfer-auto-optimize-btn"
+                style={{ background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)', color: '#fff', border: 'none' }}>
+                {optimizing ? <Loader2 size={13} className="animate-spin" /> : <Wand2 size={13} />}
+                {optimizing ? 'Optymalizuje...' : 'Wdroz zalecenia AI'}
+              </Button>
+            </div>
           </>
         ) : (
           <div>
@@ -195,6 +250,33 @@ const SurferSEOPanel = ({ article, onScoreUpdate }) => {
           </div>
         )}
       </div>
+
+      {/* Optimization result preview */}
+      {optimizeResult && (
+        <div style={{ padding: '12px 16px', background: 'hsl(142, 50%, 96%)', borderBottom: '2px solid hsl(142, 40%, 80%)' }} data-testid="surfer-optimize-result">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+            <Wand2 size={14} style={{ color: 'hsl(142, 60%, 35%)' }} />
+            <span style={{ fontSize: 13, fontWeight: 700, color: 'hsl(142, 50%, 25%)' }}>Propozycja optymalizacji</span>
+          </div>
+          {optimizeResult.changes_summary?.map((c, i) => (
+            <div key={i} style={{ fontSize: 11, color: 'hsl(142, 30%, 30%)', padding: '2px 0', display: 'flex', gap: 4 }}>
+              <CheckCircle2 size={11} style={{ flexShrink: 0, marginTop: 2 }} /> {c}
+            </div>
+          ))}
+          <div style={{ fontSize: 11, color: 'hsl(215, 16%, 50%)', marginTop: 6 }}>
+            Sekcje: {optimizeResult.sections?.length || 0} | FAQ: {optimizeResult.faq?.length || 0} | Meta: {optimizeResult.meta_title?.length || 0} zn.
+          </div>
+          <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+            <Button size="sm" onClick={applyOptimization} className="gap-1" data-testid="surfer-apply-optimize-btn"
+              style={{ background: 'hsl(142, 60%, 40%)', color: '#fff', border: 'none', flex: 1 }}>
+              <Check size={13} /> Zastosuj zmiany
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setOptimizeResult(null)} className="gap-1">
+              <X size={13} /> Odrzuc
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* SERP Info */}
       <div style={{ padding: '10px 16px', background: 'hsl(215,16%,97%)', display: 'flex', gap: 16, fontSize: 12, color: 'hsl(215,16%,45%)' }}>

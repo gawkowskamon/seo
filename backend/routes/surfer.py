@@ -304,3 +304,356 @@ async def score_article(article_id: str, request: ScoreRequest):
     return score
 
 
+
+
+# In-memory job store for auto-optimize
+_optimize_jobs = {}
+
+
+@router.post("/surfer/seo-report/{article_id}")
+async def generate_seo_report(article_id: str, user: dict = Depends(get_current_user)):
+    """Generate a PDF SEO report for an article."""
+    from fastapi.responses import Response
+    from fpdf import FPDF
+
+    article = await db.articles.find_one({"id": article_id}, {"_id": 0})
+    if not article:
+        raise HTTPException(status_code=404, detail="Article not found")
+
+    surfer_score = article.get("surfer_score", {})
+    surfer_data = article.get("surfer_data", {})
+    meta_title = article.get("meta_title", "")
+    meta_desc = article.get("meta_description", "")
+    keyword = article.get("primary_keyword", "")
+    title = article.get("title", "Bez tytulu")
+    sections = article.get("sections", [])
+    faq = article.get("faq", [])
+    sources = article.get("sources", [])
+    pct = surfer_score.get("percentage", 0)
+    metrics = surfer_score.get("metrics", {})
+
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=20)
+    pdf.add_page()
+
+    # Use built-in fonts — Helvetica for body, Courier for data
+    # Title
+    pdf.set_font("Helvetica", "B", 22)
+    pdf.set_text_color(4, 56, 158)
+    pdf.cell(0, 14, "Raport SEO", ln=True, align="C")
+    pdf.set_font("Helvetica", "", 11)
+    pdf.set_text_color(80, 80, 80)
+    pdf.cell(0, 8, title.encode('latin-1', 'replace').decode('latin-1'), ln=True, align="C")
+    pdf.cell(0, 6, f"Wygenerowano: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')} UTC", ln=True, align="C")
+    pdf.ln(6)
+
+    # Separator
+    pdf.set_draw_color(4, 56, 158)
+    pdf.set_line_width(0.5)
+    pdf.line(20, pdf.get_y(), 190, pdf.get_y())
+    pdf.ln(8)
+
+    # Score box
+    pdf.set_font("Helvetica", "B", 16)
+    color = (34, 197, 94) if pct >= 80 else (245, 158, 11) if pct >= 60 else (239, 68, 68)
+    pdf.set_text_color(*color)
+    label = "Doskonaly" if pct >= 80 else "Dobry" if pct >= 60 else "Do poprawy" if pct >= 40 else "Slaby"
+    pdf.cell(0, 10, f"Wynik SurferSEO: {pct}% - {label}", ln=True, align="C")
+    pdf.ln(4)
+
+    # SERP info
+    if surfer_data:
+        pdf.set_font("Helvetica", "", 9)
+        pdf.set_text_color(100, 100, 100)
+        intent = surfer_data.get("search_intent", "")
+        diff = surfer_data.get("difficulty", "")
+        vol = surfer_data.get("monthly_volume", "")
+        pdf.cell(0, 5, f"Intencja: {intent}   |   Trudnosc: {diff}/100   |   Wolumen: {vol}/mies", ln=True, align="C")
+        pdf.ln(4)
+
+    # Metrics table
+    pdf.set_font("Helvetica", "B", 13)
+    pdf.set_text_color(4, 56, 158)
+    pdf.cell(0, 9, "Metryki tresci", ln=True)
+    pdf.ln(2)
+
+    pdf.set_font("Helvetica", "B", 9)
+    pdf.set_fill_color(240, 244, 255)
+    pdf.set_text_color(4, 56, 158)
+    pdf.cell(80, 7, "Metryka", border=1, fill=True)
+    pdf.cell(30, 7, "Wynik", border=1, fill=True, align="C")
+    pdf.cell(30, 7, "Cel", border=1, fill=True, align="C")
+    pdf.cell(30, 7, "Status", border=1, fill=True, align="C")
+    pdf.ln()
+
+    pdf.set_font("Helvetica", "", 9)
+    pdf.set_text_color(40, 40, 40)
+    for key, m in metrics.items():
+        if key == "nlp_terms":
+            continue
+        lbl = m.get("label", key).encode('latin-1', 'replace').decode('latin-1')
+        sc = m.get("score", 0)
+        mx = m.get("max", 5)
+        status = "OK" if sc >= mx * 0.8 else "Poprawa" if sc >= mx * 0.5 else "Slaby"
+        s_color = (34, 197, 94) if status == "OK" else (245, 158, 11) if status == "Poprawa" else (239, 68, 68)
+        pdf.cell(80, 6, lbl, border=1)
+        pdf.cell(30, 6, str(sc), border=1, align="C")
+        pdf.cell(30, 6, str(mx), border=1, align="C")
+        pdf.set_text_color(*s_color)
+        pdf.cell(30, 6, status, border=1, align="C")
+        pdf.set_text_color(40, 40, 40)
+        pdf.ln()
+    pdf.ln(6)
+
+    # Google SERP preview
+    pdf.set_font("Helvetica", "B", 13)
+    pdf.set_text_color(4, 56, 158)
+    pdf.cell(0, 9, "Podglad w Google", ln=True)
+    pdf.ln(2)
+
+    pdf.set_font("Helvetica", "", 14)
+    pdf.set_text_color(26, 13, 171)
+    pdf.multi_cell(0, 6, meta_title.encode('latin-1', 'replace').decode('latin-1') or "Brak meta tytulu")
+    pdf.set_font("Helvetica", "", 9)
+    pdf.set_text_color(0, 102, 33)
+    pdf.cell(0, 5, f"twoja-strona.pl > {article.get('slug', 'artykul')}", ln=True)
+    pdf.set_font("Helvetica", "", 10)
+    pdf.set_text_color(84, 84, 84)
+    pdf.multi_cell(0, 5, meta_desc.encode('latin-1', 'replace').decode('latin-1') or "Brak meta opisu")
+    pdf.ln(4)
+
+    # Meta fields
+    pdf.set_font("Helvetica", "B", 13)
+    pdf.set_text_color(4, 56, 158)
+    pdf.cell(0, 9, "Meta dane", ln=True)
+    pdf.ln(2)
+
+    for lbl_name, val, mx_len in [("Meta tytul", meta_title, 60), ("Meta opis", meta_desc, 160), ("Slowo kluczowe", keyword, None)]:
+        pdf.set_font("Helvetica", "B", 9)
+        pdf.set_text_color(80, 80, 80)
+        count_str = f"  ({len(val)}/{mx_len})" if mx_len else ""
+        pdf.cell(0, 6, f"{lbl_name}{count_str}", ln=True)
+        pdf.set_font("Helvetica", "", 10)
+        pdf.set_text_color(40, 40, 40)
+        pdf.multi_cell(0, 5, val.encode('latin-1', 'replace').decode('latin-1') or "Brak")
+        pdf.ln(2)
+    pdf.ln(4)
+
+    # Readiness checklist
+    checks = [
+        (len(meta_title) > 0 and len(meta_title) <= 60, "Meta tytul (max 60 znakow)"),
+        (len(meta_desc) >= 120 and len(meta_desc) <= 160, "Meta opis (120-160 znakow)"),
+        (len(keyword) > 0, "Slowo kluczowe ustawione"),
+        (len(sections) >= 3, f"Min. 3 sekcje tresci ({len(sections)})"),
+        (len(faq) >= 3, f"Min. 3 pytania FAQ ({len(faq)})"),
+        (len(sources) >= 1, f"Zrodla podlinkowane ({len(sources)})"),
+    ]
+    pdf.set_font("Helvetica", "B", 13)
+    pdf.set_text_color(4, 56, 158)
+    passed = sum(1 for c in checks if c[0])
+    pdf.cell(0, 9, f"Gotowosci SEO ({passed}/{len(checks)})", ln=True)
+    pdf.ln(2)
+
+    for ok, label_str in checks:
+        pdf.set_font("Helvetica", "", 10)
+        mark = "[OK]" if ok else "[!!]"
+        pdf.set_text_color(34, 197, 94) if ok else pdf.set_text_color(239, 68, 68)
+        pdf.cell(12, 6, mark)
+        pdf.set_text_color(40, 40, 40)
+        pdf.cell(0, 6, label_str, ln=True)
+    pdf.ln(6)
+
+    # Article structure overview
+    pdf.set_font("Helvetica", "B", 13)
+    pdf.set_text_color(4, 56, 158)
+    pdf.cell(0, 9, "Struktura artykulu", ln=True)
+    pdf.ln(2)
+
+    for i, sec in enumerate(sections):
+        heading = sec.get("heading", "").encode('latin-1', 'replace').decode('latin-1')
+        pdf.set_font("Helvetica", "B", 10)
+        pdf.set_text_color(40, 40, 40)
+        pdf.cell(0, 6, f"H2: {heading}", ln=True)
+        for sub in sec.get("subsections", []):
+            sub_heading = sub.get("heading", "").encode('latin-1', 'replace').decode('latin-1')
+            pdf.set_font("Helvetica", "", 9)
+            pdf.set_text_color(80, 80, 80)
+            pdf.cell(10, 5, "")
+            pdf.cell(0, 5, f"H3: {sub_heading}", ln=True)
+
+    # Output PDF
+    pdf_bytes = pdf.output()
+    safe_title = re.sub(r'[^\w\-]', '_', title[:40])
+    safe_title = safe_title.encode('ascii', 'ignore').decode('ascii') or "artykul"
+    return Response(
+        content=bytes(pdf_bytes),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="raport_seo_{safe_title}.pdf"'}
+    )
+
+
+@router.post("/surfer/auto-optimize/{article_id}")
+async def auto_optimize_article(article_id: str, user: dict = Depends(get_current_user)):
+    """Start async auto-optimization of article based on SurferSEO recommendations."""
+    article = await db.articles.find_one({"id": article_id}, {"_id": 0})
+    if not article:
+        raise HTTPException(status_code=404, detail="Article not found")
+
+    surfer_score = article.get("surfer_score")
+    surfer_data = article.get("surfer_data")
+    if not surfer_score or not surfer_data:
+        raise HTTPException(status_code=400, detail="Najpierw uruchom analize SurferSEO")
+
+    job_id = str(uuid.uuid4())
+    _optimize_jobs[job_id] = {"status": "running", "article_id": article_id}
+
+    def _run_optimize(jid, art, score, sdata):
+        try:
+            from llm_helper import llm_chat_sync
+            import json as jmod
+
+            keyword = art.get("primary_keyword", "")
+            sections = art.get("sections", [])
+            faq = art.get("faq", [])
+            metrics = score.get("metrics", {})
+
+            # Build improvement instructions
+            issues = []
+            for key, m in metrics.items():
+                if key == "nlp_terms":
+                    nlp_terms = m.get("terms", [])
+                    missing = [t["term"] for t in nlp_terms if not t.get("used")]
+                    if missing:
+                        issues.append(f"Wstaw brakujace terminy NLP w tresci: {', '.join(missing[:15])}")
+                    continue
+                sc, mx = m.get("score", 0), m.get("max", 5)
+                if sc < mx:
+                    bench = m.get("benchmark", {})
+                    rec = bench.get("recommended", bench.get("avg", ""))
+                    issues.append(f"{m.get('label','')}: masz {m.get('value','?')}, zalecane: {rec} (wynik {sc}/{mx})")
+
+            sections_json = jmod.dumps([{"heading": s["heading"], "content": s["content"][:300], "subsections": [{"heading": sub["heading"]} for sub in s.get("subsections",[])]} for s in sections], ensure_ascii=False)
+            faq_json = jmod.dumps([{"q": f.get("question",""), "a": f.get("answer","")[:100]} for f in faq[:5]], ensure_ascii=False)
+            issues_text = "\n".join(f"- {i}" for i in issues)
+
+            prompt = f"""Jestes ekspertem SEO. Zoptymalizuj artykul na slowo kluczowe: "{keyword}".
+
+Aktualne problemy do naprawy:
+{issues_text}
+
+Aktualna struktura artykulu (skrocone):
+{sections_json[:3000]}
+
+FAQ (skrocone):
+{faq_json[:1000]}
+
+Tytul: {art.get('title','')}
+Meta tytul: {art.get('meta_title','')}
+Meta opis: {art.get('meta_description','')}
+
+ZADANIE: Zwroc WYLACZNIE JSON z poprawionymi elementami:
+{{
+    "meta_title": "zoptymalizowany meta tytul (max 60 znakow, zawiera keyword)",
+    "meta_description": "zoptymalizowany meta opis (120-160 znakow, zawiera keyword)",
+    "sections": [
+        {{
+            "heading": "Naglowek H2 (zoptymalizowany lub nowy)",
+            "content": "<p>Pelna tresc sekcji z terminami NLP, <strong>pogrubienia</strong>, listy <ul><li>...</li></ul></p>",
+            "subsections": [
+                {{"heading": "Naglowek H3", "content": "<p>Tresc podsekcji</p>"}}
+            ]
+        }}
+    ],
+    "faq": [
+        {{"question": "Pytanie?", "answer": "Odpowiedz"}}
+    ],
+    "changes_summary": ["Lista zmian ktore wprowadziles"]
+}}
+
+WAZNE:
+- Zachowaj istniejace sekcje - rozszerz je, nie usuwaj
+- Dodaj nowe sekcje jesli wynik slow/naglowkow jest za niski
+- Wstaw brakujace terminy NLP naturalnie w tresci
+- Dodaj <strong> dla waznych terminow
+- Dodaj listy <ul><li> gdzie to pasuje
+- FAQ minimum 5 pytan
+- Kazda sekcja minimum 150-200 slow
+- Meta tytul max 60 znakow
+- Meta opis 120-160 znakow"""
+
+            text = llm_chat_sync(prompt, system_message="Jestes zaawansowanym narzedziem SEO. Odpowiadaj WYLACZNIE poprawnym JSON-em.", session_id=f"optimize-{jid[:8]}", timeout=300)
+            clean = text.strip()
+            if clean.startswith("```"):
+                clean = re.sub(r'^```(?:json)?\s*', '', clean)
+                clean = re.sub(r'\s*```$', '', clean)
+            result = jmod.loads(clean)
+            _optimize_jobs[jid]["status"] = "completed"
+            _optimize_jobs[jid]["result"] = result
+        except Exception as e:
+            logging.error(f"Auto-optimize error: {e}")
+            _optimize_jobs[jid]["status"] = "failed"
+            _optimize_jobs[jid]["error"] = str(e)
+
+    executor.submit(_run_optimize, job_id, article, surfer_score, surfer_data)
+    return {"job_id": job_id, "status": "running"}
+
+
+@router.get("/surfer/auto-optimize/status/{job_id}")
+async def optimize_status(job_id: str, user: dict = Depends(get_current_user)):
+    """Check auto-optimize job status."""
+    job = _optimize_jobs.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return {"job_id": job_id, **job}
+
+
+@router.post("/surfer/auto-optimize/apply/{article_id}")
+async def apply_optimization(article_id: str, request: dict, user: dict = Depends(get_current_user)):
+    """Apply AI-generated optimization to the article."""
+    article = await db.articles.find_one({"id": article_id}, {"_id": 0})
+    if not article:
+        raise HTTPException(status_code=404, detail="Article not found")
+
+    optimized = request.get("optimized", {})
+    if not optimized:
+        raise HTTPException(status_code=400, detail="No optimized data provided")
+
+    # Save version before applying
+    version_doc = {
+        "id": str(uuid.uuid4()),
+        "article_id": article_id,
+        "user_id": user.get("id", ""),
+        "version_data": {k: v for k, v in article.items() if k != "_id"},
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.article_versions.insert_one(version_doc)
+
+    update = {"updated_at": datetime.now(timezone.utc).isoformat()}
+    if optimized.get("meta_title"):
+        update["meta_title"] = optimized["meta_title"]
+    if optimized.get("meta_description"):
+        update["meta_description"] = optimized["meta_description"]
+    if optimized.get("sections"):
+        # Add anchors to sections
+        for sec in optimized["sections"]:
+            if not sec.get("anchor"):
+                sec["anchor"] = re.sub(r'[^\w-]', '-', sec.get("heading", "").lower().strip())[:60]
+            for sub in sec.get("subsections", []):
+                if not sub.get("anchor"):
+                    sub["anchor"] = re.sub(r'[^\w-]', '-', sub.get("heading", "").lower().strip())[:60]
+        update["sections"] = optimized["sections"]
+        # Rebuild TOC from sections
+        toc = []
+        for sec in optimized["sections"]:
+            toc.append({"text": sec["heading"], "anchor": sec.get("anchor", ""), "level": 2})
+            for sub in sec.get("subsections", []):
+                toc.append({"text": sub["heading"], "anchor": sub.get("anchor", ""), "level": 3})
+        update["toc"] = toc
+    if optimized.get("faq"):
+        update["faq"] = optimized["faq"]
+
+    await db.articles.update_one({"id": article_id}, {"$set": update})
+    updated = await db.articles.find_one({"id": article_id}, {"_id": 0})
+
+    from shared import serialize_doc
+    return {"message": "Optymalizacja zastosowana", "article": serialize_doc(updated)}
