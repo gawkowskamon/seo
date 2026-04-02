@@ -11,10 +11,11 @@ Aplikacja do pisania artykulow blogowych zwiazanych z ksiegowoscia, zoptymalizow
 
 ## Critical Architecture
 - All LLM tasks use ThreadPoolExecutor + sync PyMongo + asyncio.new_event_loop()
-- 3-model fallback chain: **gemini-2.0-flash → gpt-4.1-mini → gpt-5.2** with exponential backoff
+- 3-model fallback chain: **gemini-2.0-flash -> gpt-4.1-mini -> gpt-5.2** with exponential backoff
 - Shared LLM helper: `/app/backend/llm_helper.py` provides `llm_chat()` (async) and `llm_chat_sync()` (sync)
 - Stale job recovery on startup: auto-marks stuck "generating" jobs as failed
 - Gemini is PRIMARY model because OpenAI frequently returns 502 Bad Gateway
+- Global Axios interceptor in App.js for automatic auth header injection
 
 ## Credentials
 - Admin: ADMIN_EMAIL / ADMIN_PASSWORD (z .env)
@@ -47,13 +48,34 @@ Aplikacja do pisania artykulow blogowych zwiazanych z ksiegowoscia, zoptymalizow
 - [x] Article Version History (auto-save, view, restore)
 - [x] Smart Publishing Schedule (AI best day/time)
 - [x] Social Media Post Generator (LinkedIn/Twitter/Facebook/Instagram x 3 tones)
+- [x] SurferSEO Phase 1: SERP analysis, NLP terms, content scoring in editor
+- [x] SurferSEO Phase 2: Keyword Research, Content Planner, URL Audit
 
-## Bug Fixes (2026-03-23)
+## SurferSEO Features (Completed 2026-04-02)
+- [x] AI-simulated SERP analysis with benchmarks (word count, headings, images, lists, bold, FAQ)
+- [x] NLP terms evaluation (20-30 semantic terms per keyword)
+- [x] SurferSEO Panel in Article Editor with score ring and metric bars
+- [x] Async SERP analysis with job polling
+- [x] Keyword Research page (/keyword-research) - seed keyword -> related keywords with volume/difficulty/CPC/trend
+- [x] Content Planner (integrated in Keyword Research via "Klastruj" button) - keyword clustering into article topics
+- [x] URL Audit page (/audyt-url) - SEO audit of any URL with issues/opportunities/content analysis
+
+## Bug Fixes
 - [x] P0: Article generation 502 Bad Gateway - 3-model fallback, Gemini primary
 - [x] P0: ALL 17 LLM services updated with fallback chain
 - [x] Stale job recovery on startup
 - [x] Gemini moved to primary position (OpenAI consistently returning 502)
 - [x] Article generation verified end-to-end via UI: ~60s generation time
+- [x] Auth token handling fixed in KeywordResearchPage (use global interceptor)
+
+## Key API Endpoints - SurferSEO
+- POST /api/surfer/analyze-serp - sync SERP analysis
+- POST /api/surfer/analyze-serp/async - async SERP analysis
+- GET /api/surfer/analyze-serp/status/{job_id} - job status polling
+- POST /api/surfer/score - score article against SERP benchmarks
+- POST /api/surfer/keyword-research - keyword research with AI
+- POST /api/surfer/content-planner - keyword clustering
+- POST /api/surfer/audit-url - URL SEO audit
 
 ## Backlog
 - [ ] Social Media Integration - automatyczne publikowanie (P2)
