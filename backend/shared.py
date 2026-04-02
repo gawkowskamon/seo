@@ -227,7 +227,8 @@ class ChatMessage(BaseModel):
     article_id: str = ""
 
 class RegenerateRequest(BaseModel):
-    section_index: int
+    section: str = ""
+    section_index: int = 0
     instructions: str = ""
 
 class PlagiarismCheckRequest(BaseModel):
