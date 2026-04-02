@@ -1004,7 +1004,7 @@ const ArticleEditor = () => {
           )}
           {rightTab === 'wppreview' && (
             <div data-testid="article-wppreview-wrapper" style={{ height: '100%' }}>
-              <WordPressPreviewPanel articleId={articleId} />
+              <WordPressPreviewPanel articleId={articleId} article={article} />
             </div>
           )}
         </div>

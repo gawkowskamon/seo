@@ -15,7 +15,7 @@ FARM (FastAPI, React, MongoDB) with Emergent LLM Key for AI (Gemini + OpenAI)
 - Image generation (gemini-3.1-flash-image-preview) — single + batch (4 variants)
 - PDF/HTML/WordPress export with styled inline CSS
 - WordPress REST API publishing + WordPress Plugin generator
-- **WordPress Preview panel** in Article Editor (1:1 visual parity)
+- **WordPress Preview panel** in Article Editor with SEO comparison (SERP preview, meta fields, readiness checklist)
 - JWT auth, admin role, auto-seeded admin account
 - Content Calendar with scheduled WordPress publishing
 - AI Chat Assistant, AI Rewriter, Newsletter Generator
@@ -61,8 +61,7 @@ FARM (FastAPI, React, MongoDB) with Emergent LLM Key for AI (Gemini + OpenAI)
 ## Current Status (April 2, 2026)
 - All features functional
 - Image generation fixed (datetime timezone bug in status polling)
-- WordPress export has full inline styling matching in-app editor
-- WordPress Preview panel added to Article Editor
+- WordPress Preview with SEO comparison added to editor
 - SurferSEO, meta regeneration verified working
 - Test iterations 32 & 33: 100% pass rate
 
