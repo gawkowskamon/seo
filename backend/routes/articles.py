@@ -482,6 +482,8 @@ async def export_article(article_id: str, request: ExportRequest):
 @router.post("/articles/{article_id}/regenerate")
 async def regenerate_section(article_id: str, request: RegenerateRequest):
     """Regenerate a specific section of the article using AI."""
+    if request.section not in ("faq", "meta"):
+        raise HTTPException(status_code=400, detail=f"Nieznana sekcja: {request.section}. Dozwolone: faq, meta")
     article = await db.articles.find_one({"id": article_id}, {"_id": 0})
     if not article:
         raise HTTPException(status_code=404, detail="Article not found")
@@ -518,7 +520,7 @@ Odpowiedz WYŁĄCZNIE w formacie JSON (bez markdown):
   "meta_description": "Meta opis SEO (120-160 znaków, zachęcający do kliknięcia, zawiera słowo kluczowe)"
 }}"""
         else:
-            raise HTTPException(status_code=400, detail=f"Unknown section: {request.section}")
+            raise HTTPException(status_code=400, detail=f"Nieznana sekcja: {request.section}")
         
         
         response = await llm_chat(

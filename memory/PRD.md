@@ -1,61 +1,69 @@
-# SEO Article Writer - PRD
+# SEO Article Writer - Kurdynowski
 
-## Original Problem Statement
-Aplikacja do pisania artykulow blogowych zwiazanych z ksiegowoscia, zoptymalizowana pod SEO AI.
+## Problem Statement
+Feature-rich application for writing and managing accounting-related blog articles with SEO optimization, WordPress integration, and AI-powered content tools.
 
-## Tech Stack
-- Backend: FastAPI + MongoDB (Motor async + PyMongo sync for threads)
-- Frontend: React + Shadcn UI + Recharts
-- AI Text: Gemini gemini-2.0-flash (primary) + OpenAI gpt-4.1-mini/gpt-5.2 (fallback)
-- AI Images: Gemini gemini-3.1-flash-image-preview (Nano Banana)
-- All via Emergent LLM Key
+## Stack
+FARM (FastAPI, React, MongoDB) with Emergent LLM Key for AI (Gemini + OpenAI)
 
-## Architecture (Refactored 2026-04-02)
+## Core Features (Implemented)
+- Article generation with AI (async, background jobs)
+- Visual editor with formatting toolbar + HTML view
+- SurferSEO scoring panel (SERP analysis, keyword metrics, NLP terms)
+- AI suggestions for topics
+- Meta regeneration (meta title/description, FAQ)
+- Image generation (gemini-3.1-flash-image-preview)
+- PDF/HTML/WordPress export with styled inline CSS
+- WordPress REST API publishing + WordPress Plugin generator
+- JWT auth, admin role, auto-seeded admin account
+- Content Calendar with scheduled WordPress publishing
+- AI Chat Assistant, AI Rewriter, Newsletter Generator
+- Dark Mode toggle
+- Keyword Analytics Dashboard
+- Article import from URL + WordPress import
+- Internal link building
+
+## SurferSEO Features (Implemented)
+- Keyword Research (standalone page)
+- Content Planner (cluster analysis)
+- URL Audit (standalone page)
+- SERP Analysis (async with polling)
+- Score computation (9 metrics)
+
+## Additional Features (Implemented)
+- Social Media Scheduling
+- Email Notifications system
+- Competition Monitor
+- Subscription system (TPay - MOCKED)
+
+## Backend Architecture
 ```
 /app/backend/
-  server.py              # 126 lines - App, middleware, startup/shutdown
-  shared.py              # 260 lines - DB, auth, Pydantic models
+  server.py          # App init, router inclusion (~130 lines)
+  shared.py          # DB, auth, Pydantic models
   routes/
-    auth.py              # 9 routes - Auth & Admin
-    articles.py          # 13 routes - CRUD, generation, export
-    surfer.py            # 8 routes - SurferSEO
-    images.py            # 11 routes - Image gen & library
-    content.py           # 19 routes - WordPress, calendar, chat
-    seo_tools.py         # 32 routes - SEO audit, analytics, plagiarism
-    ai_features.py       # 12 routes - Bulk, versions, meta, schedule
-    social.py            # 4 routes - Social scheduling
-    notifications.py     # 5 routes - Email notifications
-    competition_monitor.py # 4 routes - Competition monitoring
-  ──── Total: 117 API endpoints ────
-  llm_helper.py, surfer_seo_service.py, article_generator.py,
-  image_generator.py, seo_scorer.py, ... (services)
+    ai_features.py   # AI suggestions, auto-meta, auto-links
+    articles.py      # CRUD, generation, export, regeneration
+    auth.py          # Login, register, user management
+    competition_monitor.py
+    content.py       # WordPress settings, publishing, rewrite, newsletter
+    images.py        # Image generation
+    notifications.py
+    seo_tools.py     # SEO audit, keyword analytics
+    social.py        # Social media scheduling
+    surfer.py        # SurferSEO endpoints
 ```
 
-## Bug Fixes (2026-04-02)
-- [x] Image gen hanging: model -> gemini-3.1-flash-image-preview + 90s timeout + stale detection
-- [x] Article gen timeout: 180s -> 360s
-- [x] Import fix: FileContent -> ImageContent for image references
-- [x] Shared ThreadPoolExecutor for all background jobs
+## Key Credentials
+- Admin: monika.gawkowska@kurdynowski.pl / MonZuz8180!
 
-## All Features (35+)
-- [x] AI Article generation + Visual editor + Templates
-- [x] Topic suggestions + AI SEO Assistant + AI Chat + AI Rewriter
-- [x] Image generator (Nano Banana) + batch + library
-- [x] JWT auth, admin, multi-client workspaces
-- [x] PDF/HTML/WordPress export
-- [x] TPay subscription (mocked), Content Calendar, Scheduled Publishing
-- [x] Internal Link Building + Article Import
-- [x] Dark Mode + Newsletter Generator + Keyword Analytics + Performance Dashboard
-- [x] Plagiarism Checker + Content Verification
-- [x] A/B Title Testing + Auto Meta Tags + Smart Schedule
-- [x] Bulk Operations + Article Version History
-- [x] Social Media Post Generator + Scheduling
-- [x] SurferSEO (SERP, NLP, Keyword Research, URL Audit, Content Planner)
-- [x] Email Notifications (MOCKED) + Competition Monitoring
-- [x] server.py refactored into 10 route modules (117 endpoints)
-
-## Testing: iteration_31 - 100% (38/38 backend, 100% frontend)
+## Current Status (April 2, 2026)
+- All features functional
+- Backend refactoring complete (10 route modules)
+- WordPress export has full inline styling matching in-app editor
+- SurferSEO, meta regeneration, all async endpoints verified working
 
 ## Backlog
-- [ ] Prawdziwe wysyłanie emaili (SendGrid/Resend) (P3)
-- [ ] Integracja z prawdziwymi API social media (P3)
+- [ ] A/B Testing for titles (P2)
+- [ ] Real email sending via SendGrid/Resend (P3)
+- [ ] Real social media API integration (P3)

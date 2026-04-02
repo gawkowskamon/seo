@@ -17,19 +17,19 @@ logger = logging.getLogger(__name__)
 FONTS_IMPORT = '@import url("https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap");'
 
 STYLE_WRAPPER = (
-    'font-family: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, sans-serif; '
+    "font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif; "
     'line-height: 1.8; max-width: 800px; margin: 0 auto; padding: 40px 24px; '
     'color: hsl(222, 47%, 20%); background: #fff;'
 )
 
 STYLE_H2 = (
-    'font-family: "Instrument Serif", Georgia, serif; font-size: 26px; font-weight: 400; '
+    "font-family: 'Instrument Serif', Georgia, serif; font-size: 26px; font-weight: 400; "
     'color: #04389E; margin: 32px 0 16px; padding-bottom: 8px; '
     'border-bottom: 2px solid hsl(34, 90%, 88%);'
 )
 
 STYLE_H3 = (
-    'font-family: "Instrument Serif", Georgia, serif; font-size: 19px; font-weight: 400; '
+    "font-family: 'Instrument Serif', Georgia, serif; font-size: 19px; font-weight: 400; "
     'color: hsl(220, 95%, 28%); margin: 24px 0 12px;'
 )
 
@@ -59,9 +59,9 @@ STYLE_TABLE = (
 )
 
 STYLE_TH = (
-    'padding: 10px 14px; text-align: left; font-weight: 600; font-size: 13px; '
-    'color: #04389E; border-bottom: 2px solid hsl(214, 18%, 85%); '
-    'background: hsl(220, 95%, 96%); font-family: "IBM Plex Sans", sans-serif;'
+    "padding: 10px 14px; text-align: left; font-weight: 600; font-size: 13px; "
+    "color: #04389E; border-bottom: 2px solid hsl(214, 18%, 85%); "
+    "background: hsl(220, 95%, 96%); font-family: 'IBM Plex Sans', sans-serif;"
 )
 
 STYLE_TD = 'padding: 10px 14px; border-bottom: 1px solid hsl(214, 18%, 93%); color: hsl(222, 47%, 20%);'
@@ -72,7 +72,7 @@ STYLE_TOC = (
 )
 
 STYLE_TOC_H2 = (
-    'font-family: "Instrument Serif", Georgia, serif; font-size: 1.2em; font-weight: 400; '
+    "font-family: 'Instrument Serif', Georgia, serif; font-size: 1.2em; font-weight: 400; "
     'color: #04389E; margin: 0 0 12px; padding-bottom: 0; border: none;'
 )
 
@@ -82,7 +82,7 @@ STYLE_FAQ_WRAPPER = (
 )
 
 STYLE_FAQ_H3 = (
-    'font-family: "Instrument Serif", Georgia, serif; font-size: 19px; font-weight: 400; '
+    "font-family: 'Instrument Serif', Georgia, serif; font-size: 19px; font-weight: 400; "
     'color: #04389E; margin: 24px 0 12px;'
 )
 
@@ -227,18 +227,23 @@ def _build_styled_content(article: dict) -> str:
         )
 
     # Sections with inline styles applied to content fragments
-    for section in article.get("sections", []):
-        anchor = section.get("anchor", "")
-        heading = section.get("heading", "")
-        content = _apply_inline_styles(section.get("content", ""))
-        parts.append(f'<h2 id="{anchor}" style="{STYLE_H2}">{heading}</h2>')
-        parts.append(content)
-        for sub in section.get("subsections", []):
-            sub_anchor = sub.get("anchor", "")
-            sub_heading = sub.get("heading", "")
-            sub_content = _apply_inline_styles(sub.get("content", ""))
-            parts.append(f'<h3 id="{sub_anchor}" style="{STYLE_H3}">{sub_heading}</h3>')
-            parts.append(sub_content)
+    sections = article.get("sections", [])
+    if sections:
+        for section in sections:
+            anchor = section.get("anchor", "")
+            heading = section.get("heading", "")
+            content = _apply_inline_styles(section.get("content", ""))
+            parts.append(f'<h2 id="{anchor}" style="{STYLE_H2}">{heading}</h2>')
+            parts.append(content)
+            for sub in section.get("subsections", []):
+                sub_anchor = sub.get("anchor", "")
+                sub_heading = sub.get("heading", "")
+                sub_content = _apply_inline_styles(sub.get("content", ""))
+                parts.append(f'<h3 id="{sub_anchor}" style="{STYLE_H3}">{sub_heading}</h3>')
+                parts.append(sub_content)
+    elif article.get("html_content"):
+        # Fallback: use html_content from visual editor and apply inline styles
+        parts.append(_apply_inline_styles(article["html_content"]))
 
     # FAQ with Schema.org + styling
     faq = article.get("faq", [])
