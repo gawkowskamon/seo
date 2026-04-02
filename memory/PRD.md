@@ -21,7 +21,7 @@ Aplikacja do pisania artykulow blogowych zwiazanych z ksiegowoscia, zoptymalizow
 - Admin: ADMIN_EMAIL / ADMIN_PASSWORD (z .env)
 - WordPress: monika.gawkowska@kurdynowski.pl / jY67 vfXG WSqw Wic4 LRRg CJUw
 
-## All Completed Features (30+)
+## All Completed Features (35+)
 - [x] AI Article generation (E-E-A-T, legal refs, concrete data)
 - [x] Visual editor + HTML view + formatting toolbar
 - [x] Topic suggestions + AI Article Suggestions
@@ -50,33 +50,69 @@ Aplikacja do pisania artykulow blogowych zwiazanych z ksiegowoscia, zoptymalizow
 - [x] Social Media Post Generator (LinkedIn/Twitter/Facebook/Instagram x 3 tones)
 - [x] SurferSEO Phase 1: SERP analysis, NLP terms, content scoring in editor
 - [x] SurferSEO Phase 2: Keyword Research, Content Planner, URL Audit
+- [x] Social Media Scheduling - plan, manage, publish posts
+- [x] Email Notifications - article update alerts (MOCKED email)
+- [x] Competition Monitoring - AI-powered SERP tracking with content gaps
 
-## SurferSEO Features (Completed 2026-04-02)
-- [x] AI-simulated SERP analysis with benchmarks (word count, headings, images, lists, bold, FAQ)
-- [x] NLP terms evaluation (20-30 semantic terms per keyword)
-- [x] SurferSEO Panel in Article Editor with score ring and metric bars
-- [x] Async SERP analysis with job polling
-- [x] Keyword Research page (/keyword-research) - seed keyword -> related keywords with volume/difficulty/CPC/trend
-- [x] Content Planner (integrated in Keyword Research via "Klastruj" button) - keyword clustering into article topics
-- [x] URL Audit page (/audyt-url) - SEO audit of any URL with issues/opportunities/content analysis
+## Features Added (2026-04-02)
 
-## Bug Fixes
-- [x] P0: Article generation 502 Bad Gateway - 3-model fallback, Gemini primary
-- [x] P0: ALL 17 LLM services updated with fallback chain
-- [x] Stale job recovery on startup
-- [x] Gemini moved to primary position (OpenAI consistently returning 502)
-- [x] Article generation verified end-to-end via UI: ~60s generation time
-- [x] Auth token handling fixed in KeywordResearchPage (use global interceptor)
+### SurferSEO Phase 2
+- Keyword Research page (/keyword-research) - seed keyword -> 15-25 related keywords
+- Content Planner (via "Klastruj" button) - keyword clustering into article topics
+- URL Audit page (/audyt-url) - full SEO audit of any URL
 
-## Key API Endpoints - SurferSEO
-- POST /api/surfer/analyze-serp - sync SERP analysis
-- POST /api/surfer/analyze-serp/async - async SERP analysis
-- GET /api/surfer/analyze-serp/status/{job_id} - job status polling
-- POST /api/surfer/score - score article against SERP benchmarks
-- POST /api/surfer/keyword-research - keyword research with AI
-- POST /api/surfer/content-planner - keyword clustering
-- POST /api/surfer/audit-url - URL SEO audit
+### Social Media Scheduling
+- Schedule posts for LinkedIn/Twitter/Facebook/Instagram
+- View/manage scheduled and published posts
+- Copy text, mark as published, delete
+- Pages: /social-media
+
+### Email Notifications
+- Notification preferences (email toggle, frequency, alert types)
+- Check article updates (age alerts, low SEO score alerts)
+- Test email sending (MOCKED)
+- Email history log
+- Pages: /powiadomienia
+
+### Competition Monitoring
+- Add keywords to monitor with AI-powered SERP analysis
+- View TOP results, content gaps, recommendations
+- Refresh analysis, delete monitors
+- Direct link to create article from monitored keyword
+- Pages: /konkurencja
+
+## Key API Endpoints
+### SurferSEO
+- POST /api/surfer/analyze-serp, /api/surfer/analyze-serp/async
+- GET /api/surfer/analyze-serp/status/{job_id}
+- POST /api/surfer/score, /api/surfer/keyword-research
+- POST /api/surfer/content-planner, /api/surfer/audit-url
+
+### Social Media
+- POST /api/social/schedule
+- GET /api/social/scheduled
+- DELETE /api/social/scheduled/{id}
+- PUT /api/social/scheduled/{id}/publish
+
+### Notifications
+- GET/PUT /api/notifications/settings
+- POST /api/notifications/check-updates
+- POST /api/notifications/send-test
+- GET /api/notifications/history
+
+### Competition
+- POST /api/competition/monitor
+- GET /api/competition/monitors
+- DELETE /api/competition/monitors/{id}
+- POST /api/competition/monitors/{id}/refresh
+
+## DB Collections
+- articles, users, generation_jobs, seo_jobs
+- scheduled_posts (Social Media)
+- notification_settings, notification_log (Notifications)
+- competition_monitors (Competition)
 
 ## Backlog
-- [ ] Social Media Integration - automatyczne publikowanie (P2)
-- [ ] Powiadomienia email o potrzebie aktualizacji artykulow (P2)
+- [ ] Refaktoryzacja server.py (~4300 linii) na oddzielne routery (P3)
+- [ ] Integracja z prawdziwymi API platform social media (wymaga kluczy OAuth) (P3)
+- [ ] Prawdziwe wysyłanie emaili (SendGrid/Resend) (P3)
