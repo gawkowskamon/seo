@@ -8,7 +8,7 @@ import os
 import base64
 import logging
 import uuid
-from emergentintegrations.llm.chat import LlmChat, UserMessage, FileContent
+from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
 
 logger = logging.getLogger(__name__)
 
@@ -135,16 +135,13 @@ async def generate_image(prompt: str, style: str = "hero", topic: str = "", arti
         session_id=session_id,
         system_message="You are a professional illustration generator for business and accounting blog articles. Generate clean, professional, high-quality images. Use a navy blue and warm amber color palette unless specified otherwise."
     )
-    chat.with_model("gemini", "gemini-3-pro-image-preview").with_params(modalities=["image", "text"])
+    chat.with_model("gemini", "gemini-3.1-flash-image-preview").with_params(modalities=["image", "text"])
     
     # Build message with all reference images
     file_contents = None
     if reference_images:
         file_contents = [
-            FileContent(
-                content_type=ref["mime_type"],
-                file_content_base64=ref["data"]
-            )
+            ImageContent(ref["data"])
             for ref in reference_images
         ]
     

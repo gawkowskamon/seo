@@ -449,13 +449,13 @@ async def get_generation_status(job_id: str, user: dict = Depends(get_current_us
         from datetime import datetime as dt
         created = dt.fromisoformat(job["created_at"].replace("Z", "+00:00")) if isinstance(job["created_at"], str) else job["created_at"]
         elapsed = (datetime.now(timezone.utc) - created).total_seconds()
-        if elapsed > 180:
+        if elapsed > 360:
             await db.generation_jobs.update_one(
                 {"job_id": job_id},
-                {"$set": {"status": "failed", "error": "Generowanie przekroczylo limit czasu (3 min)"}}
+                {"$set": {"status": "failed", "error": "Generowanie przekroczylo limit czasu (6 min). Sprobuj ponownie."}}
             )
             job["status"] = "failed"
-            job["error"] = "Generowanie przekroczylo limit czasu (3 min)"
+            job["error"] = "Generowanie przekroczylo limit czasu (6 min). Sprobuj ponownie."
     
     result = {
         "job_id": job_id,
@@ -1183,18 +1183,22 @@ def _sync_generate_image(job_id: str, user_id: str, prompt: str, style: str, art
             if article:
                 article_context = article
 
-        loop = asyncio.new_event_loop()
-        try:
+        async def _gen_with_timeout():
             if variation_type:
-                result = loop.run_until_complete(generate_image_variant(
+                coro = generate_image_variant(
                     original_prompt=prompt, style=style, variation_type=variation_type,
                     article_context=article_context, reference_images=ref_images_data
-                ))
+                )
             else:
-                result = loop.run_until_complete(generate_image(
+                coro = generate_image(
                     prompt=prompt, style=style, article_context=article_context,
                     reference_images=ref_images_data
-                ))
+                )
+            return await asyncio.wait_for(coro, timeout=90)
+
+        loop = asyncio.new_event_loop()
+        try:
+            result = loop.run_until_complete(_gen_with_timeout())
         finally:
             loop.close()
 
@@ -1273,6 +1277,22 @@ async def image_generation_status(job_id: str):
     job = await db.image_generation_jobs.find_one({"job_id": job_id}, {"_id": 0})
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
+
+    # Detect stale image jobs (stuck processing > 120s)
+    if job["status"] == "processing":
+        created = job.get("created_at")
+        if created:
+            if isinstance(created, str):
+                created = datetime.fromisoformat(created.replace("Z", "+00:00"))
+            elapsed = (datetime.now(timezone.utc) - created).total_seconds()
+            if elapsed > 120:
+                await db.image_generation_jobs.update_one(
+                    {"job_id": job_id},
+                    {"$set": {"status": "failed", "error": "Generowanie obrazu przekroczylo limit czasu. Sprobuj ponownie."}}
+                )
+                await db.image_generation_jobs.delete_one({"job_id": job_id})
+                return {"status": "failed", "error": "Generowanie obrazu przekroczylo limit czasu. Sprobuj ponownie."}
+
     if job["status"] == "completed":
         await db.image_generation_jobs.delete_one({"job_id": job_id})
         return {"status": "completed", "result": job.get("result", {})}
