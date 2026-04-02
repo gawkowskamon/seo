@@ -132,6 +132,9 @@ async def image_generation_status(job_id: str):
         if created:
             if isinstance(created, str):
                 created = datetime.fromisoformat(created.replace("Z", "+00:00"))
+            # Ensure both datetimes are offset-aware
+            if created.tzinfo is None:
+                created = created.replace(tzinfo=timezone.utc)
             elapsed = (datetime.now(timezone.utc) - created).total_seconds()
             if elapsed > 120:
                 await db.image_generation_jobs.update_one(

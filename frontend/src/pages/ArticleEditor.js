@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Save, Eye, Code, BarChart3, Share2, ChevronLeft, Loader2, RefreshCw, Wand2, Cloud, CloudOff, Image as ImageIcon, Sparkles, Link2, CalendarClock, MessageSquare, PenLine, Shield, FileCheck, Search, FlaskConical, History, TrendingUp } from 'lucide-react';
+import { Save, Eye, Code, BarChart3, Share2, ChevronLeft, Loader2, RefreshCw, Wand2, Cloud, CloudOff, Image as ImageIcon, Sparkles, Link2, CalendarClock, MessageSquare, PenLine, Shield, FileCheck, Search, FlaskConical, History, TrendingUp, Globe } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { toast } from 'sonner';
@@ -23,6 +23,7 @@ import VersionHistoryPanel from '../components/VersionHistoryPanel';
 import SmartSchedulePanel from '../components/SmartSchedulePanel';
 import AutoMetaPanel from '../components/AutoMetaPanel';
 import SocialMediaPanel from '../components/SocialMediaPanel';
+import WordPressPreviewPanel from '../components/WordPressPreviewPanel';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -732,6 +733,14 @@ const ArticleEditor = () => {
             <Share2 size={14} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
             Social
           </button>
+          <button 
+            className={`right-panel-tab ${rightTab === 'wppreview' ? 'active' : ''}`}
+            onClick={() => setRightTab('wppreview')}
+            data-testid="article-wppreview-tab"
+          >
+            <Globe size={14} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
+            WP Preview
+          </button>
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -991,6 +1000,11 @@ const ArticleEditor = () => {
           {rightTab === 'social' && (
             <div data-testid="article-social-wrapper" style={{ padding: 12 }}>
               <SocialMediaPanel articleId={articleId} />
+            </div>
+          )}
+          {rightTab === 'wppreview' && (
+            <div data-testid="article-wppreview-wrapper" style={{ height: '100%' }}>
+              <WordPressPreviewPanel articleId={articleId} />
             </div>
           )}
         </div>
