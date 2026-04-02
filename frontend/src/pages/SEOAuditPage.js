@@ -47,7 +47,7 @@ export default function SEOAuditPage() {
 
   const loadHistory = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const res = await axios.get(`${BACKEND_URL}/api/seo-audit/history`, { headers });
       setHistory(res.data || []);
@@ -59,7 +59,7 @@ export default function SEOAuditPage() {
     setLoading(true);
     setResult(null);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       // Start async audit
       const startRes = await axios.post(`${BACKEND_URL}/api/seo-audit`, { url }, { headers });

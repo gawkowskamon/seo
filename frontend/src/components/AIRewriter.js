@@ -32,7 +32,7 @@ export default function AIRewriter({ selectedText, onApply }) {
     setLoading(true);
     setResult('');
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const headers = { Authorization: `Bearer ${token}` };
       const startRes = await axios.post(`${BACKEND_URL}/api/rewrite`, {
         text: textToRewrite, style

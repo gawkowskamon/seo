@@ -100,7 +100,7 @@ const SurferSEOPanel = ({ article, onScoreUpdate, onArticleUpdate }) => {
     if (!article?.primary_keyword) return;
     setAnalyzing(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const { data } = await axios.post(`${API}/api/surfer/analyze-serp/async`, 
         { keyword: article.primary_keyword },
         { headers: { Authorization: `Bearer ${token}` } }
@@ -130,7 +130,7 @@ const SurferSEOPanel = ({ article, onScoreUpdate, onArticleUpdate }) => {
     if (!sd || !article?.id) return;
     setScoring(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const { data: score } = await axios.post(`${API}/api/surfer/score`,
         { article_id: article.id, surfer_data: sd },
         { headers: { Authorization: `Bearer ${token}` } }
@@ -146,14 +146,11 @@ const SurferSEOPanel = ({ article, onScoreUpdate, onArticleUpdate }) => {
     setOptimizing(true);
     setOptimizeResult(null);
     try {
-      const token = localStorage.getItem('token');
-      const { data } = await axios.post(`${API}/api/surfer/auto-optimize/${article.id}`, {},
-        { headers: { Authorization: `Bearer ${token}` } });
+      const { data } = await axios.post(`${API}/api/surfer/auto-optimize/${article.id}`, {});
       const jobId = data.job_id;
       const poll = setInterval(async () => {
         try {
-          const { data: status } = await axios.get(`${API}/api/surfer/auto-optimize/status/${jobId}`,
-            { headers: { Authorization: `Bearer ${token}` } });
+          const { data: status } = await axios.get(`${API}/api/surfer/auto-optimize/status/${jobId}`);
           if (status.status === 'completed') {
             clearInterval(poll);
             setOptimizeResult(status.result);
@@ -166,22 +163,28 @@ const SurferSEOPanel = ({ article, onScoreUpdate, onArticleUpdate }) => {
           }
         } catch { clearInterval(poll); setOptimizing(false); }
       }, 5000);
-    } catch { setOptimizing(false); toast.error('Blad optymalizacji'); }
+    } catch (err) {
+      console.error('Auto-optimize error:', err);
+      setOptimizing(false);
+      toast.error('Blad optymalizacji');
+    }
   }, [article]);
 
   const applyOptimization = useCallback(async () => {
     if (!optimizeResult || !article?.id) return;
     try {
-      const token = localStorage.getItem('token');
-      const { data } = await axios.post(`${API}/api/surfer/auto-optimize/apply/${article.id}`,
-        { optimized: optimizeResult },
-        { headers: { Authorization: `Bearer ${token}` } });
-      if (onArticleUpdate) onArticleUpdate(data.article);
+      await axios.post(`${API}/api/surfer/auto-optimize/apply/${article.id}`,
+        { optimized: optimizeResult });
+      // Reload article from server to get updated data
+      const { data: updated } = await axios.get(`${API}/api/articles/${article.id}`);
+      if (onArticleUpdate) onArticleUpdate(updated);
       setOptimizeResult(null);
-      toast.success('Zmiany zastosowane! Odswiez wynik SurferSEO.');
-      // Auto-rescore
+      toast.success('Zmiany zastosowane! Odswiezam wynik SurferSEO...');
       scoreArticle();
-    } catch { toast.error('Blad aplikowania zmian'); }
+    } catch (err) {
+      console.error('Apply optimization error:', err);
+      toast.error('Blad aplikowania zmian');
+    }
   }, [optimizeResult, article, onArticleUpdate, scoreArticle]);
 
   const toggle = (key) => setExpanded(p => ({ ...p, [key]: !p[key] }));

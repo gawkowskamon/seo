@@ -63,7 +63,7 @@ export default function KeywordAnalytics() {
 
   const loadHistory = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const res = await axios.get(`${BACKEND_URL}/api/keyword-analytics/history`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -85,7 +85,7 @@ export default function KeywordAnalytics() {
     setLoading(true);
     setResults(null);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const headers = { Authorization: `Bearer ${token}` };
       const startRes = await axios.post(`${BACKEND_URL}/api/keyword-analytics/analyze`,
         { keywords, industry: 'rachunkowość i podatki' }, { headers });

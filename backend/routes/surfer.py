@@ -702,7 +702,11 @@ async def apply_optimization(article_id: str, request: dict, user: dict = Depend
         update["faq"] = optimized["faq"]
 
     await db.articles.update_one({"id": article_id}, {"$set": update})
-    updated = await db.articles.find_one({"id": article_id}, {"_id": 0})
 
-    from shared import serialize_doc
-    return {"message": "Optymalizacja zastosowana", "article": serialize_doc(updated)}
+    return {
+        "message": "Optymalizacja zastosowana",
+        "meta_title": update.get("meta_title", ""),
+        "meta_description": update.get("meta_description", ""),
+        "sections_count": len(update.get("sections", [])),
+        "faq_count": len(update.get("faq", []))
+    }

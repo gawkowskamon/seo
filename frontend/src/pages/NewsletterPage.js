@@ -30,7 +30,7 @@ export default function NewsletterPage() {
 
   const loadArticles = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const res = await axios.get(`${BACKEND_URL}/api/articles`, { headers: { Authorization: `Bearer ${token}` } });
       setArticles(res.data || []);
     } catch (e) {}
@@ -38,7 +38,7 @@ export default function NewsletterPage() {
 
   const loadHistory = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const res = await axios.get(`${BACKEND_URL}/api/newsletter/list`, { headers: { Authorization: `Bearer ${token}` } });
       setHistory(res.data || []);
     } catch (e) {}
@@ -52,7 +52,7 @@ export default function NewsletterPage() {
     setLoading(true);
     setNewsletter(null);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const res = await axios.post(`${BACKEND_URL}/api/newsletter/generate`, {
         title: title || undefined,
         article_ids: selectedIds.length > 0 ? selectedIds : undefined,
@@ -91,7 +91,7 @@ export default function NewsletterPage() {
 
   const loadFromHistory = async (id) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const res = await axios.get(`${BACKEND_URL}/api/newsletter/${id}`, { headers: { Authorization: `Bearer ${token}` } });
       setNewsletter(res.data);
       setPreview(false);

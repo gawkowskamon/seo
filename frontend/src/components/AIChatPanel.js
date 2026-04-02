@@ -26,7 +26,7 @@ export default function AIChatPanel({ articleId }) {
     setSending(true);
     
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const res = await axios.post(`${BACKEND_URL}/api/chat/message`, {
         message: text,
         article_id: articleId || ''
@@ -46,7 +46,7 @@ export default function AIChatPanel({ articleId }) {
   const handleClear = async () => {
     setMessages([{ role: 'assistant', content: 'Historia czatu wyczyszczona. Jak moge pomoc?' }]);
     try { 
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       await axios.post(`${BACKEND_URL}/api/chat/clear`, {}, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       }); 

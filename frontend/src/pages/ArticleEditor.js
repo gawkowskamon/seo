@@ -158,7 +158,7 @@ const ArticleEditor = () => {
     if (!article) return;
     setScoring(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const response = await axios.post(`${BACKEND_URL}/api/articles/${articleId}/score`, {
         primary_keyword: article.primary_keyword || '',
@@ -379,7 +379,7 @@ const ArticleEditor = () => {
     if (!compUrl) { toast.error('Podaj URL konkurencji'); return; }
     setCompLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       // Start async competition analysis
       const startRes = await axios.post(`${BACKEND_URL}/api/competition/analyze`, {
@@ -753,7 +753,17 @@ const ArticleEditor = () => {
                 }}
                 onArticleUpdate={(updated) => {
                   setArticle(updated);
-                  if (updated.html_content) setEditorContent(updated.html_content);
+                  // Rebuild HTML from sections for visual editor
+                  if (updated.sections && editorContentRef.current) {
+                    const html = updated.sections.map(s => {
+                      let secHtml = `<h2>${s.heading || ''}</h2>${s.content || ''}`;
+                      (s.subsections || []).forEach(sub => {
+                        secHtml += `<h3>${sub.heading || ''}</h3>${sub.content || ''}`;
+                      });
+                      return secHtml;
+                    }).join('');
+                    editorContentRef.current.innerHTML = html;
+                  }
                 }}
               />
             </div>
