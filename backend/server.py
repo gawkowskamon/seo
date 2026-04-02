@@ -3966,6 +3966,317 @@ async def social_posts_status(job_id: str, user: dict = Depends(get_current_user
     return result
 
 
+# ============ Social Media Scheduling ============
+
+@api_router.post("/social/schedule")
+async def schedule_social_post(request: dict, user: dict = Depends(get_current_user)):
+    """Schedule a social media post for later publishing."""
+    platform = request.get("platform", "")
+    text = request.get("text", "")
+    scheduled_at = request.get("scheduled_at", "")
+    article_id = request.get("article_id", "")
+    hashtags = request.get("hashtags", [])
+
+    if not platform or not text or not scheduled_at:
+        raise HTTPException(status_code=400, detail="platform, text, scheduled_at required")
+
+    post = {
+        "id": str(uuid.uuid4()),
+        "user_id": user["id"],
+        "article_id": article_id,
+        "platform": platform,
+        "text": text,
+        "hashtags": hashtags,
+        "scheduled_at": scheduled_at,
+        "status": "scheduled",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.scheduled_posts.insert_one(post)
+    post.pop("_id", None)
+    return post
+
+
+@api_router.get("/social/scheduled")
+async def list_scheduled_posts(user: dict = Depends(get_current_user)):
+    """List all scheduled social media posts for the user."""
+    posts = await db.scheduled_posts.find(
+        {"user_id": user["id"]},
+        {"_id": 0}
+    ).sort("scheduled_at", 1).to_list(100)
+    return posts
+
+
+@api_router.delete("/social/scheduled/{post_id}")
+async def cancel_scheduled_post(post_id: str, user: dict = Depends(get_current_user)):
+    """Cancel a scheduled post."""
+    result = await db.scheduled_posts.delete_one({"id": post_id, "user_id": user["id"]})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Post not found")
+    return {"status": "cancelled", "id": post_id}
+
+
+@api_router.put("/social/scheduled/{post_id}/publish")
+async def mark_post_published(post_id: str, user: dict = Depends(get_current_user)):
+    """Mark a scheduled post as published."""
+    result = await db.scheduled_posts.update_one(
+        {"id": post_id, "user_id": user["id"]},
+        {"$set": {"status": "published", "published_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Post not found")
+    return {"status": "published", "id": post_id}
+
+
+# ============ Email Notifications ============
+
+@api_router.get("/notifications/settings")
+async def get_notification_settings(user: dict = Depends(get_current_user)):
+    """Get notification settings for current user."""
+    settings = await db.notification_settings.find_one(
+        {"user_id": user["id"]}, {"_id": 0}
+    )
+    if not settings:
+        settings = {
+            "user_id": user["id"],
+            "email_enabled": True,
+            "frequency": "weekly",
+            "notify_seo_drop": True,
+            "notify_article_age": True,
+            "article_age_days": 90,
+            "seo_drop_threshold": 10,
+            "notify_competition": True,
+        }
+        await db.notification_settings.insert_one({**settings})
+        settings.pop("_id", None)
+    return settings
+
+
+@api_router.put("/notifications/settings")
+async def update_notification_settings(request: dict, user: dict = Depends(get_current_user)):
+    """Update notification settings."""
+    allowed = ["email_enabled", "frequency", "notify_seo_drop", "notify_article_age",
+               "article_age_days", "seo_drop_threshold", "notify_competition"]
+    updates = {k: v for k, v in request.items() if k in allowed}
+    if not updates:
+        raise HTTPException(status_code=400, detail="No valid fields to update")
+    await db.notification_settings.update_one(
+        {"user_id": user["id"]},
+        {"$set": updates, "$setOnInsert": {"user_id": user["id"]}},
+        upsert=True
+    )
+    return await get_notification_settings(user=user)
+
+
+@api_router.post("/notifications/check-updates")
+async def check_article_updates(user: dict = Depends(get_current_user)):
+    """Check which articles need updating based on age and SEO score changes."""
+    settings = await db.notification_settings.find_one({"user_id": user["id"]}, {"_id": 0})
+    age_days = (settings or {}).get("article_age_days", 90)
+
+    articles = await db.articles.find(
+        {"user_id": user["id"]},
+        {"_id": 0, "id": 1, "title": 1, "created_at": 1, "updated_at": 1, "seo_score": 1, "surfer_score": 1, "primary_keyword": 1}
+    ).to_list(500)
+
+    notifications = []
+    now = datetime.now(timezone.utc)
+
+    for art in articles:
+        created = art.get("created_at") or art.get("updated_at", "")
+        try:
+            if isinstance(created, str):
+                created_dt = datetime.fromisoformat(created.replace("Z", "+00:00"))
+            else:
+                created_dt = created
+            days_old = (now - created_dt).days
+        except Exception:
+            days_old = 0
+
+        if days_old >= age_days:
+            notifications.append({
+                "type": "article_age",
+                "article_id": art.get("id"),
+                "title": art.get("title", "Bez tytułu"),
+                "message": f"Artykuł ma {days_old} dni — rozważ aktualizację treści",
+                "severity": "warning" if days_old < age_days * 2 else "critical",
+                "days_old": days_old,
+            })
+
+        seo_score = art.get("seo_score", {})
+        surfer_score = art.get("surfer_score", {})
+        pct = surfer_score.get("percentage") or seo_score.get("total_percentage", 0)
+        if pct and pct < 60:
+            notifications.append({
+                "type": "low_seo",
+                "article_id": art.get("id"),
+                "title": art.get("title", "Bez tytułu"),
+                "message": f"Wynik SEO: {pct}% — wymaga optymalizacji",
+                "severity": "critical" if pct < 40 else "warning",
+                "score": pct,
+            })
+
+    notifications.sort(key=lambda x: 0 if x["severity"] == "critical" else 1)
+    return {"notifications": notifications, "total": len(notifications)}
+
+
+@api_router.post("/notifications/send-test")
+async def send_test_notification(user: dict = Depends(get_current_user)):
+    """Send a test email notification (MOCK - logs instead of sending)."""
+    email = user.get("email", "unknown")
+    notification = {
+        "id": str(uuid.uuid4()),
+        "user_id": user["id"],
+        "email": email,
+        "subject": "Test powiadomienia — Kurdynowski SEO",
+        "body": "To jest testowe powiadomienie z systemu Kurdynowski SEO Writer. Powiadomienia email działają poprawnie.",
+        "status": "sent_mock",
+        "sent_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.notification_log.insert_one({**notification})
+    notification.pop("_id", None)
+    logging.info(f"[MOCK EMAIL] To: {email} | Subject: {notification['subject']}")
+    return {"status": "sent_mock", "message": f"Testowe powiadomienie 'wysłane' do {email} (tryb testowy)", "notification": notification}
+
+
+@api_router.get("/notifications/history")
+async def get_notification_history(user: dict = Depends(get_current_user)):
+    """Get notification history for user."""
+    logs = await db.notification_log.find(
+        {"user_id": user["id"]},
+        {"_id": 0}
+    ).sort("sent_at", -1).to_list(50)
+    return logs
+
+
+# ============ Competition Monitoring ============
+
+@api_router.post("/competition/monitor")
+async def add_competition_monitor(request: dict, user: dict = Depends(get_current_user)):
+    """Add a keyword to competition monitoring."""
+    keyword = request.get("keyword", "").strip()
+    if not keyword:
+        raise HTTPException(status_code=400, detail="keyword required")
+
+    existing = await db.competition_monitors.find_one(
+        {"user_id": user["id"], "keyword": keyword}, {"_id": 0}
+    )
+    if existing:
+        return existing
+
+    from llm_helper import llm_chat
+    prompt = f"""Przeprowadź analizę konkurencji dla frazy: "{keyword}" w Google (rynek polski, branża księgowość).
+
+Odpowiedz WYŁĄCZNIE JSON:
+{{
+    "keyword": "{keyword}",
+    "difficulty": 55,
+    "monthly_volume": 1800,
+    "top_results": [
+        {{
+            "position": 1,
+            "title": "Tytuł artykułu",
+            "url": "https://example.pl",
+            "domain": "example.pl",
+            "estimated_traffic": 500,
+            "content_score": 78
+        }}
+    ],
+    "content_gaps": [
+        "Temat lub aspekt nieporuszony przez konkurencję"
+    ],
+    "recommended_actions": [
+        "Konkretna rekomendacja działania"
+    ]
+}}
+Wygeneruj 5-8 wyników w top_results, 3-5 content_gaps, 3-5 recommended_actions."""
+
+    try:
+        resp = await llm_chat(prompt, system_message="Jesteś ekspertem SEO analizującym konkurencję w SERP. Odpowiadaj WYŁĄCZNIE JSON.", session_id=f"comp-mon-{hash(keyword)%100000}", timeout=120)
+        clean = resp.strip()
+        if clean.startswith("```"):
+            clean = re.sub(r'^```(?:json)?\s*', '', clean)
+            clean = re.sub(r'\s*```$', '', clean)
+        analysis = json.loads(clean)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Błąd analizy: {e}")
+
+    monitor = {
+        "id": str(uuid.uuid4()),
+        "user_id": user["id"],
+        "keyword": keyword,
+        "analysis": analysis,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "last_checked": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.competition_monitors.insert_one({**monitor})
+    monitor.pop("_id", None)
+    return monitor
+
+
+@api_router.get("/competition/monitors")
+async def list_competition_monitors(user: dict = Depends(get_current_user)):
+    """List all monitored keywords."""
+    monitors = await db.competition_monitors.find(
+        {"user_id": user["id"]},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(50)
+    return monitors
+
+
+@api_router.delete("/competition/monitors/{monitor_id}")
+async def delete_competition_monitor(monitor_id: str, user: dict = Depends(get_current_user)):
+    """Remove a keyword from monitoring."""
+    result = await db.competition_monitors.delete_one({"id": monitor_id, "user_id": user["id"]})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Monitor not found")
+    return {"status": "deleted", "id": monitor_id}
+
+
+@api_router.post("/competition/monitors/{monitor_id}/refresh")
+async def refresh_competition_monitor(monitor_id: str, user: dict = Depends(get_current_user)):
+    """Re-analyze competition for a monitored keyword."""
+    monitor = await db.competition_monitors.find_one(
+        {"id": monitor_id, "user_id": user["id"]}, {"_id": 0}
+    )
+    if not monitor:
+        raise HTTPException(status_code=404, detail="Monitor not found")
+
+    keyword = monitor["keyword"]
+    from llm_helper import llm_chat
+    prompt = f"""Przeprowadź aktualną analizę konkurencji dla frazy: "{keyword}" w Google (rynek polski).
+
+Odpowiedz WYŁĄCZNIE JSON:
+{{
+    "keyword": "{keyword}",
+    "difficulty": 55,
+    "monthly_volume": 1800,
+    "top_results": [
+        {{"position": 1, "title": "Tytuł", "url": "https://example.pl", "domain": "example.pl", "estimated_traffic": 500, "content_score": 78}}
+    ],
+    "content_gaps": ["Aspekt nieporuszony"],
+    "recommended_actions": ["Rekomendacja"]
+}}
+Wygeneruj 5-8 wyników, 3-5 luk, 3-5 rekomendacji."""
+
+    try:
+        resp = await llm_chat(prompt, system_message="Ekspert SEO. Odpowiadaj WYŁĄCZNIE JSON.", session_id=f"comp-ref-{hash(keyword)%100000}", timeout=120)
+        clean = resp.strip()
+        if clean.startswith("```"):
+            clean = re.sub(r'^```(?:json)?\s*', '', clean)
+            clean = re.sub(r'\s*```$', '', clean)
+        analysis = json.loads(clean)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Błąd analizy: {e}")
+
+    await db.competition_monitors.update_one(
+        {"id": monitor_id},
+        {"$set": {"analysis": analysis, "last_checked": datetime.now(timezone.utc).isoformat()}}
+    )
+    monitor["analysis"] = analysis
+    monitor["last_checked"] = datetime.now(timezone.utc).isoformat()
+    return monitor
+
+
 # Include the router in the main app
 app.include_router(api_router)
 

@@ -24,6 +24,9 @@ import PerformanceDashboard from './pages/PerformanceDashboard';
 import AIArticleSuggestions from './pages/AIArticleSuggestions';
 import KeywordResearchPage from './pages/KeywordResearchPage';
 import URLAuditPage from './pages/URLAuditPage';
+import SocialSchedulePage from './pages/SocialSchedulePage';
+import NotificationsPage from './pages/NotificationsPage';
+import CompetitionMonitorPage from './pages/CompetitionMonitorPage';
 import AuthPage from './pages/AuthPage';
 import './App.css';
 
@@ -144,6 +147,15 @@ function AppRoutes() {
       } />
       <Route path="/audyt-url" element={
         <ProtectedLayout><URLAuditPage /></ProtectedLayout>
+      } />
+      <Route path="/social-media" element={
+        <ProtectedLayout><SocialSchedulePage /></ProtectedLayout>
+      } />
+      <Route path="/powiadomienia" element={
+        <ProtectedLayout><NotificationsPage /></ProtectedLayout>
+      } />
+      <Route path="/konkurencja" element={
+        <ProtectedLayout><CompetitionMonitorPage /></ProtectedLayout>
       } />
       <Route path="/admin/users" element={
         <ProtectedLayout requireAdmin><AdminUsers /></ProtectedLayout>
