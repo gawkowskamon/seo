@@ -12,9 +12,10 @@ FARM (FastAPI, React, MongoDB) with Emergent LLM Key for AI (Gemini + OpenAI)
 - SurferSEO scoring panel (SERP analysis, keyword metrics, NLP terms)
 - AI suggestions for topics
 - Meta regeneration (meta title/description, FAQ)
-- Image generation (gemini-3.1-flash-image-preview)
+- Image generation (gemini-3.1-flash-image-preview) — single + batch (4 variants)
 - PDF/HTML/WordPress export with styled inline CSS
 - WordPress REST API publishing + WordPress Plugin generator
+- **WordPress Preview panel** in Article Editor (1:1 visual parity)
 - JWT auth, admin role, auto-seeded admin account
 - Content Calendar with scheduled WordPress publishing
 - AI Chat Assistant, AI Rewriter, Newsletter Generator
@@ -47,7 +48,7 @@ FARM (FastAPI, React, MongoDB) with Emergent LLM Key for AI (Gemini + OpenAI)
     auth.py          # Login, register, user management
     competition_monitor.py
     content.py       # WordPress settings, publishing, rewrite, newsletter
-    images.py        # Image generation
+    images.py        # Image generation (single + batch)
     notifications.py
     seo_tools.py     # SEO audit, keyword analytics
     social.py        # Social media scheduling
@@ -59,9 +60,11 @@ FARM (FastAPI, React, MongoDB) with Emergent LLM Key for AI (Gemini + OpenAI)
 
 ## Current Status (April 2, 2026)
 - All features functional
-- Backend refactoring complete (10 route modules)
+- Image generation fixed (datetime timezone bug in status polling)
 - WordPress export has full inline styling matching in-app editor
-- SurferSEO, meta regeneration, all async endpoints verified working
+- WordPress Preview panel added to Article Editor
+- SurferSEO, meta regeneration verified working
+- Test iterations 32 & 33: 100% pass rate
 
 ## Backlog
 - [ ] A/B Testing for titles (P2)
