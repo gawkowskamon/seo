@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Save, Eye, Code, BarChart3, Share2, ChevronLeft, Loader2, RefreshCw, Wand2, Cloud, CloudOff, Image as ImageIcon, Sparkles, Link2, CalendarClock, MessageSquare, PenLine, Shield, FileCheck, Search, FlaskConical, History } from 'lucide-react';
+import { Save, Eye, Code, BarChart3, Share2, ChevronLeft, Loader2, RefreshCw, Wand2, Cloud, CloudOff, Image as ImageIcon, Sparkles, Link2, CalendarClock, MessageSquare, PenLine, Shield, FileCheck, Search, FlaskConical, History, TrendingUp } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { toast } from 'sonner';
 import axios from 'axios';
 import SEOScorePanel from '../components/SEOScorePanel';
+import SurferSEOPanel from '../components/SurferSEOPanel';
 import ExportPanel from '../components/ExportPanel';
 import FAQEditor from '../components/FAQEditor';
 import TOCPanel from '../components/TOCPanel';
@@ -38,7 +39,7 @@ const ArticleEditor = () => {
   const editorContentRef = useRef(null);
   
   const [editorTab, setEditorTab] = useState('visual');
-  const [rightTab, setRightTab] = useState('seo');
+  const [rightTab, setRightTab] = useState('surfer');
   const [htmlContent, setHtmlContent] = useState('');
   
   const [metaTitle, setMetaTitle] = useState('');
@@ -595,11 +596,19 @@ const ArticleEditor = () => {
       <div className="editor-right-panel">
         <div className="right-panel-tabs">
           <button 
+            className={`right-panel-tab ${rightTab === 'surfer' ? 'active' : ''}`}
+            onClick={() => setRightTab('surfer')}
+            data-testid="surfer-seo-tab"
+          >
+            <TrendingUp size={14} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
+            SurferSEO
+          </button>
+          <button 
             className={`right-panel-tab ${rightTab === 'seo' ? 'active' : ''}`}
             onClick={() => setRightTab('seo')}
           >
             <BarChart3 size={14} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
-            SEO
+            SEO Basic
           </button>
           <button 
             className={`right-panel-tab ${rightTab === 'assistant' ? 'active' : ''}`}
@@ -726,6 +735,16 @@ const ArticleEditor = () => {
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto' }}>
+          {rightTab === 'surfer' && (
+            <div data-testid="surfer-seo-panel-container">
+              <SurferSEOPanel 
+                article={article}
+                onScoreUpdate={(score) => {
+                  setArticle(prev => ({...prev, surfer_score: score, seo_score: { percentage: score.percentage, breakdown: score.metrics, total_score: score.total_score, total_max: score.total_max }}));
+                }}
+              />
+            </div>
+          )}
           {rightTab === 'seo' && (
             <div data-testid="article-seo-panel">
               <SEOScorePanel 
