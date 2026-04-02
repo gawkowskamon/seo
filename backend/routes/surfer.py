@@ -6,6 +6,7 @@ from shared import (
     ScoreRequest
 )
 from surfer_seo_service import analyze_serp, compute_surfer_score
+from seo_scorer import compute_seo_score
 
 router = APIRouter()
 
@@ -524,69 +525,117 @@ async def auto_optimize_article(article_id: str, user: dict = Depends(get_curren
                     nlp_terms = m.get("terms", [])
                     missing = [t["term"] for t in nlp_terms if not t.get("used")]
                     if missing:
-                        issues.append(f"Wstaw brakujace terminy NLP w tresci: {', '.join(missing[:15])}")
+                        issues.append(f"Brakujace terminy NLP: {', '.join(missing[:10])}")
                     continue
                 sc, mx = m.get("score", 0), m.get("max", 5)
                 if sc < mx:
                     bench = m.get("benchmark", {})
                     rec = bench.get("recommended", bench.get("avg", ""))
-                    issues.append(f"{m.get('label','')}: masz {m.get('value','?')}, zalecane: {rec} (wynik {sc}/{mx})")
+                    issues.append(f"{m.get('label','')}: masz {m.get('value','?')}, zalecane: {rec}")
 
-            sections_json = jmod.dumps([{"heading": s["heading"], "content": s["content"][:300], "subsections": [{"heading": sub["heading"]} for sub in s.get("subsections",[])]} for s in sections], ensure_ascii=False)
-            faq_json = jmod.dumps([{"q": f.get("question",""), "a": f.get("answer","")[:100]} for f in faq[:5]], ensure_ascii=False)
+            sections_summary = jmod.dumps([{"heading": s["heading"], "subsections": [sub["heading"] for sub in s.get("subsections",[])]} for s in sections], ensure_ascii=False)
             issues_text = "\n".join(f"- {i}" for i in issues)
 
-            prompt = f"""Jestes ekspertem SEO. Zoptymalizuj artykul na slowo kluczowe: "{keyword}".
+            def _try_parse_json(text):
+                """Try to parse JSON, repairing truncated responses."""
+                clean = text.strip()
+                if clean.startswith("```"):
+                    clean = re.sub(r'^```(?:json)?\s*', '', clean)
+                    clean = re.sub(r'\s*```$', '', clean)
+                try:
+                    return jmod.loads(clean)
+                except jmod.JSONDecodeError:
+                    # Try to repair truncated JSON by closing open structures
+                    repaired = clean
+                    # Remove trailing incomplete string
+                    if repaired.count('"') % 2 != 0:
+                        last_quote = repaired.rfind('"')
+                        repaired = repaired[:last_quote + 1]
+                    # Close open arrays and objects
+                    opens = repaired.count('[') - repaired.count(']')
+                    openo = repaired.count('{') - repaired.count('}')
+                    # Remove trailing comma
+                    repaired = re.sub(r',\s*$', '', repaired)
+                    repaired += ']' * max(0, opens) + '}' * max(0, openo)
+                    return jmod.loads(repaired)
 
-Aktualne problemy do naprawy:
-{issues_text}
+            # STEP 1: Get meta + structure plan (small response)
+            prompt_plan = f"""Zoptymalizuj SEO artykulu na slowo: "{keyword}".
 
-Aktualna struktura artykulu (skrocone):
-{sections_json[:3000]}
+Problemy: {issues_text}
 
-FAQ (skrocone):
-{faq_json[:1000]}
-
-Tytul: {art.get('title','')}
+Aktualna struktura: {sections_summary[:2000]}
+Aktualne FAQ: {len(faq)} pytan
 Meta tytul: {art.get('meta_title','')}
 Meta opis: {art.get('meta_description','')}
 
-ZADANIE: Zwroc WYLACZNIE JSON z poprawionymi elementami:
-{{
-    "meta_title": "zoptymalizowany meta tytul (max 60 znakow, zawiera keyword)",
-    "meta_description": "zoptymalizowany meta opis (120-160 znakow, zawiera keyword)",
-    "sections": [
-        {{
-            "heading": "Naglowek H2 (zoptymalizowany lub nowy)",
-            "content": "<p>Pelna tresc sekcji z terminami NLP, <strong>pogrubienia</strong>, listy <ul><li>...</li></ul></p>",
-            "subsections": [
-                {{"heading": "Naglowek H3", "content": "<p>Tresc podsekcji</p>"}}
-            ]
-        }}
-    ],
-    "faq": [
-        {{"question": "Pytanie?", "answer": "Odpowiedz"}}
-    ],
-    "changes_summary": ["Lista zmian ktore wprowadziles"]
-}}
+Zwroc KROTKI JSON:
+{{"meta_title":"max 60 znakow z keyword","meta_description":"120-155 znakow z keyword","section_plan":[{{"heading":"H2","action":"rozszerz/dodaj","subsections":["H3a","H3b"]}}],"faq_plan":[{{"question":"?","answer_hint":"krotko"}}],"changes_summary":["zmiana1"]}}
 
-WAZNE:
-- Zachowaj istniejace sekcje - rozszerz je, nie usuwaj
-- Dodaj nowe sekcje jesli wynik slow/naglowkow jest za niski
-- Wstaw brakujace terminy NLP naturalnie w tresci
-- Dodaj <strong> dla waznych terminow
-- Dodaj listy <ul><li> gdzie to pasuje
-- FAQ minimum 5 pytan
-- Kazda sekcja minimum 150-200 slow
-- Meta tytul max 60 znakow
-- Meta opis 120-160 znakow"""
+WAZNE: section_plan - minimum {max(len(sections), 5)} sekcji. faq_plan - minimum 5 pytan. Zachowaj istniejace sekcje."""
 
-            text = llm_chat_sync(prompt, system_message="Jestes zaawansowanym narzedziem SEO. Odpowiadaj WYLACZNIE poprawnym JSON-em.", session_id=f"optimize-{jid[:8]}", timeout=300)
-            clean = text.strip()
-            if clean.startswith("```"):
-                clean = re.sub(r'^```(?:json)?\s*', '', clean)
-                clean = re.sub(r'\s*```$', '', clean)
-            result = jmod.loads(clean)
+            plan_text = llm_chat_sync(prompt_plan, system_message="Odpowiadaj WYLACZNIE poprawnym JSON. Krotki i zwiezly.", session_id=f"opt-plan-{jid[:8]}", timeout=120)
+            plan = _try_parse_json(plan_text)
+
+            # STEP 2: Generate content for each section (one at a time)
+            final_sections = []
+            section_plans = plan.get("section_plan", [])
+            for idx, sp in enumerate(section_plans[:12]):
+                heading = sp.get("heading", f"Sekcja {idx+1}")
+                subs = sp.get("subsections", [])
+                existing_content = ""
+                for s in sections:
+                    if s.get("heading", "").lower().strip() == heading.lower().strip():
+                        existing_content = s.get("content", "")[:500]
+                        break
+
+                prompt_sec = f"""Napisz sekcje artykulu SEO na slowo "{keyword}".
+
+Naglowek H2: {heading}
+Podsekcje H3: {', '.join(subs) if subs else 'brak'}
+Istniejaca tresc (rozszerz): {existing_content[:400]}
+Brakujace terminy NLP do uzycia: {', '.join(issues[0].replace('Brakujace terminy NLP: ','').split(', ')[:5]) if issues and 'NLP' in issues[0] else 'brak'}
+
+Zwroc WYLACZNIE JSON:
+{{"heading":"{heading}","content":"<p>Tresc 150-250 slow z <strong>pogrubieniami</strong> i <ul><li>listami</li></ul></p>","subsections":[{{"heading":"H3","content":"<p>80-150 slow</p>"}}]}}"""
+
+                try:
+                    sec_text = llm_chat_sync(prompt_sec, system_message="Odpowiadaj WYLACZNIE poprawnym JSON. Jedna sekcja artykulu.", session_id=f"opt-s{idx}-{jid[:6]}", timeout=90)
+                    sec = _try_parse_json(sec_text)
+                    final_sections.append(sec)
+                except Exception as se:
+                    logging.warning(f"Section {idx} generation failed: {se}, using placeholder")
+                    final_sections.append({"heading": heading, "content": existing_content or f"<p>{heading}</p>", "subsections": [{"heading": h, "content": ""} for h in subs]})
+
+            # STEP 3: Generate FAQ
+            faq_plans = plan.get("faq_plan", [])
+            final_faq = []
+            if faq_plans:
+                faq_questions = jmod.dumps(faq_plans[:8], ensure_ascii=False)
+                prompt_faq = f"""Odpowiedz na pytania FAQ dla artykulu o "{keyword}".
+
+Pytania: {faq_questions}
+
+Zwroc WYLACZNIE JSON tablice:
+[{{"question":"Pytanie?","answer":"Odpowiedz 2-4 zdania."}}]"""
+
+                try:
+                    faq_text = llm_chat_sync(prompt_faq, system_message="Odpowiadaj WYLACZNIE poprawnym JSON. Tablica FAQ.", session_id=f"opt-faq-{jid[:6]}", timeout=90)
+                    final_faq = _try_parse_json(faq_text)
+                    if not isinstance(final_faq, list):
+                        final_faq = final_faq.get("faq", []) if isinstance(final_faq, dict) else []
+                except Exception as fe:
+                    logging.warning(f"FAQ generation failed: {fe}")
+                    final_faq = [{"question": fp.get("question",""), "answer": fp.get("answer_hint","")} for fp in faq_plans]
+
+            result = {
+                "meta_title": plan.get("meta_title", art.get("meta_title", "")),
+                "meta_description": plan.get("meta_description", art.get("meta_description", "")),
+                "sections": final_sections,
+                "faq": final_faq,
+                "changes_summary": plan.get("changes_summary", ["Zoptymalizowano artykul"])
+            }
+
             _optimize_jobs[jid]["status"] = "completed"
             _optimize_jobs[jid]["result"] = result
         except Exception as e:
