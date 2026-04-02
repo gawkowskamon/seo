@@ -11,6 +11,11 @@ from shared import (
 
 router = APIRouter()
 
+# In-memory job stores for async operations
+_auto_meta_jobs = {}
+_schedule_jobs = {}
+_social_posts_jobs = {}
+
 # --- Bulk Article Operations ---
 
 

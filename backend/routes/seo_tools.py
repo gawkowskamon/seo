@@ -15,6 +15,14 @@ from tpay_service import get_all_plans, get_plan, create_tpay_transaction, calcu
 
 router = APIRouter()
 
+# In-memory job stores for async operations
+_plagiarism_jobs = {}
+_verification_jobs = {}
+_auto_competition_jobs = {}
+_ab_title_jobs = {}
+_keyword_analytics_jobs = {}
+_rewrite_jobs = {}
+
 # --- SEO Audit ---
 
 

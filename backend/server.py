@@ -51,13 +51,15 @@ from routes.social import router as social_router
 from routes.notifications import router as notifications_router
 from routes.competition_monitor import router as competition_router
 
+# Include sub-routers - ORDER MATTERS: specific routes before parameterized ones
+# Routes with /articles/... static paths must be included BEFORE /articles/{article_id}
 api_router.include_router(auth_router)
-api_router.include_router(articles_router)
+api_router.include_router(ai_features_router)    # /articles/auto-meta, /articles/social-posts etc.
+api_router.include_router(seo_tools_router)       # /articles/ai-suggestions
+api_router.include_router(articles_router)        # /articles/{article_id} - must be LAST
 api_router.include_router(surfer_router)
 api_router.include_router(images_router)
 api_router.include_router(content_router)
-api_router.include_router(seo_tools_router)
-api_router.include_router(ai_features_router)
 api_router.include_router(social_router)
 api_router.include_router(notifications_router)
 api_router.include_router(competition_router)

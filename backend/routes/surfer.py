@@ -9,6 +9,9 @@ from surfer_seo_service import analyze_serp, compute_surfer_score
 
 router = APIRouter()
 
+# In-memory job store for async SERP analysis
+_surfer_jobs = {}
+
 # --- SEO Scoring ---
 
 @router.post("/surfer/analyze-serp")
@@ -111,7 +114,7 @@ WAŻNE: Wygeneruj 20-30 NLP terms z importance wysoka/średnia/niska, 5-8 konkur
             _surfer_jobs[jid]["status"] = "failed"
             _surfer_jobs[jid]["error"] = str(e)
     
-    _background_executor.submit(_run, job_id, keyword)
+    executor.submit(_run, job_id, keyword)
     return {"job_id": job_id, "status": "running"}
 
 
