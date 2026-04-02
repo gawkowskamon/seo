@@ -10,12 +10,14 @@ FARM (FastAPI, React, MongoDB) with Emergent LLM Key for AI (Gemini + OpenAI)
 - Article generation with AI (async, background jobs)
 - Visual editor with formatting toolbar + HTML view
 - SurferSEO scoring panel (SERP analysis, keyword metrics, NLP terms)
+- **Auto-optimize based on SurferSEO** — AI automatically applies recommendations
 - AI suggestions for topics
 - Meta regeneration (meta title/description, FAQ)
 - Image generation (gemini-3.1-flash-image-preview) — single + batch (4 variants)
 - PDF/HTML/WordPress export with styled inline CSS
+- **SEO Report PDF export** — downloadable PDF with SERP preview, metrics, readiness checklist
 - WordPress REST API publishing + WordPress Plugin generator
-- **WordPress Preview panel** in Article Editor with SEO comparison (SERP preview, meta fields, readiness checklist)
+- WordPress Preview panel in Article Editor with SEO comparison
 - JWT auth, admin role, auto-seeded admin account
 - Content Calendar with scheduled WordPress publishing
 - AI Chat Assistant, AI Rewriter, Newsletter Generator
@@ -30,6 +32,7 @@ FARM (FastAPI, React, MongoDB) with Emergent LLM Key for AI (Gemini + OpenAI)
 - URL Audit (standalone page)
 - SERP Analysis (async with polling)
 - Score computation (9 metrics)
+- **Auto-optimize with AI** (async, applies all recommendations)
 
 ## Additional Features (Implemented)
 - Social Media Scheduling
@@ -52,7 +55,7 @@ FARM (FastAPI, React, MongoDB) with Emergent LLM Key for AI (Gemini + OpenAI)
     notifications.py
     seo_tools.py     # SEO audit, keyword analytics
     social.py        # Social media scheduling
-    surfer.py        # SurferSEO endpoints
+    surfer.py        # SurferSEO endpoints + PDF report + auto-optimize
 ```
 
 ## Key Credentials
@@ -60,10 +63,11 @@ FARM (FastAPI, React, MongoDB) with Emergent LLM Key for AI (Gemini + OpenAI)
 
 ## Current Status (April 2, 2026)
 - All features functional
-- Image generation fixed (datetime timezone bug in status polling)
-- WordPress Preview with SEO comparison added to editor
-- SurferSEO, meta regeneration verified working
-- Test iterations 32 & 33: 100% pass rate
+- SEO Report PDF export working
+- Auto-optimize with AI working (async, ~45s processing)
+- Image generation fixed
+- WordPress Preview with SEO comparison
+- Test iterations 32-34: All passing
 
 ## Backlog
 - [ ] A/B Testing for titles (P2)
