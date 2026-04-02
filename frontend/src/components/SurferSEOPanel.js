@@ -88,6 +88,8 @@ const SurferSEOPanel = ({ article, onScoreUpdate, onArticleUpdate }) => {
   const [scoring, setScoring] = useState(false);
   const [optimizing, setOptimizing] = useState(false);
   const [optimizeResult, setOptimizeResult] = useState(null);
+  const [loopRunning, setLoopRunning] = useState(false);
+  const [loopProgress, setLoopProgress] = useState(null);
   const [expanded, setExpanded] = useState({ metrics: true, nlp: true, competitors: false, outline: false });
   const [nlpFilter, setNlpFilter] = useState('all');
 
@@ -187,6 +189,43 @@ const SurferSEOPanel = ({ article, onScoreUpdate, onArticleUpdate }) => {
     }
   }, [optimizeResult, article, onArticleUpdate, scoreArticle]);
 
+  const startOptimizeLoop = useCallback(async () => {
+    if (!article?.id) return;
+    setLoopRunning(true);
+    setLoopProgress(null);
+    try {
+      const { data } = await axios.post(`${API}/api/surfer/optimize-loop/${article.id}`, {});
+      const jobId = data.job_id;
+      const poll = setInterval(async () => {
+        try {
+          const { data: status } = await axios.get(`${API}/api/surfer/optimize-loop/status/${jobId}`);
+          setLoopProgress(status);
+          if (status.status === 'completed') {
+            clearInterval(poll);
+            setLoopRunning(false);
+            // Reload article
+            const { data: updated } = await axios.get(`${API}/api/articles/${article.id}`);
+            if (onArticleUpdate) onArticleUpdate(updated);
+            if (updated.surfer_score) {
+              setSurferScore(updated.surfer_score);
+              if (onScoreUpdate) onScoreUpdate(updated.surfer_score);
+            }
+            const finalScore = status.final_score || 0;
+            toast.success(`Optymalizacja zakonczona! Wynik: ${finalScore}%`);
+          } else if (status.status === 'failed') {
+            clearInterval(poll);
+            setLoopRunning(false);
+            toast.error('Blad: ' + (status.error || ''));
+          }
+        } catch { clearInterval(poll); setLoopRunning(false); }
+      }, 5000);
+    } catch (err) {
+      console.error('Loop optimize error:', err);
+      setLoopRunning(false);
+      toast.error('Blad uruchamiania optymalizacji');
+    }
+  }, [article, onArticleUpdate, onScoreUpdate]);
+
   const toggle = (key) => setExpanded(p => ({ ...p, [key]: !p[key] }));
 
   // No data yet — show start screen
@@ -233,13 +272,19 @@ const SurferSEOPanel = ({ article, onScoreUpdate, onArticleUpdate }) => {
                 Re-analiza
               </Button>
             </div>
-            {/* Auto-optimize button */}
-            <div style={{ marginTop: 10 }}>
-              <Button size="sm" onClick={autoOptimize} disabled={optimizing || !surferScore}
-                className="gap-1 w-full" data-testid="surfer-auto-optimize-btn"
-                style={{ background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)', color: '#fff', border: 'none' }}>
+            {/* Auto-optimize buttons */}
+            <div style={{ marginTop: 10, display: 'flex', gap: 6 }}>
+              <Button size="sm" onClick={autoOptimize} disabled={optimizing || loopRunning || !surferScore}
+                className="gap-1" data-testid="surfer-auto-optimize-btn"
+                style={{ background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)', color: '#fff', border: 'none', flex: 1 }}>
                 {optimizing ? <Loader2 size={13} className="animate-spin" /> : <Wand2 size={13} />}
-                {optimizing ? 'Optymalizuje...' : 'Wdroz zalecenia AI'}
+                {optimizing ? 'Optymalizuje...' : '1x Optymalizuj'}
+              </Button>
+              <Button size="sm" onClick={startOptimizeLoop} disabled={optimizing || loopRunning || !surferScore}
+                className="gap-1" data-testid="surfer-loop-optimize-btn"
+                style={{ background: 'linear-gradient(135deg, #f59e0b, #ef4444)', color: '#fff', border: 'none', flex: 1 }}>
+                {loopRunning ? <Loader2 size={13} className="animate-spin" /> : <Target size={13} />}
+                {loopRunning ? 'Optymalizuje...' : 'Do 80%+'}
               </Button>
             </div>
           </>
@@ -278,6 +323,41 @@ const SurferSEOPanel = ({ article, onScoreUpdate, onArticleUpdate }) => {
               <X size={13} /> Odrzuc
             </Button>
           </div>
+        </div>
+      )}
+
+      {/* Loop optimization progress */}
+      {loopProgress && (loopRunning || loopProgress.status === 'completed') && (
+        <div style={{ padding: '12px 16px', background: loopProgress.status === 'completed' ? 'hsl(142, 50%, 96%)' : 'hsl(35, 80%, 97%)', borderBottom: '2px solid ' + (loopProgress.status === 'completed' ? 'hsl(142, 40%, 80%)' : 'hsl(35, 80%, 80%)') }} data-testid="surfer-loop-progress">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+            <Target size={14} style={{ color: loopProgress.status === 'completed' ? 'hsl(142, 60%, 35%)' : '#f59e0b' }} />
+            <span style={{ fontSize: 13, fontWeight: 700, color: loopProgress.status === 'completed' ? 'hsl(142, 50%, 25%)' : 'hsl(35, 60%, 25%)' }}>
+              {loopProgress.status === 'completed' ? 'Optymalizacja zakonczona!' : `Iteracja ${loopProgress.current_iteration || 1}...`}
+            </span>
+            {loopProgress.final_score > 0 && (
+              <span style={{
+                marginLeft: 'auto', fontSize: 14, fontWeight: 800,
+                color: loopProgress.final_score >= 80 ? 'hsl(142, 60%, 35%)' : loopProgress.final_score >= 60 ? '#f59e0b' : 'hsl(0, 70%, 50%)'
+              }}>{loopProgress.final_score}%</span>
+            )}
+          </div>
+          {loopProgress.iterations?.map((it, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0', fontSize: 11 }}>
+              {it.phase === 'done' || it.phase === 'target_reached' ? (
+                <CheckCircle2 size={11} style={{ color: 'hsl(142, 60%, 40%)', flexShrink: 0 }} />
+              ) : (
+                <Loader2 size={11} className="animate-spin" style={{ color: '#f59e0b', flexShrink: 0 }} />
+              )}
+              <span style={{ color: 'hsl(215, 16%, 35%)' }}>
+                Iteracja {it.iteration}: {it.score_before}%{it.score_after != null ? ` → ${it.score_after}%` : ''}
+              </span>
+            </div>
+          ))}
+          {loopProgress.status === 'completed' && (
+            <Button size="sm" variant="ghost" onClick={() => setLoopProgress(null)} className="gap-1 mt-2" style={{ fontSize: 11 }}>
+              <X size={11} /> Zamknij
+            </Button>
+          )}
         </div>
       )}
 

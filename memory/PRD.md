@@ -10,36 +10,30 @@ FARM (FastAPI, React, MongoDB) with Emergent LLM Key for AI (Gemini + OpenAI)
 - Article generation with AI (async, background jobs)
 - Visual editor with formatting toolbar + HTML view
 - SurferSEO scoring panel (SERP analysis, keyword metrics, NLP terms)
-- Auto-optimize with AI (multi-step: plan → sections → FAQ)
-- Basic SEO scoring (keyword density, meta, headings, content length)
-- AI suggestions for topics
-- Meta regeneration (meta title/description, FAQ)
+- **Iterative auto-optimize** (AI loop targeting 80%+ SurferSEO score)
+- Single-step auto-optimize (one iteration)
+- Basic SEO scoring, AI topic suggestions, Meta regeneration
 - Image generation (gemini-3.1-flash-image-preview) — single + batch
 - PDF/HTML/WordPress export with styled inline CSS
 - SEO Report PDF export
 - WordPress Preview panel with SEO comparison
-- JWT auth, admin role, auto-seeded admin account
-- Content Calendar with scheduled WordPress publishing
-- AI Chat Assistant, AI Rewriter, Newsletter Generator
-- Dark Mode toggle, Keyword Analytics Dashboard
-- Article import from URL + WordPress import
-- Internal link building, Social Media Scheduling
-- Email Notifications, Competition Monitor
+- JWT auth, admin role, Content Calendar, AI Chat, AI Rewriter, Newsletter
+- Dark Mode, Keyword Analytics, Article import, Internal linking
+- Social Media Scheduling, Notifications, Competition Monitor
 - Subscription system (TPay - MOCKED)
 
 ## Key Technical Notes
-- Auth token stored as `auth_token` in localStorage (AuthContext.js)
-- Axios interceptor in App.js reads `auth_token` for global auth
-- Auto-optimize uses multi-step LLM calls to avoid JSON truncation
-- Visual editor content managed via ref (editorContentRef), not state
+- Auth token: `auth_token` in localStorage (AuthContext.js)
+- Iterative optimize uses synchronous pymongo in background thread (avoids Motor event loop issues)
+- Visual editor managed via editorContentRef (not state)
 
 ## Key Credentials
 - Admin: monika.gawkowska@kurdynowski.pl / MonZuz8180!
 
 ## Current Status (April 2, 2026)
 - All features functional
-- Auto-optimize SurferSEO: working end-to-end (optimize → review → apply)
-- Auth token key fixed across all components
+- Iterative optimization: 55% → 85% in one iteration (target 80%+)
+- Test iterations 32-35 all passing
 
 ## Backlog
 - [ ] A/B Testing for titles (P2)

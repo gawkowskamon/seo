@@ -710,3 +710,271 @@ async def apply_optimization(article_id: str, request: dict, user: dict = Depend
         "sections_count": len(update.get("sections", [])),
         "faq_count": len(update.get("faq", []))
     }
+
+
+# In-memory store for iterative optimization
+_loop_optimize_jobs = {}
+
+
+@router.post("/surfer/optimize-loop/{article_id}")
+async def start_optimize_loop(article_id: str, user: dict = Depends(get_current_user)):
+    """Start iterative optimization loop targeting 80%+ SurferSEO score."""
+    article = await db.articles.find_one({"id": article_id}, {"_id": 0})
+    if not article:
+        raise HTTPException(status_code=404, detail="Article not found")
+
+    surfer_data = article.get("surfer_data")
+    if not surfer_data:
+        raise HTTPException(status_code=400, detail="Najpierw uruchom analize SERP")
+
+    job_id = str(uuid.uuid4())
+    _loop_optimize_jobs[job_id] = {
+        "status": "running",
+        "article_id": article_id,
+        "iterations": [],
+        "current_iteration": 0,
+        "target_score": 80,
+        "final_score": 0
+    }
+
+    def _run_loop(jid, art_id, s_data, user_id):
+        import json as jmod
+        from llm_helper import llm_chat_sync
+        from pymongo import MongoClient
+
+        # Use synchronous pymongo to avoid async event loop issues
+        sync_client = MongoClient(os.environ.get('MONGO_URL'), serverSelectionTimeoutMS=5000)
+        sync_db = sync_client[os.environ.get('DB_NAME', 'seo_article_writer')]
+
+        MAX_ITERATIONS = 4
+        TARGET = 80
+
+        def _try_parse_json(text):
+            clean = text.strip()
+            if clean.startswith("```"):
+                clean = re.sub(r'^```(?:json)?\s*', '', clean)
+                clean = re.sub(r'\s*```$', '', clean)
+            try:
+                return jmod.loads(clean)
+            except jmod.JSONDecodeError:
+                repaired = clean
+                if repaired.count('"') % 2 != 0:
+                    repaired = repaired[:repaired.rfind('"') + 1]
+                opens = repaired.count('[') - repaired.count(']')
+                openo = repaired.count('{') - repaired.count('}')
+                repaired = re.sub(r',\s*$', '', repaired)
+                repaired += ']' * max(0, opens) + '}' * max(0, openo)
+                return jmod.loads(repaired)
+
+        def _apply_to_db(art_id, optimized, uid):
+            """Apply optimized content to DB (synchronous)."""
+            article = sync_db.articles.find_one({"id": art_id}, {"_id": 0})
+            # Save version
+            sync_db.article_versions.insert_one({
+                "id": str(uuid.uuid4()), "article_id": art_id,
+                "user_id": uid,
+                "version_data": {k: v for k, v in article.items() if k != "_id"},
+                "created_at": datetime.now(timezone.utc).isoformat()
+            })
+            update = {"updated_at": datetime.now(timezone.utc).isoformat()}
+            if optimized.get("meta_title"):
+                update["meta_title"] = optimized["meta_title"]
+            if optimized.get("meta_description"):
+                update["meta_description"] = optimized["meta_description"]
+            if optimized.get("sections"):
+                clean_sections = []
+                for sec in optimized["sections"]:
+                    if not isinstance(sec, dict) or not sec.get("heading"):
+                        continue
+                    sec.setdefault("content", "")
+                    sec.setdefault("subsections", [])
+                    if not sec.get("anchor"):
+                        sec["anchor"] = re.sub(r'[^\w-]', '-', sec["heading"].lower().strip())[:60]
+                    clean_subs = []
+                    for sub in sec.get("subsections", []):
+                        if not isinstance(sub, dict) or not sub.get("heading"):
+                            continue
+                        sub.setdefault("content", "")
+                        if not sub.get("anchor"):
+                            sub["anchor"] = re.sub(r'[^\w-]', '-', sub["heading"].lower().strip())[:60]
+                        clean_subs.append(sub)
+                    sec["subsections"] = clean_subs
+                    clean_sections.append(sec)
+                if clean_sections:
+                    update["sections"] = clean_sections
+                    toc = []
+                    for sec in clean_sections:
+                        toc.append({"text": sec["heading"], "anchor": sec.get("anchor", ""), "level": 2})
+                        for sub in sec.get("subsections", []):
+                            toc.append({"text": sub["heading"], "anchor": sub.get("anchor", ""), "level": 3})
+                    update["toc"] = toc
+            if optimized.get("faq"):
+                clean_faq = [f for f in optimized["faq"] if isinstance(f, dict) and f.get("question")]
+                if clean_faq:
+                    update["faq"] = clean_faq
+            sync_db.articles.update_one({"id": art_id}, {"$set": update})
+
+        def _score_and_save(art, s_data):
+            """Compute SurferSEO score and save (synchronous)."""
+            score = compute_surfer_score(art, s_data)
+            sync_db.articles.update_one(
+                {"id": art["id"]},
+                {"$set": {"surfer_score": score, "surfer_data": s_data}}
+            )
+            return score
+
+        try:
+            for iteration in range(1, MAX_ITERATIONS + 1):
+                _loop_optimize_jobs[jid]["current_iteration"] = iteration
+
+                # Get fresh article
+                article = sync_db.articles.find_one({"id": art_id}, {"_id": 0})
+
+                # Score current state
+                current_score = _score_and_save(article, s_data)
+                pct = current_score.get("percentage", 0)
+                _loop_optimize_jobs[jid]["iterations"].append({
+                    "iteration": iteration,
+                    "phase": "scored",
+                    "score_before": pct
+                })
+
+                logging.info(f"[Loop {jid[:8]}] Iteration {iteration}: score={pct}%")
+
+                if pct >= TARGET:
+                    _loop_optimize_jobs[jid]["iterations"][-1]["phase"] = "target_reached"
+                    _loop_optimize_jobs[jid]["final_score"] = pct
+                    _loop_optimize_jobs[jid]["status"] = "completed"
+                    return
+
+                # Build issues from score
+                metrics = current_score.get("metrics", {})
+                issues = []
+                for key, m in metrics.items():
+                    if key == "nlp_terms":
+                        missing = [t["term"] for t in m.get("terms", []) if not t.get("used")]
+                        if missing:
+                            issues.append(f"Brakujace terminy NLP: {', '.join(missing[:10])}")
+                        continue
+                    sc, mx = m.get("score", 0), m.get("max", 5)
+                    if sc < mx:
+                        bench = m.get("benchmark", {})
+                        rec = bench.get("recommended", bench.get("avg", ""))
+                        issues.append(f"{m.get('label','')}: masz {m.get('value','?')}, zalecane: {rec}")
+
+                keyword = article.get("primary_keyword", "")
+                sections = article.get("sections", [])
+                faq = article.get("faq", [])
+                issues_text = "\n".join(f"- {i}" for i in issues)
+                sections_summary = jmod.dumps(
+                    [{"heading": s["heading"],
+                      "word_count": len(s.get("content", "").split()),
+                      "subsections": [sub["heading"] for sub in s.get("subsections", [])]}
+                     for s in sections], ensure_ascii=False)
+
+                _loop_optimize_jobs[jid]["iterations"][-1]["phase"] = "optimizing"
+                _loop_optimize_jobs[jid]["iterations"][-1]["issues"] = [i[:80] for i in issues[:5]]
+
+                # Step 1: Plan
+                plan_prompt = f"""Zoptymalizuj SEO artykulu. Slowo kluczowe: "{keyword}". Iteracja {iteration}.
+
+Aktualny wynik: {pct}%, cel: {TARGET}%
+Problemy:
+{issues_text}
+
+Struktura: {sections_summary[:2000]}
+FAQ: {len(faq)} pytan | Meta: {article.get('meta_title','')} | Opis: {article.get('meta_description','')}
+
+Zwroc KROTKI JSON:
+{{"meta_title":"max 60 zn z keyword","meta_description":"120-155 zn z keyword","section_plan":[{{"heading":"H2","action":"rozszerz/dodaj","subsections":["H3"]}}],"faq_plan":[{{"question":"?","answer_hint":"krotko"}}],"changes_summary":["zmiana"]}}
+
+WAZNE: min {max(len(sections), 5)} sekcji, min 5 FAQ. Skup sie na: {issues_text[:200]}"""
+
+                plan_text = llm_chat_sync(plan_prompt, system_message="JSON. Krotki.", session_id=f"loop-p{iteration}-{jid[:6]}", timeout=120)
+                plan = _try_parse_json(plan_text)
+
+                # Step 2: Sections
+                final_sections = []
+                for idx, sp in enumerate(plan.get("section_plan", [])[:12]):
+                    heading = sp.get("heading", f"Sekcja {idx+1}")
+                    subs = sp.get("subsections", [])
+                    existing = ""
+                    for s in sections:
+                        if s.get("heading", "").lower().strip() == heading.lower().strip():
+                            existing = s.get("content", "")[:500]
+                            break
+
+                    nlp_hint = ', '.join(issues[0].replace('Brakujace terminy NLP: ', '').split(', ')[:5]) if issues and 'NLP' in issues[0] else 'brak'
+                    sec_prompt = f"""Sekcja SEO: "{keyword}". H2: {heading}. H3: {', '.join(subs) if subs else 'brak'}.
+Istniejaca tresc: {existing[:300]}
+NLP: {nlp_hint}
+Zwroc JSON: {{"heading":"{heading}","content":"<p>200+ slow, <strong>bold</strong>, <ul><li>listy</li></ul></p>","subsections":[{{"heading":"H3","content":"<p>100+ slow</p>"}}]}}"""
+                    try:
+                        sec = _try_parse_json(llm_chat_sync(sec_prompt, system_message="JSON.", session_id=f"loop-s{iteration}{idx}-{jid[:5]}", timeout=90))
+                        final_sections.append(sec)
+                    except Exception:
+                        final_sections.append({"heading": heading, "content": existing or f"<p>{heading}</p>", "subsections": [{"heading": h, "content": ""} for h in subs]})
+
+                # Step 3: FAQ
+                final_faq = faq  # keep existing
+                faq_plans = plan.get("faq_plan", [])
+                if faq_plans and len(faq) < 5:
+                    try:
+                        faq_text = llm_chat_sync(
+                            f'FAQ o "{keyword}": {jmod.dumps(faq_plans[:8], ensure_ascii=False)}\nZwroc JSON: [{{"question":"?","answer":"2-4 zdania"}}]',
+                            system_message="JSON.", session_id=f"loop-faq{iteration}-{jid[:5]}", timeout=90)
+                        parsed_faq = _try_parse_json(faq_text)
+                        if isinstance(parsed_faq, list):
+                            final_faq = parsed_faq
+                        elif isinstance(parsed_faq, dict):
+                            final_faq = parsed_faq.get("faq", faq)
+                    except Exception:
+                        pass
+
+                optimized = {
+                    "meta_title": plan.get("meta_title", article.get("meta_title", "")),
+                    "meta_description": plan.get("meta_description", article.get("meta_description", "")),
+                    "sections": final_sections,
+                    "faq": final_faq,
+                    "changes_summary": plan.get("changes_summary", [])
+                }
+
+                # Apply
+                _loop_optimize_jobs[jid]["iterations"][-1]["phase"] = "applying"
+                _apply_to_db(art_id, optimized, user_id)
+
+                # Re-score
+                updated = sync_db.articles.find_one({"id": art_id}, {"_id": 0})
+                new_score = _score_and_save(updated, s_data)
+                new_pct = new_score.get("percentage", 0)
+
+                _loop_optimize_jobs[jid]["iterations"][-1]["score_after"] = new_pct
+                _loop_optimize_jobs[jid]["iterations"][-1]["changes"] = optimized.get("changes_summary", [])[:3]
+                _loop_optimize_jobs[jid]["iterations"][-1]["phase"] = "done"
+                _loop_optimize_jobs[jid]["final_score"] = new_pct
+
+                logging.info(f"[Loop {jid[:8]}] Iteration {iteration}: {pct}% -> {new_pct}%")
+
+                if new_pct >= TARGET:
+                    break
+
+            _loop_optimize_jobs[jid]["status"] = "completed"
+
+        except Exception as e:
+            logging.error(f"Optimize loop error: {e}")
+            _loop_optimize_jobs[jid]["status"] = "failed"
+            _loop_optimize_jobs[jid]["error"] = str(e)
+        finally:
+            sync_client.close()
+
+    executor.submit(_run_loop, job_id, article_id, surfer_data, user.get("id", ""))
+    return {"job_id": job_id, "status": "running"}
+
+
+@router.get("/surfer/optimize-loop/status/{job_id}")
+async def optimize_loop_status(job_id: str, user: dict = Depends(get_current_user)):
+    """Check iterative optimization status with per-iteration progress."""
+    job = _loop_optimize_jobs.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return {"job_id": job_id, **job}
