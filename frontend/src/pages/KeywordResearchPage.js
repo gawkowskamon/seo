@@ -21,8 +21,7 @@ export default function KeywordResearchPage() {
     if (!query.trim()) return;
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const { data } = await axios.post(`${API}/api/surfer/keyword-research`, { seed_keyword: query }, { headers: { Authorization: `Bearer ${token}` } });
+      const { data } = await axios.post(`${API}/api/surfer/keyword-research`, { seed_keyword: query });
       setResults(data);
     } catch (e) { console.error(e); }
     setLoading(false);
@@ -32,9 +31,8 @@ export default function KeywordResearchPage() {
     if (!results?.keywords) return;
     setClusterLoading(true);
     try {
-      const token = localStorage.getItem('token');
       const kws = results.keywords.map(k => k.keyword);
-      const { data } = await axios.post(`${API}/api/surfer/content-planner`, { keywords: kws }, { headers: { Authorization: `Bearer ${token}` } });
+      const { data } = await axios.post(`${API}/api/surfer/content-planner`, { keywords: kws });
       setClusters(data);
     } catch (e) { console.error(e); }
     setClusterLoading(false);
@@ -43,11 +41,11 @@ export default function KeywordResearchPage() {
   return (
     <div data-testid="keyword-research-page" style={{ maxWidth: 1200, margin: '0 auto', padding: '32px 24px' }}>
       <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 4 }}>Keyword Research</h1>
-      <p style={{ color: 'hsl(215,16%,55%)', marginBottom: 24, fontSize: 14 }}>Znajdź najlepsze słowa kluczowe dla Twojej strategii SEO</p>
+      <p style={{ color: 'var(--text-secondary, hsl(215,16%,55%))', marginBottom: 24, fontSize: 14 }}>Znajdź najlepsze słowa kluczowe dla Twojej strategii SEO</p>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 32 }}>
         <input data-testid="keyword-input" value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => e.key === 'Enter' && research()}
-          placeholder="Wpisz słowo kluczowe..." style={{ flex: 1, padding: '10px 14px', border: '1px solid hsl(215,16%,85%)', borderRadius: 8, fontSize: 14 }} />
+          placeholder="Wpisz słowo kluczowe..." style={{ flex: 1, padding: '10px 14px', border: '1px solid var(--border, hsl(215,16%,85%))', borderRadius: 8, fontSize: 14, background: 'var(--bg-card, #fff)', color: 'var(--text-primary, #111)' }} />
         <Button data-testid="keyword-search-btn" onClick={research} disabled={loading} className="gap-2">
           {loading ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
           Szukaj
@@ -64,17 +62,17 @@ export default function KeywordResearchPage() {
               { label: 'CPC', value: `${results.main_keyword?.cpc_pln} PLN`, icon: TrendingUp },
               { label: 'Intencja', value: results.main_keyword?.search_intent, icon: Search },
             ].map((item, i) => (
-              <div key={i} style={{ padding: 16, borderRadius: 12, border: '1px solid hsl(215,16%,90%)', background: '#fff' }}>
-                <item.icon size={18} style={{ color: 'hsl(215,16%,55%)', marginBottom: 6 }} />
+              <div key={i} style={{ padding: 16, borderRadius: 12, border: '1px solid var(--border, hsl(215,16%,90%))', background: 'var(--bg-card, #fff)' }}>
+                <item.icon size={18} style={{ color: 'var(--text-secondary, hsl(215,16%,55%))', marginBottom: 6 }} />
                 <div style={{ fontSize: 22, fontWeight: 700 }}>{item.value}</div>
-                <div style={{ fontSize: 12, color: 'hsl(215,16%,55%)' }}>{item.label}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{item.label}</div>
               </div>
             ))}
           </div>
 
           {/* Keywords table */}
-          <div style={{ border: '1px solid hsl(215,16%,90%)', borderRadius: 12, overflow: 'hidden', marginBottom: 24 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'hsl(215,16%,97%)' }}>
+          <div style={{ border: '1px solid var(--border, hsl(215,16%,90%))', borderRadius: 12, overflow: 'hidden', marginBottom: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'var(--bg-muted, hsl(215,16%,97%))' }}>
               <h3 style={{ fontSize: 15, fontWeight: 700 }}>Powiązane słowa kluczowe ({results.keywords?.length || 0})</h3>
               <Button size="sm" variant="outline" onClick={clusterKeywords} disabled={clusterLoading} className="gap-1">
                 {clusterLoading ? <Loader2 size={14} className="animate-spin" /> : <Target size={14} />}
@@ -83,7 +81,7 @@ export default function KeywordResearchPage() {
             </div>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
-                <tr style={{ background: 'hsl(215,16%,97%)', borderBottom: '1px solid hsl(215,16%,90%)' }}>
+                <tr style={{ background: 'var(--bg-muted, hsl(215,16%,97%))', borderBottom: '1px solid var(--border, hsl(215,16%,90%))' }}>
                   <th style={{ textAlign: 'left', padding: '8px 16px', fontWeight: 600 }}>Słowo kluczowe</th>
                   <th style={{ textAlign: 'right', padding: '8px 12px' }}>Wolumen</th>
                   <th style={{ textAlign: 'right', padding: '8px 12px' }}>Trudność</th>
@@ -94,7 +92,7 @@ export default function KeywordResearchPage() {
               </thead>
               <tbody>
                 {results.keywords?.map((kw, i) => (
-                  <tr key={i} style={{ borderBottom: '1px solid hsl(215,16%,95%)' }}>
+                  <tr key={i} style={{ borderBottom: '1px solid var(--border, hsl(215,16%,95%))' }}>
                     <td style={{ padding: '10px 16px', fontWeight: 500 }}>{kw.keyword}</td>
                     <td style={{ textAlign: 'right', padding: '10px 12px' }}>{kw.monthly_volume?.toLocaleString()}</td>
                     <td style={{ textAlign: 'right', padding: '10px 12px' }}>
@@ -118,12 +116,12 @@ export default function KeywordResearchPage() {
 
           {/* Clusters */}
           {clusters && (
-            <div style={{ border: '1px solid hsl(215,16%,90%)', borderRadius: 12, overflow: 'hidden' }}>
-              <div style={{ padding: '12px 16px', background: 'hsl(215,16%,97%)' }}>
+            <div style={{ border: '1px solid var(--border, hsl(215,16%,90%))', borderRadius: 12, overflow: 'hidden' }}>
+              <div style={{ padding: '12px 16px', background: 'var(--bg-muted, hsl(215,16%,97%))' }}>
                 <h3 style={{ fontSize: 15, fontWeight: 700 }}>Content Plan — Klastry tematyczne ({clusters.clusters?.length || 0})</h3>
               </div>
               {clusters.clusters?.map((cluster, i) => (
-                <div key={i} style={{ padding: '12px 16px', borderBottom: '1px solid hsl(215,16%,95%)' }}>
+                <div key={i} style={{ padding: '12px 16px', borderBottom: '1px solid var(--border, hsl(215,16%,95%))' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
                       <span style={{ fontWeight: 700, fontSize: 14 }}>{cluster.topic}</span>
@@ -134,9 +132,9 @@ export default function KeywordResearchPage() {
                       <ArrowRight size={12} /> Utwórz artykuł
                     </Button>
                   </div>
-                  <div style={{ fontSize: 12, color: 'hsl(215,16%,55%)', marginTop: 4, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     {cluster.keywords?.map((kw, j) => (
-                      <span key={j} style={{ padding: '2px 8px', borderRadius: 10, background: 'hsl(215,16%,94%)' }}>{kw}</span>
+                      <span key={j} style={{ padding: '2px 8px', borderRadius: 10, background: 'var(--bg-muted, hsl(215,16%,94%))' }}>{kw}</span>
                     ))}
                   </div>
                 </div>

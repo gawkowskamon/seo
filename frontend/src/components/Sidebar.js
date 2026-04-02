@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, PenTool, Lightbulb, LogOut, User, Layers, Users, Image as ImageIcon, Sparkles, Settings, CreditCard, Calendar, Download, Search, RefreshCw, Moon, Sun, BarChart3, Mail, Brain, Activity, Shield } from 'lucide-react';
+import { LayoutDashboard, PenTool, Lightbulb, LogOut, User, Layers, Users, Image as ImageIcon, Sparkles, Settings, CreditCard, Calendar, Download, Search, RefreshCw, Moon, Sun, BarChart3, Mail, Brain, Activity, Shield, Target, Globe } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 const Sidebar = () => {
@@ -26,6 +26,8 @@ const Sidebar = () => {
     { path: '/kalendarz', label: 'Kalendarz', icon: Calendar, testId: 'sidebar-nav-calendar' },
     { path: '/import', label: 'Import', icon: Download, testId: 'sidebar-nav-import' },
     { path: '/audyt-seo', label: 'Audyt SEO', icon: Search, testId: 'sidebar-nav-audit' },
+    { path: '/keyword-research', label: 'Keyword Research', icon: Target, testId: 'sidebar-nav-keyword-research' },
+    { path: '/audyt-url', label: 'Audyt URL', icon: Globe, testId: 'sidebar-nav-url-audit' },
     { path: '/analityka', label: 'Analityka', icon: BarChart3, testId: 'sidebar-nav-analytics' },
     { path: '/newsletter', label: 'Newsletter', icon: Mail, testId: 'sidebar-nav-newsletter' },
     { path: '/aktualizacje', label: 'Aktualizacje', icon: RefreshCw, testId: 'sidebar-nav-updates' },

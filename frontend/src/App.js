@@ -22,6 +22,8 @@ import KeywordAnalytics from './pages/KeywordAnalytics';
 import NewsletterPage from './pages/NewsletterPage';
 import PerformanceDashboard from './pages/PerformanceDashboard';
 import AIArticleSuggestions from './pages/AIArticleSuggestions';
+import KeywordResearchPage from './pages/KeywordResearchPage';
+import URLAuditPage from './pages/URLAuditPage';
 import AuthPage from './pages/AuthPage';
 import './App.css';
 
@@ -136,6 +138,12 @@ function AppRoutes() {
       } />
       <Route path="/wydajnosc" element={
         <ProtectedLayout requireAdmin><PerformanceDashboard /></ProtectedLayout>
+      } />
+      <Route path="/keyword-research" element={
+        <ProtectedLayout><KeywordResearchPage /></ProtectedLayout>
+      } />
+      <Route path="/audyt-url" element={
+        <ProtectedLayout><URLAuditPage /></ProtectedLayout>
       } />
       <Route path="/admin/users" element={
         <ProtectedLayout requireAdmin><AdminUsers /></ProtectedLayout>
