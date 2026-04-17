@@ -172,10 +172,10 @@ async def get_image(image_id: str):
 
 @router.get("/articles/{article_id}/images")
 async def get_article_images(article_id: str):
-    """Get all images for a specific article."""
+    """Get all images for a specific article (with base64 data for thumbnails)."""
     images = await db.images.find(
-        {"article_id": article_id}, 
-        {"_id": 0, "data": 0}
+        {"article_id": article_id},
+        {"_id": 0}
     ).sort("created_at", -1).to_list(50)
     return images
 

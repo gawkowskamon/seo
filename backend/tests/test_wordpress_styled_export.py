@@ -13,7 +13,7 @@ import pytest
 import requests
 import os
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://seo-article-builder-2.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://surfer-content-hub.preview.emergentagent.com')
 
 # Test article ID from the request
 TEST_ARTICLE_ID = "b4f55829-f62b-4b0e-9bd1-9c399a55f8d6"

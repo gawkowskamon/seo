@@ -129,7 +129,7 @@ const ArticleGenerator = () => {
 
       const jobId = startRes.data.job_id;
       let pollCount = 0;
-      const maxPolls = 60; // 60 * 3s = 3 minutes max
+      const maxPolls = 120; // 120 * 3s = 6 minutes max (matches backend 6-min timeout)
       let notFoundCount = 0;
       
       // Poll for completion
