@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Wand2, X, Loader2, BookOpen, Search, FileCheck, PenLine, CheckCircle2, FileText, ListOrdered, Briefcase, Columns, CheckSquare, Landmark, Scale, Calculator } from 'lucide-react';
+import { Wand2, X, Loader2, BookOpen, Search, FileCheck, PenLine, CheckCircle2, FileText, ListOrdered, Briefcase, Columns, CheckSquare, Landmark, Scale, Calculator, Sparkles, TrendingUp } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
@@ -33,11 +33,12 @@ const LANGUAGES = [
 ];
 
 const STAGES = [
-  { key: 'analyze', label: 'Analiza tematu i slow kluczowych', icon: Search },
-  { key: 'outline', label: 'Tworzenie struktury artykulu', icon: BookOpen },
-  { key: 'write', label: 'Pisanie tresci i FAQ', icon: PenLine },
-  { key: 'seo', label: 'Optymalizacja SEO i korekty', icon: FileCheck },
-  { key: 'done', label: 'Finalizacja i ocena', icon: CheckCircle2 },
+  { key: 'analyze', label: 'Analiza tematu i słów kluczowych', icon: Search },
+  { key: 'outline', label: 'Tworzenie struktury artykułu', icon: BookOpen },
+  { key: 'write', label: 'Pisanie treści i FAQ', icon: PenLine },
+  { key: 'seo', label: 'Analiza SEO i SurferSEO SERP', icon: FileCheck },
+  { key: 'optimize', label: 'Auto-optymalizacja do 80%+ (iteracyjnie)', icon: Sparkles },
+  { key: 'done', label: 'Finalizacja artykułu', icon: CheckCircle2 },
 ];
 
 const TEMPLATE_ICONS = {
@@ -68,6 +69,9 @@ const ArticleGenerator = () => {
   const [targetLength, setTargetLength] = useState('1500');
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentStage, setCurrentStage] = useState(0);
+  const [optimizationIterations, setOptimizationIterations] = useState([]);
+  const [initialScore, setInitialScore] = useState(null);
+  const [currentScore, setCurrentScore] = useState(null);
   const [templates, setTemplates] = useState([]);
   const [selectedTemplate, setSelectedTemplate] = useState('standard');
   const [language, setLanguage] = useState('pl');
@@ -142,7 +146,7 @@ const ArticleGenerator = () => {
 
       const jobId = startRes.data.job_id;
       let pollCount = 0;
-      const maxPolls = 120; // 120 * 3s = 6 minutes max (matches backend 6-min timeout)
+      const maxPolls = 300; // 300 * 3s = 15 min max (optimization can take 10+ min)
       let notFoundCount = 0;
       
       // Poll for completion
@@ -150,16 +154,43 @@ const ArticleGenerator = () => {
         try {
           pollCount++;
           const statusRes = await axios.get(`${BACKEND_URL}/api/articles/generate/status/${jobId}`);
-          const { status, stage, article_id, error } = statusRes.data;
+          const { status, stage, article_id, error, optimization_iterations, initial_score, final_score } = statusRes.data;
           notFoundCount = 0; // reset on success
           
-          if (stage !== undefined) setCurrentStage(Math.min(stage, 3));
+          // Map backend stage to UI stage:
+          // stage 0: queued → UI 0 (analyze)
+          // stage 1: generating → UI 2 (writing)
+          // stage 3: article saved, running SERP → UI 3 (seo)
+          // stage 5: optimizing iteratively → UI 4 (optimize)
+          // stage 4: completed → UI 5 (done)
+          let uiStage = 0;
+          if (stage >= 4) uiStage = 5;
+          else if (stage === 5 || status === 'optimizing') uiStage = 4;
+          else if (stage === 3) uiStage = 3;
+          else if (stage >= 1) uiStage = 2;
+          setCurrentStage(uiStage);
+          
+          // Update optimization iteration state
+          if (optimization_iterations && optimization_iterations.length > 0) {
+            setOptimizationIterations(optimization_iterations);
+            const last = optimization_iterations[optimization_iterations.length - 1];
+            setCurrentScore(last.score_after ?? last.score_before ?? null);
+          }
+          if (initial_score !== undefined && initial_score !== null) setInitialScore(initial_score);
+          if (final_score !== undefined && final_score !== null) setCurrentScore(final_score);
           
           if (status === 'completed' && article_id) {
             clearInterval(pollInterval);
-            setCurrentStage(4);
+            setCurrentStage(5);
             setTimeout(() => {
-              toast.success('Artykul wygenerowany pomyslnie!');
+              const score = final_score ?? 0;
+              if (score >= 80) {
+                toast.success(`Artykuł wygenerowany! SEO score: ${score}% (cel osiągnięty ✓)`);
+              } else if (score > 0) {
+                toast.info(`Artykuł gotowy. SEO score: ${score}% — cel 80% nieosiągnięty, spróbuj ręcznej optymalizacji w edytorze.`, { duration: 6000 });
+              } else {
+                toast.success('Artykuł wygenerowany pomyślnie!');
+              }
               navigate(`/editor/${article_id}`);
             }, 800);
           } else if (status === 'failed') {
@@ -212,7 +243,9 @@ const ArticleGenerator = () => {
               Szablon: {selectedTmpl.name}
             </p>
           )}
-          <p style={{ color: 'hsl(215, 16%, 45%)', marginBottom: 24 }}>To moze potrwac 15-30 sekund...</p>
+          <p style={{ color: 'hsl(215, 16%, 45%)', marginBottom: 24 }}>
+            {currentStage >= 4 ? 'Auto-optymalizacja do 80%+ — to może potrwać 2-5 minut...' : 'To może potrwać 1-2 minuty...'}
+          </p>
           
           <div className="generation-stages">
             {STAGES.map((stage, idx) => (
@@ -232,6 +265,57 @@ const ArticleGenerator = () => {
               </div>
             ))}
           </div>
+
+          {/* Optimization iterations progress */}
+          {optimizationIterations.length > 0 && (
+            <div data-testid="generation-optimization-progress" style={{
+              marginTop: 18, padding: 16,
+              background: 'linear-gradient(135deg, hsl(220, 95%, 98%), hsl(270, 80%, 98%))',
+              border: '1px solid hsl(220, 60%, 88%)', borderRadius: 10
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                <TrendingUp size={16} style={{ color: '#04389E' }} />
+                <span style={{ fontWeight: 700, fontSize: 13, color: '#04389E' }}>
+                  Optymalizacja iteracyjna do 80%+
+                </span>
+                {currentScore !== null && (
+                  <span style={{
+                    marginLeft: 'auto', fontWeight: 800, fontSize: 16,
+                    color: currentScore >= 80 ? '#16a34a' : currentScore >= 60 ? '#f59e0b' : '#ef4444'
+                  }}>
+                    {currentScore}%
+                  </span>
+                )}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {optimizationIterations.map((it, i) => (
+                  <div key={i} style={{
+                    display: 'flex', alignItems: 'center', gap: 8, fontSize: 12,
+                    padding: '5px 10px', borderRadius: 6,
+                    background: it.phase === 'target_reached' ? 'hsl(142, 50%, 95%)' :
+                                it.phase === 'stagnation' ? 'hsl(0, 50%, 96%)' :
+                                it.phase === 'done' ? 'hsl(215, 16%, 97%)' : 'transparent'
+                  }}>
+                    <span style={{ fontWeight: 600, color: 'hsl(215, 16%, 35%)', minWidth: 60 }}>Iter {it.iteration}:</span>
+                    <span style={{ color: 'hsl(215, 16%, 55%)' }}>{it.score_before ?? '?'}%</span>
+                    <span style={{ color: 'hsl(215, 16%, 55%)' }}>→</span>
+                    <span style={{
+                      fontWeight: 700,
+                      color: it.score_after === null || it.score_after === undefined ? 'hsl(215, 16%, 55%)' :
+                             it.score_after >= 80 ? '#16a34a' :
+                             it.score_after > (it.score_before ?? 0) ? '#04389E' : '#ef4444'
+                    }}>
+                      {it.score_after === null || it.score_after === undefined ? (
+                        it.phase === 'start' ? <Loader2 size={12} className="animate-spin" style={{ display: 'inline' }} /> : '—'
+                      ) : `${it.score_after}%`}
+                    </span>
+                    {it.phase === 'target_reached' && <span style={{ color: '#16a34a', marginLeft: 'auto', fontSize: 11 }}>✓ CEL</span>}
+                    {it.phase === 'stagnation' && <span style={{ color: '#ef4444', marginLeft: 'auto', fontSize: 11 }}>⚠ Stagnacja</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           
           <div style={{ background: 'hsl(35, 35%, 97%)', borderRadius: 8, padding: 16, marginTop: 16 }}>
             <p style={{ fontSize: 13, color: 'hsl(215, 16%, 45%)', margin: 0 }}>

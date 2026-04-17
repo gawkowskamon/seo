@@ -23,6 +23,192 @@ router = APIRouter()
 # --- Article Generation ---
 
 
+def _auto_optimize_to_target(job_id, article_id, s_data, user_id, sync_db, target=80, max_iter_safety=10):
+    """Auto-optimize an article to reach target SEO score (default 80%).
+
+    Runs iterative optimization with stagnation detection: if score doesn't
+    improve for 2 consecutive iterations, stops. Updates generation_jobs doc
+    with per-iteration progress for frontend polling.
+    """
+    import json as jmod
+    from llm_helper import llm_chat_sync
+
+    def _try_parse_json(text):
+        if text is None:
+            return None
+        clean = text.strip()
+        if clean.startswith("```"):
+            clean = re.sub(r'^```(?:json)?\s*', '', clean)
+            clean = re.sub(r'\s*```$', '', clean)
+        try:
+            return jmod.loads(clean)
+        except jmod.JSONDecodeError:
+            repaired = clean
+            if repaired.count('"') % 2 != 0:
+                last_quote = repaired.rfind('"')
+                repaired = repaired[:last_quote + 1]
+            opens = repaired.count('[') - repaired.count(']')
+            openo = repaired.count('{') - repaired.count('}')
+            repaired = re.sub(r',\s*$', '', repaired)
+            repaired += ']' * max(0, opens) + '}' * max(0, openo)
+            try:
+                return jmod.loads(repaired)
+            except Exception:
+                return None
+
+    def _score_and_save(art):
+        score = compute_surfer_score(art, s_data)
+        sync_db.articles.update_one({"id": art["id"]}, {"$set": {"surfer_score": score, "surfer_data": s_data}})
+        return score
+
+    def _apply_update(a_id, optimized, uid):
+        article = sync_db.articles.find_one({"id": a_id}, {"_id": 0})
+        sync_db.article_versions.insert_one({
+            "id": str(uuid.uuid4()), "article_id": a_id, "user_id": uid,
+            "version_data": {k: v for k, v in article.items() if k != "_id"},
+            "source": "auto_generate_optimize",
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+        update = {"updated_at": datetime.now(timezone.utc).isoformat()}
+        if optimized.get("meta_title"):
+            update["meta_title"] = optimized["meta_title"]
+        if optimized.get("meta_description"):
+            update["meta_description"] = optimized["meta_description"]
+        if optimized.get("sections"):
+            clean_sections = []
+            for sec in optimized["sections"]:
+                if not isinstance(sec, dict) or not sec.get("heading"):
+                    continue
+                sec.setdefault("content", "")
+                sec.setdefault("subsections", [])
+                if not sec.get("anchor"):
+                    sec["anchor"] = re.sub(r'[^\w-]', '-', (sec.get("heading") or "").lower().strip())[:60]
+                clean_subs = []
+                for sub in (sec.get("subsections") or []):
+                    if not isinstance(sub, dict) or not sub.get("heading"):
+                        continue
+                    sub.setdefault("content", "")
+                    if not sub.get("anchor"):
+                        sub["anchor"] = re.sub(r'[^\w-]', '-', (sub.get("heading") or "").lower().strip())[:60]
+                    clean_subs.append(sub)
+                sec["subsections"] = clean_subs
+                clean_sections.append(sec)
+            if clean_sections:
+                update["sections"] = clean_sections
+                toc = []
+                for sec in clean_sections:
+                    toc.append({"text": sec["heading"], "anchor": sec.get("anchor", ""), "level": 2})
+                    for sub in sec.get("subsections", []):
+                        toc.append({"text": sub["heading"], "anchor": sub.get("anchor", ""), "level": 3})
+                update["toc"] = toc
+        if optimized.get("faq"):
+            clean_faq = [f for f in optimized["faq"] if isinstance(f, dict) and f.get("question")]
+            if clean_faq:
+                update["faq"] = clean_faq
+        sync_db.articles.update_one({"id": a_id}, {"$set": update})
+
+    stagnation_count = 0
+    iteration = 0
+    last_score = None
+
+    while iteration < max_iter_safety:
+        iteration += 1
+        article = sync_db.articles.find_one({"id": article_id}, {"_id": 0})
+        current_score = _score_and_save(article)
+        pct = current_score.get("percentage", 0)
+
+        # Log iteration start to job
+        sync_db.generation_jobs.update_one(
+            {"job_id": job_id},
+            {"$push": {"optimization_iterations": {
+                "iteration": iteration, "phase": "start",
+                "score_before": pct, "score_after": None
+            }}}
+        )
+
+        if pct >= target:
+            sync_db.generation_jobs.update_one(
+                {"job_id": job_id, "optimization_iterations.iteration": iteration},
+                {"$set": {"optimization_iterations.$.phase": "target_reached",
+                          "optimization_iterations.$.score_after": pct}}
+            )
+            return
+
+        if last_score is not None and pct <= last_score:
+            stagnation_count += 1
+            if stagnation_count >= 2:
+                sync_db.generation_jobs.update_one(
+                    {"job_id": job_id, "optimization_iterations.iteration": iteration},
+                    {"$set": {"optimization_iterations.$.phase": "stagnation",
+                              "optimization_iterations.$.score_after": pct}}
+                )
+                return
+        else:
+            stagnation_count = 0
+
+        # Expand content: add 1-2 new sections and improve meta
+        keyword = article.get("primary_keyword") or ""
+        sections = article.get("sections") or []
+        metrics = current_score.get("metrics", {})
+        nlp_missing = [t["term"] for t in metrics.get("nlp_terms", {}).get("terms", [])[:12] if not t.get("used")]
+
+        plan_prompt = f"""Ulepsz artykul SEO. Slowo: "{keyword}".
+Brakujace terminy NLP: {', '.join(nlp_missing[:10])}
+Aktualne sekcje:
+{jmod.dumps([{"heading": s.get("heading") or "", "words": len((s.get("content") or "").split())} for s in sections], ensure_ascii=False)}
+
+Zaplanuj 2 nowe sekcje H2 do dodania, ktore wzmocnia SEO i uzyja brakujacych terminow NLP.
+Zwroc JSON:
+{{"meta_title":"max 60 znakow z keyword","meta_description":"120-155 znakow","new_sections":["H2 nowa sekcja 1","H2 nowa sekcja 2"]}}"""
+
+        try:
+            plan_text = llm_chat_sync(plan_prompt, system_message="JSON only.",
+                                      session_id=f"gen-opt-plan-{job_id[:6]}-{iteration}", timeout=60)
+            plan = _try_parse_json(plan_text) or {}
+        except Exception:
+            plan = {}
+
+        added_sections = []
+        for new_heading in plan.get("new_sections", [])[:2]:
+            if not isinstance(new_heading, str) or len(new_heading) < 5:
+                continue
+            sec_prompt = f"""Napisz sekcje artykulu SEO. Slowo: "{keyword}". Naglowek H2: {new_heading}.
+Terminy NLP do naturalnego uzycia: {', '.join(nlp_missing[:6])}.
+WYMAGANIA:
+- 200-300 slow merytorycznej tresci (nie placeholder)
+- Uzyj <strong> (min 3) i <ul><li> (min 1 lista)
+- Konkretne kwoty/terminy/przepisy gdy dotyczy branzy
+Zwroc JSON: {{"heading":"{new_heading}","content":"<p>...</p>"}}"""
+            try:
+                sec = _try_parse_json(llm_chat_sync(sec_prompt, system_message="JSON.",
+                                                    session_id=f"gen-opt-sec-{job_id[:6]}-{iteration}-{len(added_sections)}",
+                                                    timeout=90))
+                if isinstance(sec, dict) and sec.get("content"):
+                    added_sections.append(sec)
+            except Exception:
+                pass
+
+        optimized = {
+            "meta_title": plan.get("meta_title", article.get("meta_title", "")),
+            "meta_description": plan.get("meta_description", article.get("meta_description", "")),
+            "sections": sections + added_sections
+        }
+        _apply_update(article_id, optimized, user_id)
+
+        updated = sync_db.articles.find_one({"id": article_id}, {"_id": 0})
+        new_score = _score_and_save(updated)
+        new_pct = new_score.get("percentage", 0)
+
+        sync_db.generation_jobs.update_one(
+            {"job_id": job_id, "optimization_iterations.iteration": iteration},
+            {"$set": {"optimization_iterations.$.phase": "done",
+                      "optimization_iterations.$.score_after": new_pct}}
+        )
+
+        last_score = pct
+        if new_pct >= target:
+            return
+
 
 def _sync_run_generation_job(job_id: str, request_data: dict, user: dict):
     """Run article generation in a separate thread to avoid blocking event loop."""
@@ -113,12 +299,40 @@ def _sync_run_generation_job(job_id: str, request_data: dict, user: dict):
 
         sync_db.articles.insert_one(article_doc)
 
+        # Auto-optimize to 80%+ if we have surfer_data
+        if surfer_data and (not surfer_score or surfer_score.get("percentage", 0) < 80):
+            try:
+                sync_db.generation_jobs.update_one(
+                    {"job_id": job_id},
+                    {"$set": {
+                        "stage": 5,
+                        "status": "optimizing",
+                        "optimization_iterations": [],
+                        "initial_score": surfer_score.get("percentage", 0) if surfer_score else 0
+                    }}
+                )
+                _auto_optimize_to_target(job_id, article_id, surfer_data, user.get("id", ""), sync_db)
+            except Exception as opt_err:
+                logging.warning(f"Auto-optimization failed (article saved as-is): {opt_err}")
+                sync_db.generation_jobs.update_one(
+                    {"job_id": job_id},
+                    {"$set": {"optimization_error": str(opt_err)[:300]}}
+                )
+
+        # Fetch final score before marking complete
+        final_article = sync_db.articles.find_one({"id": article_id}, {"_id": 0, "surfer_score": 1})
+        final_score_pct = 0
+        if final_article and final_article.get("surfer_score"):
+            final_score_pct = final_article["surfer_score"].get("percentage", 0)
+
         sync_db.generation_jobs.update_one(
             {"job_id": job_id},
             {"$set": {
                 "status": "completed",
                 "stage": 4,
-                "article_id": article_id
+                "article_id": article_id,
+                "final_score": final_score_pct,
+                "target_reached": final_score_pct >= 80
             }}
         )
 
@@ -184,22 +398,28 @@ async def get_generation_status(job_id: str, user: dict = Depends(get_current_us
         raise HTTPException(status_code=403, detail="Brak dostepu")
     
     # Detect stale jobs: if generating for more than 5 minutes, mark as failed
-    if job["status"] == "generating":
+    # (extend to 15 min during optimization since iterative loop takes longer)
+    if job["status"] in ("generating", "optimizing"):
         from datetime import datetime as dt
         created = dt.fromisoformat(job["created_at"].replace("Z", "+00:00")) if isinstance(job["created_at"], str) else job["created_at"]
         elapsed = (datetime.now(timezone.utc) - created).total_seconds()
-        if elapsed > 360:
+        max_elapsed = 900 if job["status"] == "optimizing" else 360
+        if elapsed > max_elapsed:
             await db.generation_jobs.update_one(
                 {"job_id": job_id},
-                {"$set": {"status": "failed", "error": "Generowanie przekroczylo limit czasu (6 min). Sprobuj ponownie."}}
+                {"$set": {"status": "failed", "error": f"Generowanie przekroczylo limit czasu ({int(max_elapsed/60)} min). Sprobuj ponownie."}}
             )
             job["status"] = "failed"
-            job["error"] = "Generowanie przekroczylo limit czasu (6 min). Sprobuj ponownie."
-    
+            job["error"] = f"Generowanie przekroczylo limit czasu ({int(max_elapsed/60)} min). Sprobuj ponownie."
+
     result = {
         "job_id": job_id,
         "status": job["status"],
-        "stage": job.get("stage", 0)
+        "stage": job.get("stage", 0),
+        "optimization_iterations": job.get("optimization_iterations", []),
+        "initial_score": job.get("initial_score"),
+        "final_score": job.get("final_score"),
+        "target_reached": job.get("target_reached"),
     }
     
     if job["status"] == "completed":
