@@ -16,7 +16,9 @@ Monika (admin) – Kurdynowski Accounting & Tax Solutions. Używa aplikacji do t
 **All core features functional and tested (iteration 36: 16/16 passed 100%)**
 
 ### Completed in this session
-- [x] **FIX (2026-04-17 12:15):** Optimize-loop "Do 80%+" i 1x Optymalizuj crash `NoneType` — wszystkie ścieżki wrażliwe na None (section content, html_content, heading) zabezpieczone wzorcem `x.get("content") or ""` w: surfer_seo_service.py, seo_scorer.py, surfer.py (_apply_to_db, _run_optimize, _run_loop), export_service.py, wordpress_service.py, routes/ai_features.py, routes/seo_tools.py
+- [x] **FEATURE (2026-04-17):** Bulk Optimization — przycisk "Optymalizuj słabe (N)" na ROI Dashboard uruchamia iteracyjną optymalizację dla wszystkich artykułów score < 60% (sekwencyjnie, 1 iteracja/artykuł). Pełny panel postępu z statusami per-artykuł, stats (gotowe/błędy/pozostało), auto-save wersji przed optymalizacją (source='bulk_optimize')
+- [x] **FEATURE (2026-04-17):** WordPress Webhook Receiver — endpointy `/api/wordpress/webhook/generate-token`, `/config`, `/webhook` (public, auth via X-Webhook-Token), `/events`, `/article-stats/{id}`. Obsługuje eventy: post_published, post_updated, post_deleted, traffic_stats. Aktualizuje pola artykułu: wp_post_id, wp_permalink, wp_published_at, wp_views_7d/30d, wp_comments, wp_avg_time_on_page. Panel config w AdminSettings z URL+token+instrukcje. Żywy status "Opublikowany w WordPress" z metrykami w WP Preview
+- [x] **FIX (2026-04-17 12:15):** Optimize-loop "Do 80%+" i 1x Optymalizuj crash `NoneType` — wszystkie ścieżki wrażliwe na None zabezpieczone wzorcem `x.get("content") or ""`
 - [x] **FIX:** SurferSEO auto-optimize & loop: naprawione prompty generujące placeholder ("200+ slow")
 - [x] **FIX:** Galeria obrazów w edytorze — zwraca pole `data` dla miniatur
 - [x] **FIX:** Timeout polling generatora 3→6 min
