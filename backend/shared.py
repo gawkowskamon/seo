@@ -94,6 +94,7 @@ class ArticleGenerateRequest(BaseModel):
     target_length: int = 1500
     tone: str = "profesjonalny"
     template: str = "standard"
+    language: str = "pl"
 
 class ArticleUpdateRequest(BaseModel):
     title: Optional[str] = None

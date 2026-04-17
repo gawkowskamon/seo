@@ -27,6 +27,7 @@ import URLAuditPage from './pages/URLAuditPage';
 import SocialSchedulePage from './pages/SocialSchedulePage';
 import NotificationsPage from './pages/NotificationsPage';
 import CompetitionMonitorPage from './pages/CompetitionMonitorPage';
+import ROIDashboard from './pages/ROIDashboard';
 import AuthPage from './pages/AuthPage';
 import './App.css';
 
@@ -156,6 +157,9 @@ function AppRoutes() {
       } />
       <Route path="/konkurencja" element={
         <ProtectedLayout><CompetitionMonitorPage /></ProtectedLayout>
+      } />
+      <Route path="/roi" element={
+        <ProtectedLayout><ROIDashboard /></ProtectedLayout>
       } />
       <Route path="/admin/users" element={
         <ProtectedLayout requireAdmin><AdminUsers /></ProtectedLayout>

@@ -1,0 +1,104 @@
+{
+  "summary": "Iteration 36: All new features verified working. Backend: 16/16 tests passed. Frontend: ROI Dashboard, multi-language selector, version history panel all functional.",
+
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+
+  "passed_tests": [
+    "✓ GET /api/stats/roi returns 200 with all required fields",
+    "✓ ROI stats includes total_articles, status_counts, score_buckets, avg_surfer_score, avg_seo_score",
+    "✓ ROI stats includes top_performers, bottom_performers, language_distribution, monthly_trend",
+    "✓ POST /api/articles/generate accepts language='en' parameter",
+    "✓ POST /api/articles/generate accepts language='de' parameter",
+    "✓ POST /api/articles/generate accepts language='uk' parameter",
+    "✓ GET /api/articles/{id}/versions returns versions with source field",
+    "✓ PUT /api/articles/{id} creates version with source='manual_edit'",
+    "✓ GET /api/articles/{id}/images returns images with base64 data field (thumbnails fix)",
+    "✓ GET /api/library/images returns images with data field",
+    "✓ POST /api/surfer/auto-optimize/{id} starts async job",
+    "✓ Auto-optimize sections contain REAL content (1500-2000 chars), NOT placeholder text",
+    "✓ POST /api/surfer/auto-optimize/apply/{id} creates version with source='auto_optimize'",
+    "✓ Frontend: ROI Dashboard page loads at /roi with all stat cards",
+    "✓ Frontend: Language selector shows PL/EN/DE/UA options in Article Generator",
+    "✓ Frontend: Version history panel ('Wersje' tab) visible in Article Editor"
+  ],
+
+  "test_report_links": [
+    "/app/backend/tests/test_iteration36_features.py",
+    "/app/test_reports/pytest/pytest_iteration36_features.xml"
+  ],
+
+  "action_items": [],
+
+  "critical_code_review_comments": [
+    "ROI Dashboard endpoint properly aggregates stats with MongoDB pipelines",
+    "Multi-language generation uses LANG_PROMPTS and LANG_INSTRUCTIONS in article_generator.py",
+    "Version source tagging correctly implemented: manual_edit, auto_optimize, optimize_loop, pre_restore",
+    "Image gallery thumbnails now include base64 data field (was previously excluded)",
+    "Auto-optimize prompts explicitly require 'merytorycznej tresci' (substantive content) - no placeholders"
+  ],
+
+  "updated_files": [
+    "/app/backend/tests/test_iteration36_features.py"
+  ],
+
+  "success_rate": {
+    "backend": "100% (16/16 tests passed)",
+    "frontend": "100% (ROI Dashboard, language selector, version history all working)"
+  },
+
+  "test_credentials": {
+    "admin": "monika.gawkowska@kurdynowski.pl / MonZuz8180!"
+  },
+
+  "seed_data_creation": "None - used existing articles",
+
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+
+  "context_for_next_testing_agent": "Iteration 36 verified all new features: 1) ROI Dashboard at /roi shows comprehensive stats including language distribution (DE:1, UA:1, PL:70, EN:1), score buckets, monthly trends, top/bottom performers. 2) Multi-language article generation works with pl/en/de/uk - language selector visible in Article Generator. 3) Version history panel in editor ('Wersje' tab) shows source tags (manual_edit, auto_optimize, etc.). 4) Image gallery thumbnails now include base64 data. 5) Auto-optimize content verified to contain real substantive content (1500-2000 chars per section), not placeholder text.",
+
+  "mocked_api": {
+    "has_mocked_apis": true,
+    "mocked_apis_list": [
+      "TPay payment webhook - MOCKED",
+      "Email notifications - MOCKED (logged, not actually sent)",
+      "SurferSEO SERP - AI simulation (not real SERP data)"
+    ]
+  },
+
+  "features_verified": {
+    "roi_dashboard": {
+      "status": "VERIFIED WORKING",
+      "endpoint": "GET /api/stats/roi",
+      "frontend_route": "/roi",
+      "fields": ["total_articles", "status_counts", "score_buckets", "avg_surfer_score", "avg_seo_score", "total_words_estimate", "top_performers", "bottom_performers", "language_distribution", "monthly_trend"]
+    },
+    "multi_language_generation": {
+      "status": "VERIFIED WORKING",
+      "languages": ["pl (Polish)", "en (English)", "de (German)", "uk (Ukrainian)"],
+      "frontend_selector": "Language dropdown in Article Generator page"
+    },
+    "version_source_tagging": {
+      "status": "VERIFIED WORKING",
+      "sources": ["manual_edit", "auto_optimize", "optimize_loop", "pre_restore"],
+      "endpoint": "GET /api/articles/{id}/versions returns source field"
+    },
+    "image_thumbnails": {
+      "status": "VERIFIED WORKING",
+      "fix": "GET /api/articles/{id}/images now includes base64 data field"
+    },
+    "auto_optimize_content_quality": {
+      "status": "VERIFIED WORKING",
+      "fix": "Prompts now require substantive content (150-250 words per section), no placeholder text like '200+ slow'"
+    }
+  }
+}

@@ -687,6 +687,7 @@ async def apply_optimization(article_id: str, request: dict, user: dict = Depend
         "article_id": article_id,
         "user_id": user.get("id", ""),
         "version_data": {k: v for k, v in article.items() if k != "_id"},
+        "source": "auto_optimize",
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     await db.article_versions.insert_one(version_doc)
@@ -788,6 +789,7 @@ async def start_optimize_loop(article_id: str, user: dict = Depends(get_current_
                 "id": str(uuid.uuid4()), "article_id": art_id,
                 "user_id": uid,
                 "version_data": {k: v for k, v in article.items() if k != "_id"},
+                "source": "optimize_loop",
                 "created_at": datetime.now(timezone.utc).isoformat()
             })
             update = {"updated_at": datetime.now(timezone.utc).isoformat()}

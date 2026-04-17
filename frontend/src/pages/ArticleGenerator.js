@@ -25,6 +25,13 @@ const LENGTHS = [
   { value: '3000', label: '3000 slow' },
 ];
 
+const LANGUAGES = [
+  { value: 'pl', label: 'Polski', flag: 'PL' },
+  { value: 'en', label: 'English', flag: 'EN' },
+  { value: 'de', label: 'Deutsch', flag: 'DE' },
+  { value: 'uk', label: 'Українська', flag: 'UA' },
+];
+
 const STAGES = [
   { key: 'analyze', label: 'Analiza tematu i slow kluczowych', icon: Search },
   { key: 'outline', label: 'Tworzenie struktury artykulu', icon: BookOpen },
@@ -63,6 +70,7 @@ const ArticleGenerator = () => {
   const [currentStage, setCurrentStage] = useState(0);
   const [templates, setTemplates] = useState([]);
   const [selectedTemplate, setSelectedTemplate] = useState('standard');
+  const [language, setLanguage] = useState('pl');
 
   useEffect(() => {
     if (location.state) {
@@ -124,7 +132,8 @@ const ArticleGenerator = () => {
         secondary_keywords: secondaryKeywords,
         target_length: parseInt(targetLength),
         tone: tone,
-        template: selectedTemplate
+        template: selectedTemplate,
+        language: language
       }, { timeout: 30000 });
 
       const jobId = startRes.data.job_id;
@@ -350,7 +359,23 @@ const ArticleGenerator = () => {
           <div className="form-hint">Nacisnij Enter aby dodac slowo kluczowe</div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 20 }}>
+          <div className="form-group">
+            <label className="form-label">Jezyk artykulu</label>
+            <Select value={language} onValueChange={setLanguage} data-testid="generator-language-select">
+              <SelectTrigger>
+                <SelectValue placeholder="Wybierz jezyk" />
+              </SelectTrigger>
+              <SelectContent>
+                {LANGUAGES.map(l => (
+                  <SelectItem key={l.value} value={l.value} data-testid={`language-${l.value}`}>
+                    <span style={{ fontWeight: 700, marginRight: 8, fontSize: 11, color: '#04389E' }}>{l.flag}</span>
+                    {l.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="form-group">
             <label className="form-label">Ton artykulu</label>
             <Select value={tone} onValueChange={setTone} data-testid="generator-tone-select">

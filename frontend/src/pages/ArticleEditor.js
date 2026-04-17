@@ -1004,6 +1004,13 @@ const ArticleEditor = () => {
             <div data-testid="article-history-wrapper" style={{ padding: 12 }}>
               <VersionHistoryPanel articleId={articleId} onRestore={(restoredArticle) => {
                 setArticle(restoredArticle);
+                setMetaTitle(restoredArticle.meta_title || '');
+                setMetaDescription(restoredArticle.meta_description || '');
+                const newHtml = buildHtmlFromArticle(restoredArticle);
+                setHtmlContent(newHtml);
+                if (editorContentRef.current) {
+                  editorContentRef.current.innerHTML = newHtml;
+                }
                 toast.success('Wersja przywrócona');
               }} />
             </div>

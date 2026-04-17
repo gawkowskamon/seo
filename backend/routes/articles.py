@@ -43,7 +43,8 @@ def _sync_run_generation_job(job_id: str, request_data: dict, user: dict):
                 secondary_keywords=request_data["secondary_keywords"],
                 target_length=request_data["target_length"],
                 tone=request_data["tone"],
-                template=request_data["template"]
+                template=request_data["template"],
+                language=request_data.get("language", "pl")
             ))
         finally:
             loop.close()
@@ -79,7 +80,7 @@ def _sync_run_generation_job(job_id: str, request_data: dict, user: dict):
                     "total_max": surfer_score["total_max"]
                 }
         except Exception as e:
-            logger.warning(f"Surfer SERP analysis failed, using basic scorer: {e}")
+            logging.warning(f"Surfer SERP analysis failed, using basic scorer: {e}")
 
         article_id = str(uuid.uuid4())
         article_doc = {
@@ -92,6 +93,7 @@ def _sync_run_generation_job(job_id: str, request_data: dict, user: dict):
             "target_length": request_data["target_length"],
             "tone": request_data["tone"],
             "template": request_data["template"],
+            "language": request_data.get("language", "pl"),
             "title": article_data.get("title", ""),
             "slug": article_data.get("slug", ""),
             "meta_title": article_data.get("meta_title", ""),
@@ -161,7 +163,8 @@ async def generate_article_endpoint(request: ArticleGenerateRequest, user: dict 
         "secondary_keywords": request.secondary_keywords,
         "target_length": request.target_length,
         "tone": request.tone,
-        "template": request.template
+        "template": request.template,
+        "language": request.language
     }
     
     asyncio.get_event_loop().run_in_executor(
@@ -418,6 +421,7 @@ async def update_article(article_id: str, request: ArticleUpdateRequest, user: d
         "article_id": article_id,
         "user_id": user.get("id", ""),
         "version_data": {k: v for k, v in article.items() if k not in ("_id",)},
+        "source": "manual_edit",
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     await db.article_versions.insert_one(version_doc)
@@ -588,6 +592,120 @@ async def get_stats(user: dict = Depends(get_current_user)):
         "total_articles": total_articles,
         "avg_seo_score": avg_score,
         "needs_improvement": needs_improvement
+    }
+
+
+@router.get("/stats/roi")
+async def get_roi_stats(user: dict = Depends(get_current_user)):
+    """Extended ROI dashboard stats: score distribution, top/bottom performers, trends."""
+    query = {} if user.get("is_admin") else {"user_id": user["id"]}
+
+    total = await db.articles.count_documents(query)
+
+    # Status distribution
+    status_pipeline = [
+        {"$match": query},
+        {"$group": {"_id": "$status", "count": {"$sum": 1}}}
+    ]
+    status_dist = await db.articles.aggregate(status_pipeline).to_list(10)
+    status_counts = {"draft": 0, "published": 0, "scheduled": 0}
+    for s in status_dist:
+        status_counts[s["_id"] or "draft"] = s["count"]
+
+    # Score buckets (excellent/good/needs-work)
+    score_pipeline = [
+        {"$match": {**query, "surfer_score.percentage": {"$exists": True}}},
+        {"$bucket": {
+            "groupBy": "$surfer_score.percentage",
+            "boundaries": [0, 50, 70, 80, 101],
+            "default": "unknown",
+            "output": {"count": {"$sum": 1}}
+        }}
+    ]
+    try:
+        score_buckets_raw = await db.articles.aggregate(score_pipeline).to_list(10)
+    except Exception:
+        score_buckets_raw = []
+    score_buckets = {"poor": 0, "medium": 0, "good": 0, "excellent": 0}
+    for b in score_buckets_raw:
+        bid = b["_id"]
+        if bid == 0:
+            score_buckets["poor"] = b["count"]
+        elif bid == 50:
+            score_buckets["medium"] = b["count"]
+        elif bid == 70:
+            score_buckets["good"] = b["count"]
+        elif bid == 80:
+            score_buckets["excellent"] = b["count"]
+
+    # Top 5 performers
+    top_pipeline = [
+        {"$match": {**query, "surfer_score.percentage": {"$exists": True}}},
+        {"$sort": {"surfer_score.percentage": -1}},
+        {"$limit": 5},
+        {"$project": {"_id": 0, "id": 1, "title": 1, "primary_keyword": 1, "surfer_score.percentage": 1, "created_at": 1}}
+    ]
+    top_performers = await db.articles.aggregate(top_pipeline).to_list(5)
+
+    # Bottom 5 (needs work)
+    bottom_pipeline = [
+        {"$match": {**query, "surfer_score.percentage": {"$exists": True}}},
+        {"$sort": {"surfer_score.percentage": 1}},
+        {"$limit": 5},
+        {"$project": {"_id": 0, "id": 1, "title": 1, "primary_keyword": 1, "surfer_score.percentage": 1, "created_at": 1}}
+    ]
+    bottom_performers = await db.articles.aggregate(bottom_pipeline).to_list(5)
+
+    # Articles per language
+    lang_pipeline = [
+        {"$match": query},
+        {"$group": {"_id": {"$ifNull": ["$language", "pl"]}, "count": {"$sum": 1}}}
+    ]
+    lang_dist_raw = await db.articles.aggregate(lang_pipeline).to_list(10)
+    lang_dist = {item["_id"]: item["count"] for item in lang_dist_raw}
+
+    # Monthly publish trend (last 6 months)
+    from datetime import timedelta
+    now = datetime.now(timezone.utc)
+    six_months_ago = (now - timedelta(days=180)).isoformat()
+    trend_pipeline = [
+        {"$match": {**query, "created_at": {"$gte": six_months_ago}}},
+        {"$group": {
+            "_id": {"$substr": ["$created_at", 0, 7]},
+            "count": {"$sum": 1},
+            "avg_score": {"$avg": "$surfer_score.percentage"}
+        }},
+        {"$sort": {"_id": 1}}
+    ]
+    trend_raw = await db.articles.aggregate(trend_pipeline).to_list(12)
+    trend = [{"month": t["_id"], "count": t["count"], "avg_score": round(t.get("avg_score") or 0)} for t in trend_raw]
+
+    # Avg scores
+    avg_pipeline = [
+        {"$match": query},
+        {"$group": {
+            "_id": None,
+            "avg_surfer": {"$avg": "$surfer_score.percentage"},
+            "avg_seo": {"$avg": "$seo_score.percentage"},
+            "total_words_estimate": {"$sum": "$target_length"}
+        }}
+    ]
+    avg_result = await db.articles.aggregate(avg_pipeline).to_list(1)
+    avg_surfer = round(avg_result[0].get("avg_surfer") or 0) if avg_result else 0
+    avg_seo = round(avg_result[0].get("avg_seo") or 0) if avg_result else 0
+    total_words = avg_result[0].get("total_words_estimate") or 0 if avg_result else 0
+
+    return {
+        "total_articles": total,
+        "status_counts": status_counts,
+        "score_buckets": score_buckets,
+        "avg_surfer_score": avg_surfer,
+        "avg_seo_score": avg_seo,
+        "total_words_estimate": total_words,
+        "top_performers": top_performers,
+        "bottom_performers": bottom_performers,
+        "language_distribution": lang_dist,
+        "monthly_trend": trend
     }
 
 

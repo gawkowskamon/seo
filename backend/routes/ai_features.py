@@ -67,8 +67,8 @@ async def list_article_versions(article_id: str, user: dict = Depends(get_curren
         raise HTTPException(status_code=403, detail="Brak dostępu")
     versions = await db.article_versions.find(
         {"article_id": article_id},
-        {"_id": 0, "id": 1, "created_at": 1, "version_data.title": 1, "version_data.seo_score": 1}
-    ).sort("created_at", -1).limit(20).to_list(20)
+        {"_id": 0, "id": 1, "created_at": 1, "source": 1, "version_data.title": 1, "version_data.seo_score": 1, "version_data.surfer_score": 1}
+    ).sort("created_at", -1).limit(30).to_list(30)
     return versions
 
 @router.get("/articles/{article_id}/versions/{version_id}")
@@ -95,6 +95,7 @@ async def restore_article_version(article_id: str, version_id: str, user: dict =
         "id": str(uuid.uuid4()), "article_id": article_id,
         "user_id": user.get("id", ""),
         "version_data": {k: v for k, v in current.items() if k != "_id"},
+        "source": "pre_restore",
         "created_at": datetime.now(timezone.utc).isoformat()
     })
     # Restore

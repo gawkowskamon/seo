@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, PenTool, Lightbulb, LogOut, User, Layers, Users, Image as ImageIcon, Sparkles, Settings, CreditCard, Calendar, Download, Search, RefreshCw, Moon, Sun, BarChart3, Mail, Brain, Activity, Shield, Target, Globe, Share2, Bell, Eye } from 'lucide-react';
+import { LayoutDashboard, PenTool, Lightbulb, LogOut, User, Layers, Users, Image as ImageIcon, Sparkles, Settings, CreditCard, Calendar, Download, Search, RefreshCw, Moon, Sun, BarChart3, Mail, Brain, Activity, Shield, Target, Globe, Share2, Bell, Eye, TrendingUp } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 const Sidebar = () => {
@@ -17,6 +17,7 @@ const Sidebar = () => {
   
   const navItems = [
     { path: '/', label: 'Pulpit', icon: LayoutDashboard, testId: 'sidebar-nav-dashboard' },
+    { path: '/roi', label: 'ROI Dashboard', icon: TrendingUp, testId: 'sidebar-nav-roi' },
     { path: '/generator', label: 'Nowy artykul', icon: PenTool, testId: 'sidebar-nav-generator' },
     { path: '/series', label: 'Serie', icon: Layers, testId: 'sidebar-nav-series' },
     { path: '/generator-obrazow', label: 'Generator obrazow', icon: Sparkles, testId: 'sidebar-nav-image-generator' },

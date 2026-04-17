@@ -135,8 +135,11 @@ Odpowiedz WYŁĄCZNIE w formacie JSON (bez markdown):
 
 async def generate_article(topic: str, primary_keyword: str, secondary_keywords: list, 
                            target_length: int = 1500, tone: str = "profesjonalny",
-                           template: str = "standard") -> dict:
-    """Generate a full SEO-optimized article using OpenAI GPT."""
+                           template: str = "standard", language: str = "pl") -> dict:
+    """Generate a full SEO-optimized article using OpenAI GPT.
+    
+    language: 'pl' (Polish - default, accounting-focused), 'en' (English), 'de' (German), 'uk' (Ukrainian)
+    """
     from content_templates import get_template_prompt
     from datetime import datetime, timezone
     
@@ -145,6 +148,39 @@ async def generate_article(topic: str, primary_keyword: str, secondary_keywords:
         raise ValueError("EMERGENT_LLM_KEY not configured")
     
     current_year = datetime.now(timezone.utc).year
+    
+    # Language-specific system prompts
+    LANG_PROMPTS = {
+        "pl": ARTICLE_SYSTEM_PROMPT,
+        "en": """You are an EXPERT-PRACTITIONER at creating SEO content about accounting, bookkeeping, and taxes.
+You write blog articles that are:
+1. FACTUALLY ACCURATE: cite concrete regulations and sources; use concrete amounts, rates, deadlines
+2. SEO-OPTIMIZED: proper H2/H3 structure, keyword in first paragraph, 2+ H2s, meta tags
+3. TRUSTWORTHY (E-E-A-T): cite official sources (government, tax authority, etc.)
+ALWAYS respond with VALID JSON only, no markdown, no extra text.""",
+        "de": """Sie sind ein EXPERTE-PRAKTIKER im Erstellen von SEO-Inhalten über Buchhaltung, Rechnungswesen und Steuern.
+Sie schreiben Blogartikel, die sind:
+1. FACHLICH KORREKT: zitieren Sie konkrete Vorschriften; nennen Sie konkrete Beträge, Sätze, Fristen
+2. SEO-OPTIMIERT: richtige H2/H3-Struktur, Keyword im ersten Absatz, 2+ H2s, Meta-Tags
+3. VERTRAUENSWÜRDIG (E-E-A-T): Zitieren Sie offizielle Quellen
+Antworten Sie IMMER NUR mit GÜLTIGEM JSON, kein Markdown, kein zusätzlicher Text.""",
+        "uk": """Ви — ЕКСПЕРТ-ПРАКТИК у створенні SEO-контенту про бухгалтерію, облік і податки.
+Ви пишете статті в блог, які є:
+1. ФАКТИЧНО ПРАВИЛЬНІ: цитуйте конкретні норми; вказуйте конкретні суми, ставки, терміни
+2. SEO-ОПТИМІЗОВАНІ: правильна структура H2/H3, ключове слово в першому абзаці, 2+ H2, мета-теги
+3. ДОВІРЛИВІ (E-E-A-T): цитуйте офіційні джерела
+ЗАВЖДИ відповідайте ЛИШЕ ДІЙСНИМ JSON, без markdown, без додаткового тексту."""
+    }
+    system_message = LANG_PROMPTS.get(language, ARTICLE_SYSTEM_PROMPT)
+    
+    # Language-specific instructions for prompts
+    LANG_INSTRUCTIONS = {
+        "pl": "",  # default - Polish content about Polish accounting
+        "en": "\n\nIMPORTANT: Write the ENTIRE article in ENGLISH. Target an international accounting/tax audience. Use general tax concepts (not Polish-specific) where appropriate.",
+        "de": "\n\nWICHTIG: Schreiben Sie den GESAMTEN Artikel auf DEUTSCH. Zielgruppe: deutschsprachige Buchhaltungs-/Steuerfachleute.",
+        "uk": "\n\nВАЖЛИВО: Пишіть всю статтю УКРАЇНСЬКОЮ мовою. Цільова аудиторія: україномовні бухгалтери та податкові фахівці."
+    }
+    lang_instr = LANG_INSTRUCTIONS.get(language, "")
     
     # Use template-based prompt if template is not standard, otherwise use default
     if template and template != "standard":
@@ -155,7 +191,7 @@ async def generate_article(topic: str, primary_keyword: str, secondary_keywords:
             secondary_keywords=secondary_keywords,
             target_length=target_length,
             tone=tone
-        )
+        ) + lang_instr
     else:
         prompt = ARTICLE_GENERATION_PROMPT.format(
             topic=topic,
@@ -164,7 +200,7 @@ async def generate_article(topic: str, primary_keyword: str, secondary_keywords:
             target_length=target_length,
             tone=tone,
             current_year=current_year
-        )
+        ) + lang_instr
     
     models_to_try = [
         ("gemini", "gemini-2.0-flash", 3),
@@ -181,7 +217,7 @@ async def generate_article(topic: str, primary_keyword: str, secondary_keywords:
                 chat = LlmChat(
                     api_key=api_key,
                     session_id=f"article-gen-{hash(topic) % 100000}-m{model_idx}-a{attempt}",
-                    system_message=ARTICLE_SYSTEM_PROMPT
+                    system_message=system_message
                 )
                 chat.with_model(provider, model).with_params(timeout=180)
                 
