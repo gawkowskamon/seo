@@ -152,34 +152,34 @@ def compute_seo_score(article: dict, primary_keyword: str, secondary_keywords: l
     # Extract all text content
     all_text = ""
     headings_text = ""
-    for section in article.get("sections", []):
-        headings_text += " " + section.get("heading", "")
-        all_text += " " + re.sub(r'<[^>]+>', '', section.get("content", ""))
-        for sub in section.get("subsections", []):
-            headings_text += " " + sub.get("heading", "")
-            all_text += " " + re.sub(r'<[^>]+>', '', sub.get("content", ""))
+    for section in (article.get("sections") or []):
+        headings_text += " " + (section.get("heading") or "")
+        all_text += " " + re.sub(r'<[^>]+>', '', section.get("content") or "")
+        for sub in (section.get("subsections") or []):
+            headings_text += " " + (sub.get("heading") or "")
+            all_text += " " + re.sub(r'<[^>]+>', '', sub.get("content") or "")
     
     # Also count FAQ text
     faq_text = ""
-    for faq in article.get("faq", []):
-        faq_text += " " + faq.get("question", "") + " " + faq.get("answer", "")
+    for faq in (article.get("faq") or []):
+        faq_text += " " + (faq.get("question") or "") + " " + (faq.get("answer") or "")
     
     total_text = all_text + faq_text
     word_count = len(all_text.split())
     total_word_count = len(total_text.split())
     
     # Get HTML content for deeper analysis
-    html_content = article.get("html_content", "")
+    html_content = article.get("html_content") or ""
     if not html_content:
-        for section in article.get("sections", []):
-            html_content += section.get("content", "")
+        for section in (article.get("sections") or []):
+            html_content += (section.get("content") or "")
             for sub in section.get("subsections", []):
-                html_content += sub.get("content", "")
+                html_content += sub.get("content") or ""
 
     # ============================================================
     # 1. Title analysis (max 12 pts)
     # ============================================================
-    title = article.get("title", "")
+    title = article.get("title") or ""
     title_score = 0
     if 30 <= len(title) <= 70:
         title_score += 4
@@ -209,7 +209,7 @@ def compute_seo_score(article: dict, primary_keyword: str, secondary_keywords: l
     # ============================================================
     # 2. Meta description (max 8 pts)
     # ============================================================
-    meta_desc = article.get("meta_description", "")
+    meta_desc = article.get("meta_description") or ""
     meta_score = 0
     if 120 <= len(meta_desc) <= 160:
         meta_score += 3
@@ -274,7 +274,7 @@ def compute_seo_score(article: dict, primary_keyword: str, secondary_keywords: l
     else:
         recommendations.append(f"Za mało podsekcji H3 ({h3_count}, zalecane min 6)")
     
-    keyword_in_h2 = sum(1 for s in sections if _keyword_in_text(s.get("heading", ""), primary_keyword))
+    keyword_in_h2 = sum(1 for s in sections if _keyword_in_text(s.get("heading") or "", primary_keyword))
     if keyword_in_h2 >= 2:
         heading_score += 3
     elif keyword_in_h2 >= 1:
@@ -375,7 +375,7 @@ def compute_seo_score(article: dict, primary_keyword: str, secondary_keywords: l
         recommendations.append("Brak sekcji FAQ (Google Featured Snippets)")
     
     if faq:
-        avg_answer_len = sum(len(f.get("answer", "").split()) for f in faq) / len(faq)
+        avg_answer_len = sum(len(f.get("answer") or "".split()) for f in faq) / len(faq)
         if avg_answer_len >= 40:
             faq_score += 3
         elif avg_answer_len >= 25:
@@ -385,7 +385,7 @@ def compute_seo_score(article: dict, primary_keyword: str, secondary_keywords: l
         else:
             recommendations.append("Odpowiedzi w FAQ powinny mieć min. 40 słów - Google preferuje rozbudowane odpowiedzi")
         # FAQ with keyword
-        faq_with_kw = sum(1 for f in faq if _keyword_in_text(f.get("question", ""), primary_keyword))
+        faq_with_kw = sum(1 for f in faq if _keyword_in_text(f.get("question") or "", primary_keyword))
         if faq_with_kw >= 1:
             faq_score += 2
         else:
@@ -568,7 +568,7 @@ def compute_seo_score(article: dict, primary_keyword: str, secondary_keywords: l
     # ============================================================
     # 14. Meta title (separate from main title) (max 3 pts)
     # ============================================================
-    meta_title = article.get("meta_title", "")
+    meta_title = article.get("meta_title") or ""
     mt_score = 0
     if meta_title:
         if 30 <= len(meta_title) <= 60:

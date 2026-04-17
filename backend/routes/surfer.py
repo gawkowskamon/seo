@@ -471,12 +471,12 @@ async def generate_seo_report(article_id: str, user: dict = Depends(get_current_
     pdf.ln(2)
 
     for i, sec in enumerate(sections):
-        heading = sec.get("heading", "").encode('latin-1', 'replace').decode('latin-1')
+        heading = (sec.get("heading") or "").encode('latin-1', 'replace').decode('latin-1')
         pdf.set_font("Helvetica", "B", 10)
         pdf.set_text_color(40, 40, 40)
         pdf.cell(0, 6, f"H2: {heading}", ln=True)
-        for sub in sec.get("subsections", []):
-            sub_heading = sub.get("heading", "").encode('latin-1', 'replace').decode('latin-1')
+        for sub in (sec.get("subsections") or []):
+            sub_heading = (sub.get("heading") or "").encode('latin-1', 'replace').decode('latin-1')
             pdf.set_font("Helvetica", "", 9)
             pdf.set_text_color(80, 80, 80)
             pdf.cell(10, 5, "")
@@ -585,8 +585,8 @@ WAZNE: section_plan - minimum {max(len(sections), 5)} sekcji. faq_plan - minimum
                 subs = sp.get("subsections", [])
                 existing_content = ""
                 for s in sections:
-                    if s.get("heading", "").lower().strip() == heading.lower().strip():
-                        existing_content = s.get("content", "")[:500]
+                    if (s.get("heading") or "").lower().strip() == heading.lower().strip():
+                        existing_content = (s.get("content") or "")[:500]
                         break
 
                 prompt_sec = f"""Napisz sekcje artykulu SEO na slowo "{keyword}".
@@ -701,10 +701,10 @@ async def apply_optimization(article_id: str, request: dict, user: dict = Depend
         # Add anchors to sections
         for sec in optimized["sections"]:
             if not sec.get("anchor"):
-                sec["anchor"] = re.sub(r'[^\w-]', '-', sec.get("heading", "").lower().strip())[:60]
-            for sub in sec.get("subsections", []):
+                sec["anchor"] = re.sub(r'[^\w-]', '-', (sec.get("heading") or "").lower().strip())[:60]
+            for sub in (sec.get("subsections") or []):
                 if not sub.get("anchor"):
-                    sub["anchor"] = re.sub(r'[^\w-]', '-', sub.get("heading", "").lower().strip())[:60]
+                    sub["anchor"] = re.sub(r'[^\w-]', '-', (sub.get("heading") or "").lower().strip())[:60]
         update["sections"] = optimized["sections"]
         # Rebuild TOC from sections
         toc = []
@@ -805,14 +805,14 @@ async def start_optimize_loop(article_id: str, user: dict = Depends(get_current_
                     sec.setdefault("content", "")
                     sec.setdefault("subsections", [])
                     if not sec.get("anchor"):
-                        sec["anchor"] = re.sub(r'[^\w-]', '-', sec["heading"].lower().strip())[:60]
+                        sec["anchor"] = re.sub(r'[^\w-]', '-', (sec.get("heading") or "").lower().strip())[:60]
                     clean_subs = []
-                    for sub in sec.get("subsections", []):
+                    for sub in (sec.get("subsections") or []):
                         if not isinstance(sub, dict) or not sub.get("heading"):
                             continue
                         sub.setdefault("content", "")
                         if not sub.get("anchor"):
-                            sub["anchor"] = re.sub(r'[^\w-]', '-', sub["heading"].lower().strip())[:60]
+                            sub["anchor"] = re.sub(r'[^\w-]', '-', (sub.get("heading") or "").lower().strip())[:60]
                         clean_subs.append(sub)
                     sec["subsections"] = clean_subs
                     clean_sections.append(sec)
@@ -883,9 +883,9 @@ async def start_optimize_loop(article_id: str, user: dict = Depends(get_current_
                 faq = article.get("faq", [])
                 issues_text = "\n".join(f"- {i}" for i in issues)
                 sections_summary = jmod.dumps(
-                    [{"heading": s["heading"],
-                      "word_count": len(s.get("content", "").split()),
-                      "subsections": [sub["heading"] for sub in s.get("subsections", [])]}
+                    [{"heading": s.get("heading") or "",
+                      "word_count": len((s.get("content") or "").split()),
+                      "subsections": [sub.get("heading") or "" for sub in (s.get("subsections") or [])]}
                      for s in sections], ensure_ascii=False)
 
                 _loop_optimize_jobs[jid]["iterations"][-1]["phase"] = "optimizing"
@@ -916,8 +916,8 @@ WAZNE: min {max(len(sections), 5)} sekcji, min 5 FAQ. Skup sie na: {issues_text[
                     subs = sp.get("subsections", [])
                     existing = ""
                     for s in sections:
-                        if s.get("heading", "").lower().strip() == heading.lower().strip():
-                            existing = s.get("content", "")[:500]
+                        if (s.get("heading") or "").lower().strip() == heading.lower().strip():
+                            existing = (s.get("content") or "")[:500]
                             break
 
                     nlp_hint = ', '.join(issues[0].replace('Brakujace terminy NLP: ', '').split(', ')[:5]) if issues and 'NLP' in issues[0] else 'brak'
@@ -1003,7 +1003,8 @@ Zwroc WYLACZNIE tablice JSON:
             _loop_optimize_jobs[jid]["status"] = "completed"
 
         except Exception as e:
-            logging.error(f"Optimize loop error: {e}")
+            import traceback
+            logging.error(f"Optimize loop error: {e}\n{traceback.format_exc()}")
             _loop_optimize_jobs[jid]["status"] = "failed"
             _loop_optimize_jobs[jid]["error"] = str(e)
         finally:

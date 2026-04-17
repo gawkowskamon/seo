@@ -542,8 +542,8 @@ def _sync_run_ai_suggestions(job_id: str, existing_articles: list, focus: str, c
         _ai_suggestions_jobs[job_id]["status"] = "running"
         from llm_helper import llm_chat_sync
 
-        existing_titles = [a.get("title", "") for a in existing_articles[:20]]
-        existing_keywords = list(set([a.get("primary_keyword", "") for a in existing_articles[:20] if a.get("primary_keyword")]))
+        existing_titles = [a.get("title") or "" for a in existing_articles[:20]]
+        existing_keywords = list(set([a.get("primary_keyword") or "" for a in existing_articles[:20] if a.get("primary_keyword")]))
         titles_str = "\n".join([f"- {t}" for t in existing_titles]) if existing_titles else "Brak artykułów"
         keywords_str = ", ".join(existing_keywords[:15]) if existing_keywords else "brak"
         focus_str = f"\nSkup się szczególnie na: {focus}" if focus else ""
@@ -782,13 +782,13 @@ def _sync_run_plagiarism_check(job_id: str, article_data: dict, emergent_key: st
         # Extract text content from sections
         text_parts = []
         for section in article_data.get("sections", []):
-            text_parts.append(section.get("heading", ""))
-            content = section.get("content", "")
+            text_parts.append(section.get("heading") or "")
+            content = section.get("content") or ""
             clean = re.sub(r'<[^>]+>', '', content)
             text_parts.append(clean)
             for sub in section.get("subsections", []):
-                text_parts.append(sub.get("heading", ""))
-                sub_content = sub.get("content", "")
+                text_parts.append(sub.get("heading") or "")
+                sub_content = sub.get("content") or ""
                 clean_sub = re.sub(r'<[^>]+>', '', sub_content)
                 text_parts.append(clean_sub)
 
@@ -800,8 +800,8 @@ def _sync_run_plagiarism_check(job_id: str, article_data: dict, emergent_key: st
 
         prompt = f"""Przeanalizuj poniższy tekst artykułu pod kątem oryginalności i potencjalnego plagiatu.
 
-Tytuł: {article_data.get("title", "")}
-Słowo kluczowe: {article_data.get("primary_keyword", "")}
+Tytuł: {article_data.get("title") or ""}
+Słowo kluczowe: {article_data.get("primary_keyword") or ""}
 
 Tekst artykułu:
 {full_text}
@@ -935,12 +935,12 @@ def _sync_run_content_verification(job_id: str, article_data: dict, emergent_key
         text_parts = []
         for section in article_data.get("sections", []):
             text_parts.append(f"## {section.get('heading', '')}")
-            content = section.get("content", "")
+            content = section.get("content") or ""
             clean = re.sub(r'<[^>]+>', ' ', content)
             text_parts.append(clean)
             for sub in section.get("subsections", []):
                 text_parts.append(f"### {sub.get('heading', '')}")
-                sub_content = sub.get("content", "")
+                sub_content = sub.get("content") or ""
                 clean_sub = re.sub(r'<[^>]+>', ' ', sub_content)
                 text_parts.append(clean_sub)
 
@@ -961,8 +961,8 @@ def _sync_run_content_verification(job_id: str, article_data: dict, emergent_key
 
         prompt = f"""Zweryfikuj poniższy artykuł blogowy z zakresu księgowości/podatków pod kątem RZETELNOŚCI MERYTORYCZNEJ.
 
-Tytuł: {article_data.get("title", "")}
-Słowo kluczowe: {article_data.get("primary_keyword", "")}
+Tytuł: {article_data.get("title") or ""}
+Słowo kluczowe: {article_data.get("primary_keyword") or ""}
 
 Treść artykułu:
 {full_text}
@@ -1111,16 +1111,16 @@ def _sync_run_auto_competition(job_id: str, article_data: dict, emergent_key: st
     try:
         _auto_competition_jobs[job_id]["status"] = "running"
 
-        keyword = article_data.get("primary_keyword", "")
-        my_title = article_data.get("title", "")
-        my_sections = [s.get("heading", "") for s in article_data.get("sections", [])]
+        keyword = article_data.get("primary_keyword") or ""
+        my_title = article_data.get("title") or ""
+        my_sections = [s.get("heading") or "" for s in article_data.get("sections", [])]
         my_word_count = 0
         my_text = ""
         for section in article_data.get("sections", []):
-            text = re.sub(r'<[^>]+>', ' ', section.get("content", ""))
+            text = re.sub(r'<[^>]+>', ' ', section.get("content") or "")
             my_text += " " + text
             for sub in section.get("subsections", []):
-                my_text += " " + re.sub(r'<[^>]+>', ' ', sub.get("content", ""))
+                my_text += " " + re.sub(r'<[^>]+>', ' ', sub.get("content") or "")
         my_word_count = len(my_text.split())
 
         # Scrape search results using DuckDuckGo HTML (no API key needed)
@@ -1163,7 +1163,7 @@ def _sync_run_auto_competition(job_id: str, article_data: dict, emergent_key: st
                         meta_desc = ""
                         md = page_soup.find("meta", attrs={"name": "description"})
                         if md:
-                            meta_desc = md.get("content", "")
+                            meta_desc = md.get("content") or ""
                         headings = []
                         for tag in ["h1", "h2", "h3"]:
                             for h in page_soup.find_all(tag)[:10]:
@@ -1304,10 +1304,10 @@ def _sync_run_ab_title_test(job_id: str, article_data: dict, custom_variants: li
         _ab_title_jobs[job_id]["status"] = "running"
         from llm_helper import llm_chat_sync
 
-        current_title = article_data.get("title", "")
-        keyword = article_data.get("primary_keyword", "")
+        current_title = article_data.get("title") or ""
+        keyword = article_data.get("primary_keyword") or ""
         topic = article_data.get("topic", "")
-        meta_desc = article_data.get("meta_description", "")
+        meta_desc = article_data.get("meta_description") or ""
 
         custom_str = ""
         if custom_variants:

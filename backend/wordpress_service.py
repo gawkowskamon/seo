@@ -218,7 +218,7 @@ def _build_styled_content(article: dict) -> str:
     if toc:
         toc_items = ""
         for item in toc:
-            toc_items += f'<li style="{STYLE_LI}"><a href="#{item.get("anchor", "")}" style="{STYLE_A}">{item.get("label", item.get("title", ""))}</a></li>'
+            toc_items += f'<li style="{STYLE_LI}"><a href="#{item.get("anchor", "")}" style="{STYLE_A}">{item.get("label", item.get("title") or "")}</a></li>'
         parts.append(
             f'<div style="{STYLE_TOC}">'
             f'<h2 style="{STYLE_TOC_H2}">Spis treści</h2>'
@@ -231,14 +231,14 @@ def _build_styled_content(article: dict) -> str:
     if sections:
         for section in sections:
             anchor = section.get("anchor", "")
-            heading = section.get("heading", "")
-            content = _apply_inline_styles(section.get("content", ""))
+            heading = section.get("heading") or ""
+            content = _apply_inline_styles(section.get("content") or "")
             parts.append(f'<h2 id="{anchor}" style="{STYLE_H2}">{heading}</h2>')
             parts.append(content)
             for sub in section.get("subsections", []):
                 sub_anchor = sub.get("anchor", "")
-                sub_heading = sub.get("heading", "")
-                sub_content = _apply_inline_styles(sub.get("content", ""))
+                sub_heading = sub.get("heading") or ""
+                sub_content = _apply_inline_styles(sub.get("content") or "")
                 parts.append(f'<h3 id="{sub_anchor}" style="{STYLE_H3}">{sub_heading}</h3>')
                 parts.append(sub_content)
     elif article.get("html_content"):
@@ -252,9 +252,9 @@ def _build_styled_content(article: dict) -> str:
         for q in faq:
             faq_items += (
                 f'<div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">'
-                f'<h3 itemprop="name" style="{STYLE_FAQ_H3}">{q.get("question", "")}</h3>'
+                f'<h3 itemprop="name" style="{STYLE_FAQ_H3}">{q.get("question") or ""}</h3>'
                 f'<div itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">'
-                f'<p itemprop="text" style="{STYLE_P}">{q.get("answer", "")}</p>'
+                f'<p itemprop="text" style="{STYLE_P}">{q.get("answer") or ""}</p>'
                 f'</div></div>'
             )
         parts.append(
@@ -362,11 +362,11 @@ async def publish_to_wordpress(wp_url: str, wp_user: str, wp_app_password: str, 
 
     content_html = _build_styled_content(article)
 
-    excerpt = article.get("meta_description", "")
+    excerpt = article.get("meta_description") or ""
     if not excerpt:
         sections = article.get("sections", [])
         if sections:
-            excerpt = strip_html_tags(sections[0].get("content", ""))[:300]
+            excerpt = strip_html_tags(sections[0].get("content") or "")[:300]
 
     post_data = {
         "title": article.get("title", "Bez tytułu"),
@@ -375,9 +375,9 @@ async def publish_to_wordpress(wp_url: str, wp_user: str, wp_app_password: str, 
         "status": "draft",
         "slug": article.get("slug", ""),
         "meta": {
-            "_yoast_wpseo_metadesc": article.get("meta_description", ""),
-            "_yoast_wpseo_title": article.get("meta_title", ""),
-            "_yoast_wpseo_focuskw": article.get("primary_keyword", ""),
+            "_yoast_wpseo_metadesc": article.get("meta_description") or "",
+            "_yoast_wpseo_title": article.get("meta_title") or "",
+            "_yoast_wpseo_focuskw": article.get("primary_keyword") or "",
         }
     }
 

@@ -16,6 +16,7 @@ Monika (admin) – Kurdynowski Accounting & Tax Solutions. Używa aplikacji do t
 **All core features functional and tested (iteration 36: 16/16 passed 100%)**
 
 ### Completed in this session
+- [x] **FIX (2026-04-17 12:15):** Optimize-loop "Do 80%+" i 1x Optymalizuj crash `NoneType` — wszystkie ścieżki wrażliwe na None (section content, html_content, heading) zabezpieczone wzorcem `x.get("content") or ""` w: surfer_seo_service.py, seo_scorer.py, surfer.py (_apply_to_db, _run_optimize, _run_loop), export_service.py, wordpress_service.py, routes/ai_features.py, routes/seo_tools.py
 - [x] **FIX:** SurferSEO auto-optimize & loop: naprawione prompty generujące placeholder ("200+ slow")
 - [x] **FIX:** Galeria obrazów w edytorze — zwraca pole `data` dla miniatur
 - [x] **FIX:** Timeout polling generatora 3→6 min

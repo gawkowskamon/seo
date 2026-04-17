@@ -97,30 +97,30 @@ def compute_surfer_score(article: dict, surfer_data: dict) -> dict:
     """
     benchmarks = surfer_data.get("benchmarks", {})
     nlp_terms = surfer_data.get("nlp_terms", [])
-    primary_keyword = article.get("primary_keyword", "")
+    primary_keyword = article.get("primary_keyword") or ""
 
     # Extract article content
-    sections = article.get("sections", [])
-    html_content = article.get("html_content", "")
+    sections = article.get("sections") or []
+    html_content = article.get("html_content") or ""
     all_text = ""
     headings_text = ""
     for section in sections:
-        headings_text += " " + section.get("heading", "")
-        all_text += " " + re.sub(r'<[^>]+>', '', section.get("content", ""))
-        for sub in section.get("subsections", []):
-            headings_text += " " + sub.get("heading", "")
-            all_text += " " + re.sub(r'<[^>]+>', '', sub.get("content", ""))
+        headings_text += " " + (section.get("heading") or "")
+        all_text += " " + re.sub(r'<[^>]+>', '', section.get("content") or "")
+        for sub in (section.get("subsections") or []):
+            headings_text += " " + (sub.get("heading") or "")
+            all_text += " " + re.sub(r'<[^>]+>', '', sub.get("content") or "")
 
     faq_text = ""
-    for faq in article.get("faq", []):
-        faq_text += " " + faq.get("question", "") + " " + faq.get("answer", "")
+    for faq in (article.get("faq") or []):
+        faq_text += " " + (faq.get("question") or "") + " " + (faq.get("answer") or "")
     total_text = (all_text + " " + faq_text).lower()
 
     if not html_content:
         for section in sections:
-            html_content += section.get("content", "")
-            for sub in section.get("subsections", []):
-                html_content += sub.get("content", "")
+            html_content += (section.get("content") or "")
+            for sub in (section.get("subsections") or []):
+                html_content += (sub.get("content") or "")
 
     word_count = len(all_text.split())
     h2_count = len(sections)
@@ -242,8 +242,8 @@ def compute_surfer_score(article: dict, surfer_data: dict) -> dict:
     }
 
     # --- Title & Meta (10 pts) ---
-    title = article.get("title", "")
-    meta_desc = article.get("meta_description", "")
+    title = article.get("title") or ""
+    meta_desc = article.get("meta_description") or ""
     tm_pts = 0
     kw_lower = primary_keyword.lower()
     if kw_lower and kw_lower in title.lower():

@@ -116,12 +116,12 @@ def _sync_run_auto_meta(job_id: str, article_data: dict, emergent_key: str):
         _auto_meta_jobs[job_id]["status"] = "running"
         from llm_helper import llm_chat_sync
 
-        title = article_data.get("title", "")
-        keyword = article_data.get("primary_keyword", "")
+        title = article_data.get("title") or ""
+        keyword = article_data.get("primary_keyword") or ""
         text_parts = []
         for section in article_data.get("sections", []):
-            text_parts.append(section.get("heading", ""))
-            clean = re.sub(r'<[^>]+>', '', section.get("content", ""))
+            text_parts.append(section.get("heading") or "")
+            clean = re.sub(r'<[^>]+>', '', section.get("content") or "")
             text_parts.append(clean[:200])
         content_summary = " ".join(text_parts)[:1000]
 
@@ -215,11 +215,11 @@ def _sync_run_schedule_suggestion(job_id: str, article_data: dict, emergent_key:
         _schedule_jobs[job_id]["status"] = "running"
         from llm_helper import llm_chat_sync
 
-        title = article_data.get("title", "")
-        keyword = article_data.get("primary_keyword", "")
+        title = article_data.get("title") or ""
+        keyword = article_data.get("primary_keyword") or ""
         category = article_data.get("category", "")
         faq_count = len(article_data.get("faq", []))
-        word_count = sum(len(re.sub(r'<[^>]+>', '', s.get("content", "")).split()) for s in article_data.get("sections", []))
+        word_count = sum(len(re.sub(r'<[^>]+>', '', s.get("content") or "").split()) for s in article_data.get("sections", []))
 
         schedule_sys = "Jesteś ekspertem od content marketingu i analityki publikacji dla polskiej branży finansowej/księgowej. Odpowiadaj WYŁĄCZNIE poprawnym JSON-em."
 
@@ -327,13 +327,13 @@ def _sync_run_social_posts(job_id: str, article_data: dict, emergent_key: str):
         _social_posts_jobs[job_id]["status"] = "running"
         from llm_helper import llm_chat_sync
 
-        title = article_data.get("title", "")
-        keyword = article_data.get("primary_keyword", "")
-        meta_desc = article_data.get("meta_description", "")
+        title = article_data.get("title") or ""
+        keyword = article_data.get("primary_keyword") or ""
+        meta_desc = article_data.get("meta_description") or ""
         key_points = []
         for section in article_data.get("sections", [])[:3]:
-            key_points.append(section.get("heading", ""))
-            clean = re.sub(r'<[^>]+>', ' ', section.get("content", ""))
+            key_points.append(section.get("heading") or "")
+            clean = re.sub(r'<[^>]+>', ' ', section.get("content") or "")
             key_points.append(" ".join(clean.split()[:50]))
         content_summary = "\n".join(key_points)[:800]
 

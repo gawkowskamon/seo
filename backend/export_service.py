@@ -22,14 +22,14 @@ def strip_html(html: str) -> str:
 
 def generate_facebook_post(article: dict) -> str:
     """Generate Facebook-optimized post from article."""
-    title = article.get("title", "")
-    meta_desc = article.get("meta_description", "")
+    title = article.get("title") or ""
+    meta_desc = article.get("meta_description") or ""
     
     # Get first section content as intro
     sections = article.get("sections", [])
     intro = ""
     if sections:
-        intro = strip_html(sections[0].get("content", ""))
+        intro = strip_html(sections[0].get("content") or "")
         # Limit to ~200 chars
         if len(intro) > 200:
             intro = intro[:197] + "..."
@@ -60,14 +60,14 @@ def generate_facebook_post(article: dict) -> str:
 
 def generate_google_business_post(article: dict) -> str:
     """Generate Google Business Profile optimized post."""
-    title = article.get("title", "")
-    meta_desc = article.get("meta_description", "")
+    title = article.get("title") or ""
+    meta_desc = article.get("meta_description") or ""
     
     # Google Business posts have ~1500 char limit, keep it concise
     sections = article.get("sections", [])
     intro = ""
     if sections:
-        intro = strip_html(sections[0].get("content", ""))
+        intro = strip_html(sections[0].get("content") or "")
         if len(intro) > 300:
             intro = intro[:297] + "..."
     
@@ -85,25 +85,25 @@ def generate_google_business_post(article: dict) -> str:
 
 def generate_full_html(article: dict) -> str:
     """Generate complete standalone HTML document from article."""
-    title = article.get("title", "")
+    title = article.get("title") or ""
     meta_title = article.get("meta_title", title)
-    meta_desc = article.get("meta_description", "")
+    meta_desc = article.get("meta_description") or ""
     
     # Build TOC HTML
     toc_html = '<nav class="toc"><h2>Spis treści</h2><ol>'
     for item in article.get("toc", []):
-        toc_html += f'<li><a href="#{item.get("anchor", "")}">{item.get("label", item.get("title", ""))}</a></li>'
+        toc_html += f'<li><a href="#{item.get("anchor", "")}">{item.get("label", item.get("title") or "")}</a></li>'
     toc_html += '</ol></nav>'
     
     # Build sections HTML
     sections_html = ""
     for section in article.get("sections", []):
         sections_html += f'<section id="{section.get("anchor", "")}">'
-        sections_html += f'<h2>{section.get("heading", "")}</h2>'
-        sections_html += section.get("content", "")
+        sections_html += f'<h2>{section.get("heading") or ""}</h2>'
+        sections_html += section.get("content") or ""
         for sub in section.get("subsections", []):
-            sections_html += f'<h3 id="{sub.get("anchor", "")}">{sub.get("heading", "")}</h3>'
-            sections_html += sub.get("content", "")
+            sections_html += f'<h3 id="{sub.get("anchor", "")}">{sub.get("heading") or ""}</h3>'
+            sections_html += sub.get("content") or ""
         sections_html += '</section>'
     
     # Build FAQ HTML with Schema.org markup
@@ -111,9 +111,9 @@ def generate_full_html(article: dict) -> str:
     faq_html += '<div itemscope itemtype="https://schema.org/FAQPage">'
     for faq in article.get("faq", []):
         faq_html += f'''<div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
-            <h3 itemprop="name">{faq.get("question", "")}</h3>
+            <h3 itemprop="name">{faq.get("question") or ""}</h3>
             <div itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
-                <p itemprop="text">{faq.get("answer", "")}</p>
+                <p itemprop="text">{faq.get("answer") or ""}</p>
             </div>
         </div>'''
     faq_html += '</div></section>'
@@ -346,9 +346,9 @@ def generate_pdf_bytes(article: dict) -> bytes:
     
     # Sections
     for section in article.get("sections", []):
-        elements.append(Paragraph(section.get("heading", ""), h2_style))
+        elements.append(Paragraph(section.get("heading") or "", h2_style))
         
-        content = strip_html(section.get("content", ""))
+        content = strip_html(section.get("content") or "")
         # Split into paragraphs
         for para in content.split("\n"):
             para = para.strip()
@@ -359,8 +359,8 @@ def generate_pdf_bytes(article: dict) -> bytes:
                     elements.append(Paragraph(re.sub(r'[<>&]', '', para), body_style))
         
         for sub in section.get("subsections", []):
-            elements.append(Paragraph(sub.get("heading", ""), h3_style))
-            sub_content = strip_html(sub.get("content", ""))
+            elements.append(Paragraph(sub.get("heading") or "", h3_style))
+            sub_content = strip_html(sub.get("content") or "")
             for para in sub_content.split("\n"):
                 para = para.strip()
                 if para:
@@ -373,11 +373,11 @@ def generate_pdf_bytes(article: dict) -> bytes:
     elements.append(Spacer(1, 20))
     elements.append(Paragraph("Najczesciej zadawane pytania (FAQ)", h2_style))
     for faq in article.get("faq", []):
-        elements.append(Paragraph(faq.get("question", ""), faq_q_style))
+        elements.append(Paragraph(faq.get("question") or "", faq_q_style))
         try:
-            elements.append(Paragraph(faq.get("answer", ""), body_style))
+            elements.append(Paragraph(faq.get("answer") or "", body_style))
         except Exception:
-            elements.append(Paragraph(re.sub(r'[<>&]', '', faq.get("answer", "")), body_style))
+            elements.append(Paragraph(re.sub(r'[<>&]', '', faq.get("answer") or ""), body_style))
     
     # Sources
     elements.append(Spacer(1, 20))
