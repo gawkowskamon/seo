@@ -1,0 +1,113 @@
+{
+  "summary": "Iteration 38: Smart Scheduling Widget fully verified. Backend: 13/13 tests passed. Frontend: All 6 insight cards render correctly, refresh button works, 'Użyj' button navigates to /generator with prefilled form.",
+
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+
+  "passed_tests": [
+    "✓ GET /api/smart-scheduling/insights returns 200 with all required fields",
+    "✓ Response contains: needs_optimization, ready_to_publish, social_promotion, best_publishing_time, content_gaps, trending_topics, generated_at, cached",
+    "✓ needs_optimization returns articles with surfer_score.percentage < 60%",
+    "✓ ready_to_publish returns drafts with score >= 70% older than 7 days",
+    "✓ social_promotion returns published articles sorted by wp_views_7d",
+    "✓ best_publishing_time returns {day, hour_range, reason} - defaults to 'wtorek 9:00-11:00' when insufficient data",
+    "✓ content_gaps returns keywords with article_count >= 2 and no pillar page (target_length < 2500)",
+    "✓ trending_topics returns 1-2 AI-generated topics with {topic, primary_keyword, reason}",
+    "✓ GET /api/smart-scheduling/insights?refresh=true bypasses cache (cached=false)",
+    "✓ Second call within 6h returns cached=true with cached_at timestamp",
+    "✓ Unauthenticated request returns 401",
+    "✓ Invalid token returns 401",
+    "✓ Frontend: SmartSchedulingWidget renders at top of Dashboard",
+    "✓ Frontend: All 6 insight cards present (data-testid: insight-needs-optimization, insight-ready-to-publish, insight-social-promotion, insight-content-gaps, insight-trending-topics, insight-best-day)",
+    "✓ Frontend: Refresh button (data-testid='smart-scheduling-refresh') triggers refetch",
+    "✓ Frontend: Toast 'Insights odświeżone' appears after refresh",
+    "✓ Frontend: 'Użyj' button (data-testid='trending-use-btn-0') navigates to /generator?topic=X&keyword=Y",
+    "✓ Frontend: ArticleGenerator prefills topic and keyword inputs from URL query params"
+  ],
+
+  "test_report_links": [
+    "/app/backend/tests/test_smart_scheduling.py",
+    "/app/test_reports/pytest/pytest_smart_scheduling_iteration38.xml"
+  ],
+
+  "action_items": [],
+
+  "critical_code_review_comments": [
+    "Smart Scheduling cache stored in db.insights_cache with key 'smart_scheduling_{user_id}' - 6h TTL",
+    "AI trending_topics uses gemini-2.0-flash via emergentintegrations.llm.chat with 60s timeout",
+    "best_publishing_time falls back to default (wtorek 9-11) when < 3 articles have wp_published_at data",
+    "content_gaps aggregation correctly filters keywords with article_count >= 2 and no pillar page (max target_length < 2500)",
+    "Widget shows empty state messages when criteria not met (e.g., 'Wszystkie artykuły mają score ≥ 60%')"
+  ],
+
+  "updated_files": [
+    "/app/backend/tests/test_smart_scheduling.py"
+  ],
+
+  "success_rate": {
+    "backend": "100% (13/13 tests passed)",
+    "frontend": "100% (All 6 cards, refresh button, 'Użyj' navigation all working)"
+  },
+
+  "test_credentials": {
+    "admin": "monika.gawkowska@kurdynowski.pl / MonZuz8180!"
+  },
+
+  "seed_data_creation": "None - used existing 73 articles with varied scores",
+
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+
+  "context_for_next_testing_agent": "Iteration 38 verified Smart Scheduling Widget feature. The widget displays 6 AI-powered insight cards on Dashboard: 1) Needs Optimization (score < 60%), 2) Ready to Publish (drafts >= 70% older than 7 days), 3) Social Promotion (published articles with high views), 4) Content Gaps (keywords without pillar pages), 5) AI Trending Topics (gemini-2.0-flash suggestions), 6) Best Publishing Day (defaults to Tuesday 9-11 for accounting niche). Cache is per-user for 6 hours in db.insights_cache. Refresh button triggers ?refresh=true to bypass cache. 'Użyj' button on trending topics navigates to /generator with topic and keyword prefilled via URL query params.",
+
+  "mocked_api": {
+    "has_mocked_apis": false,
+    "mocked_apis_list": []
+  },
+
+  "features_verified": {
+    "smart_scheduling_widget": {
+      "status": "VERIFIED WORKING",
+      "endpoint": "GET /api/smart-scheduling/insights",
+      "frontend_location": "Dashboard page, above stats grid",
+      "data_testids": [
+        "smart-scheduling-widget",
+        "smart-scheduling-refresh",
+        "insight-needs-optimization",
+        "insight-ready-to-publish",
+        "insight-social-promotion",
+        "insight-content-gaps",
+        "insight-trending-topics",
+        "insight-best-day",
+        "trending-use-btn-0",
+        "trending-use-btn-1"
+      ],
+      "cache": {
+        "ttl": "6 hours",
+        "storage": "db.insights_cache with key 'smart_scheduling_{user_id}'",
+        "bypass": "?refresh=true parameter"
+      },
+      "insights": {
+        "needs_optimization": "Articles with surfer_score.percentage < 60%, sorted by lowest score, limit 5",
+        "ready_to_publish": "Drafts with score >= 70%, created > 7 days ago, not published on WP, limit 5",
+        "social_promotion": "Published articles sorted by wp_views_7d desc, limit 3",
+        "content_gaps": "Keywords with article_count >= 2 and no pillar page (max target_length < 2500), limit 5",
+        "trending_topics": "AI-generated via gemini-2.0-flash based on user's recent 15 articles, returns 1-2 topics",
+        "best_publishing_time": "Analyzes wp_published_at + wp_views to find best weekday, defaults to Tuesday 9-11"
+      }
+    },
+    "generator_prefill": {
+      "status": "VERIFIED WORKING",
+      "url_params": "?topic=X&keyword=Y",
+      "prefills": ["generator-topic-input", "generator-keywords-input"]
+    }
+  }
+}

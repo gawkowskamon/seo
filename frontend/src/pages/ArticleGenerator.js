@@ -78,7 +78,11 @@ const ArticleGenerator = () => {
       if (location.state.primaryKeyword) setPrimaryKeyword(location.state.primaryKeyword);
       if (location.state.secondaryKeywords) setSecondaryKeywords(location.state.secondaryKeywords);
     }
-  }, [location.state]);
+    // Also support URL query params for deep-linking (e.g. from SmartSchedulingWidget)
+    const params = new URLSearchParams(location.search);
+    if (params.get('topic')) setTopic(params.get('topic'));
+    if (params.get('keyword')) setPrimaryKeyword(params.get('keyword'));
+  }, [location.state, location.search]);
 
   useEffect(() => {
     const fetchTemplates = async () => {

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Search, FileText, TrendingUp, AlertTriangle, ArrowRight, Trash2, CheckSquare, Square, Tag, FolderOpen, X } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
+import SmartSchedulingWidget from '../components/SmartSchedulingWidget';
 import { toast } from 'sonner';
 import axios from 'axios';
 
@@ -143,6 +144,9 @@ const Dashboard = () => {
           </Button>
         </div>
       </div>
+
+      {/* Smart Scheduling Widget */}
+      <SmartSchedulingWidget />
 
       {/* Stats */}
       <div className="stats-grid">
