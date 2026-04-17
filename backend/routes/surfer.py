@@ -1021,3 +1021,300 @@ async def optimize_loop_status(job_id: str, user: dict = Depends(get_current_use
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     return {"job_id": job_id, **job}
+
+
+# In-memory store for bulk optimization
+_bulk_optimize_jobs = {}
+
+
+@router.post("/surfer/bulk-optimize")
+async def start_bulk_optimize(
+    threshold: int = 60,
+    max_iterations: int = 1,
+    user: dict = Depends(get_current_user)
+):
+    """Bulk optimize all user's articles with SurferSEO score below threshold.
+
+    Sequential processing (1 article at a time) to respect LLM rate limits.
+    """
+    query = {} if user.get("is_admin") else {"user_id": user["id"]}
+    # Find articles needing optimization: score < threshold OR no score, AND has surfer_data
+    query["surfer_data"] = {"$exists": True, "$ne": None}
+    query["$or"] = [
+        {"surfer_score.percentage": {"$lt": threshold}},
+        {"surfer_score": {"$exists": False}},
+        {"surfer_score": None},
+    ]
+    articles = await db.articles.find(
+        query,
+        {"_id": 0, "id": 1, "title": 1, "surfer_score.percentage": 1}
+    ).to_list(100)
+
+    if not articles:
+        raise HTTPException(status_code=404, detail=f"Brak artykułów ze score < {threshold}% z danymi SERP")
+
+    bulk_id = str(uuid.uuid4())
+    _bulk_optimize_jobs[bulk_id] = {
+        "status": "running",
+        "threshold": threshold,
+        "max_iterations": max_iterations,
+        "total": len(articles),
+        "completed": 0,
+        "failed": 0,
+        "current_article": None,
+        "articles": [
+            {
+                "article_id": a["id"],
+                "title": a.get("title", ""),
+                "score_before": a.get("surfer_score", {}).get("percentage") if a.get("surfer_score") else None,
+                "score_after": None,
+                "status": "pending",
+                "error": None
+            }
+            for a in articles
+        ],
+        "started_at": datetime.now(timezone.utc).isoformat(),
+        "finished_at": None
+    }
+
+    def _run_bulk(b_id, user_id):
+        import pymongo
+        sync_client = pymongo.MongoClient(os.environ.get('MONGO_URL'), serverSelectionTimeoutMS=5000)
+        sync_db = sync_client[os.environ.get('DB_NAME', 'test_database')]
+        try:
+            for idx, art_info in enumerate(_bulk_optimize_jobs[b_id]["articles"]):
+                art_id = art_info["article_id"]
+                _bulk_optimize_jobs[b_id]["current_article"] = {"idx": idx, "title": art_info["title"][:80]}
+                _bulk_optimize_jobs[b_id]["articles"][idx]["status"] = "optimizing"
+
+                # Start an inner loop (reuse existing _run_loop logic via local sub-job)
+                inner_job_id = str(uuid.uuid4())
+                _loop_optimize_jobs[inner_job_id] = {
+                    "status": "running",
+                    "article_id": art_id,
+                    "iterations": [],
+                    "current_iteration": 0,
+                    "target_score": 80,
+                    "final_score": 0
+                }
+
+                try:
+                    article = sync_db.articles.find_one({"id": art_id}, {"_id": 0})
+                    if not article or not article.get("surfer_data"):
+                        _bulk_optimize_jobs[b_id]["articles"][idx]["status"] = "skipped"
+                        _bulk_optimize_jobs[b_id]["articles"][idx]["error"] = "brak surfer_data"
+                        _bulk_optimize_jobs[b_id]["failed"] += 1
+                        continue
+
+                    # Run one iteration of the optimization loop (reuse _run_loop with override)
+                    # Quick inline version: call _run_loop blocking
+                    # We need to limit iterations for bulk - temporarily modify MAX via closure
+                    _run_loop_bulk(inner_job_id, art_id, article.get("surfer_data"), user_id,
+                                   sync_client, sync_db, max_iter=_bulk_optimize_jobs[b_id]["max_iterations"])
+
+                    final_score = _loop_optimize_jobs[inner_job_id].get("final_score", 0)
+                    _bulk_optimize_jobs[b_id]["articles"][idx]["score_after"] = final_score
+                    if _loop_optimize_jobs[inner_job_id].get("status") == "completed":
+                        _bulk_optimize_jobs[b_id]["articles"][idx]["status"] = "done"
+                        _bulk_optimize_jobs[b_id]["completed"] += 1
+                    else:
+                        _bulk_optimize_jobs[b_id]["articles"][idx]["status"] = "failed"
+                        _bulk_optimize_jobs[b_id]["articles"][idx]["error"] = _loop_optimize_jobs[inner_job_id].get("error", "")
+                        _bulk_optimize_jobs[b_id]["failed"] += 1
+                except Exception as e:
+                    _bulk_optimize_jobs[b_id]["articles"][idx]["status"] = "failed"
+                    _bulk_optimize_jobs[b_id]["articles"][idx]["error"] = str(e)[:200]
+                    _bulk_optimize_jobs[b_id]["failed"] += 1
+                    logging.error(f"Bulk optimize article {art_id} failed: {e}")
+
+            _bulk_optimize_jobs[b_id]["status"] = "completed"
+            _bulk_optimize_jobs[b_id]["current_article"] = None
+            _bulk_optimize_jobs[b_id]["finished_at"] = datetime.now(timezone.utc).isoformat()
+        except Exception as e:
+            import traceback
+            logging.error(f"Bulk optimize error: {e}\n{traceback.format_exc()}")
+            _bulk_optimize_jobs[b_id]["status"] = "failed"
+            _bulk_optimize_jobs[b_id]["error"] = str(e)
+        finally:
+            sync_client.close()
+
+    executor.submit(_run_bulk, bulk_id, user.get("id", ""))
+    return {"bulk_job_id": bulk_id, "total_articles": len(articles), "status": "running"}
+
+
+@router.get("/surfer/bulk-optimize/status/{bulk_job_id}")
+async def bulk_optimize_status(bulk_job_id: str, user: dict = Depends(get_current_user)):
+    """Check bulk optimization progress."""
+    job = _bulk_optimize_jobs.get(bulk_job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Bulk job not found")
+    return {"bulk_job_id": bulk_job_id, **job}
+
+
+def _run_loop_bulk(jid, art_id, s_data, user_id, sync_client, sync_db, max_iter=1):
+    """Simplified optimize loop for bulk — reuses prompts from _run_loop but with limited iterations."""
+    TARGET = 80
+    MAX_ITERATIONS = max_iter
+    import json as jmod
+    from llm_helper import llm_chat_sync
+
+    def _try_parse_json(text):
+        if text is None:
+            return None
+        clean = text.strip()
+        if clean.startswith("```"):
+            clean = re.sub(r'^```(?:json)?\s*', '', clean)
+            clean = re.sub(r'\s*```$', '', clean)
+        try:
+            return jmod.loads(clean)
+        except jmod.JSONDecodeError:
+            repaired = clean
+            if repaired.count('"') % 2 != 0:
+                last_quote = repaired.rfind('"')
+                repaired = repaired[:last_quote + 1]
+            opens = repaired.count('[') - repaired.count(']')
+            openo = repaired.count('{') - repaired.count('}')
+            repaired = re.sub(r',\s*$', '', repaired)
+            repaired += ']' * max(0, opens) + '}' * max(0, openo)
+            try:
+                return jmod.loads(repaired)
+            except Exception:
+                return None
+
+    def _score_and_save(art, sdata):
+        score = compute_surfer_score(art, sdata)
+        sync_db.articles.update_one({"id": art["id"]}, {"$set": {"surfer_score": score, "surfer_data": sdata}})
+        return score
+
+    def _apply_to_db_bulk(art_id, optimized, uid):
+        article = sync_db.articles.find_one({"id": art_id}, {"_id": 0})
+        sync_db.article_versions.insert_one({
+            "id": str(uuid.uuid4()), "article_id": art_id, "user_id": uid,
+            "version_data": {k: v for k, v in article.items() if k != "_id"},
+            "source": "bulk_optimize",
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+        update = {"updated_at": datetime.now(timezone.utc).isoformat()}
+        if optimized.get("meta_title"):
+            update["meta_title"] = optimized["meta_title"]
+        if optimized.get("meta_description"):
+            update["meta_description"] = optimized["meta_description"]
+        if optimized.get("sections"):
+            clean_sections = []
+            for sec in optimized["sections"]:
+                if not isinstance(sec, dict) or not sec.get("heading"):
+                    continue
+                sec.setdefault("content", "")
+                sec.setdefault("subsections", [])
+                if not sec.get("anchor"):
+                    sec["anchor"] = re.sub(r'[^\w-]', '-', (sec.get("heading") or "").lower().strip())[:60]
+                clean_subs = []
+                for sub in (sec.get("subsections") or []):
+                    if not isinstance(sub, dict) or not sub.get("heading"):
+                        continue
+                    sub.setdefault("content", "")
+                    if not sub.get("anchor"):
+                        sub["anchor"] = re.sub(r'[^\w-]', '-', (sub.get("heading") or "").lower().strip())[:60]
+                    clean_subs.append(sub)
+                sec["subsections"] = clean_subs
+                clean_sections.append(sec)
+            if clean_sections:
+                update["sections"] = clean_sections
+                toc = []
+                for sec in clean_sections:
+                    toc.append({"text": sec["heading"], "anchor": sec.get("anchor", ""), "level": 2})
+                    for sub in sec.get("subsections", []):
+                        toc.append({"text": sub["heading"], "anchor": sub.get("anchor", ""), "level": 3})
+                update["toc"] = toc
+        if optimized.get("faq"):
+            clean_faq = [f for f in optimized["faq"] if isinstance(f, dict) and f.get("question")]
+            if clean_faq:
+                update["faq"] = clean_faq
+        sync_db.articles.update_one({"id": art_id}, {"$set": update})
+
+    try:
+        for iteration in range(1, MAX_ITERATIONS + 1):
+            _loop_optimize_jobs[jid]["current_iteration"] = iteration
+            article = sync_db.articles.find_one({"id": art_id}, {"_id": 0})
+            current_score = _score_and_save(article, s_data)
+            pct = current_score.get("percentage", 0)
+            _loop_optimize_jobs[jid]["iterations"].append({
+                "iteration": iteration, "phase": "scored", "score_before": pct
+            })
+
+            if pct >= TARGET:
+                _loop_optimize_jobs[jid]["iterations"][-1]["phase"] = "target_reached"
+                _loop_optimize_jobs[jid]["final_score"] = pct
+                _loop_optimize_jobs[jid]["status"] = "completed"
+                return
+
+            # Simple re-optimization: regenerate sections + FAQ using SurferSEO NLP hints
+            keyword = article.get("primary_keyword") or ""
+            sections = article.get("sections") or []
+            metrics = current_score.get("metrics", {})
+            nlp_missing = [t["term"] for t in metrics.get("nlp_terms", {}).get("terms", [])[:10] if not t.get("used")]
+
+            # Build optimized sections in-place (expand content, use NLP terms)
+            plan_prompt = f"""Ulepsz artykuł SEO. Slowo: "{keyword}".
+Brakujace terminy NLP: {', '.join(nlp_missing[:8])}
+Aktualne sekcje (tytul i dlugosc):
+{jmod.dumps([{"heading": s.get("heading") or "", "words": len((s.get("content") or "").split())} for s in sections], ensure_ascii=False)}
+
+Zaplanuj ulepszenie. Zwroc JSON:
+{{"meta_title":"max 60 znakow z keyword","meta_description":"120-155 znakow","new_sections":["H2 dla nowej sekcji do dodania","H2 dla drugiej nowej sekcji"],"changes_summary":["zmiana 1","zmiana 2"]}}"""
+
+            try:
+                plan_text = llm_chat_sync(plan_prompt, system_message="JSON only.",
+                                          session_id=f"bulk-plan-{jid[:6]}", timeout=60)
+                plan = _try_parse_json(plan_text) or {}
+            except Exception:
+                plan = {}
+
+            # Generate 1-2 new sections to add
+            new_sections = plan.get("new_sections", [])[:2]
+            added_sections = []
+            for new_heading in new_sections:
+                if not isinstance(new_heading, str) or len(new_heading) < 5:
+                    continue
+                sec_prompt = f"""Napisz sekcje artykulu SEO. Slowo: "{keyword}". Naglowek H2: {new_heading}.
+Terminy NLP do naturalnego uzycia: {', '.join(nlp_missing[:5])}.
+WYMAGANIA:
+- 200-300 slow merytorycznej tresci
+- Uzyj <strong> (min 3) i <ul><li> (min 1 lista)
+- Konkretne kwoty/terminy/przepisy gdy dotyczy
+Zwroc JSON: {{"heading":"{new_heading}","content":"<p>...</p>"}}"""
+                try:
+                    sec = _try_parse_json(llm_chat_sync(sec_prompt, system_message="JSON.",
+                                                        session_id=f"bulk-sec-{jid[:6]}-{len(added_sections)}",
+                                                        timeout=90))
+                    if isinstance(sec, dict) and sec.get("content"):
+                        added_sections.append(sec)
+                except Exception:
+                    pass
+
+            # Apply
+            optimized = {
+                "meta_title": plan.get("meta_title", article.get("meta_title", "")),
+                "meta_description": plan.get("meta_description", article.get("meta_description", "")),
+                "sections": sections + added_sections,
+                "changes_summary": plan.get("changes_summary", [])
+            }
+            _loop_optimize_jobs[jid]["iterations"][-1]["phase"] = "applying"
+            _apply_to_db_bulk(art_id, optimized, user_id)
+
+            updated = sync_db.articles.find_one({"id": art_id}, {"_id": 0})
+            new_score = _score_and_save(updated, s_data)
+            new_pct = new_score.get("percentage", 0)
+            _loop_optimize_jobs[jid]["iterations"][-1]["score_after"] = new_pct
+            _loop_optimize_jobs[jid]["iterations"][-1]["phase"] = "done"
+            _loop_optimize_jobs[jid]["final_score"] = new_pct
+
+            if new_pct >= TARGET:
+                break
+
+        _loop_optimize_jobs[jid]["status"] = "completed"
+    except Exception as e:
+        import traceback
+        logging.error(f"Bulk loop {jid} error: {e}\n{traceback.format_exc()}")
+        _loop_optimize_jobs[jid]["status"] = "failed"
+        _loop_optimize_jobs[jid]["error"] = str(e)

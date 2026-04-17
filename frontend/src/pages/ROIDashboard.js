@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { TrendingUp, FileText, BarChart3, Award, AlertTriangle, Globe, Calendar, ArrowRight, Loader2, Target, Languages } from 'lucide-react';
+import { TrendingUp, FileText, BarChart3, Award, AlertTriangle, Globe, Calendar, ArrowRight, Loader2, Target, Languages, Zap, CheckCircle2, XCircle, X } from 'lucide-react';
+import { Button } from '../components/ui/button';
+import { toast } from 'sonner';
 import axios from 'axios';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -47,19 +49,59 @@ const DistributionBar = ({ label, count, total, color }) => {
 const ROIDashboard = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [bulkJob, setBulkJob] = useState(null);
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [bulkStarting, setBulkStarting] = useState(false);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await axios.get(`${BACKEND_URL}/api/stats/roi`);
-        setData(res.data);
-      } catch (err) {
-        console.error('ROI stats error:', err);
-      } finally {
-        setLoading(false);
-      }
-    })();
+  const fetchStats = useCallback(async () => {
+    try {
+      const res = await axios.get(`${BACKEND_URL}/api/stats/roi`);
+      setData(res.data);
+    } catch (err) {
+      console.error('ROI stats error:', err);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => { fetchStats(); }, [fetchStats]);
+
+  // Poll bulk job status
+  useEffect(() => {
+    if (!bulkJob?.bulk_job_id || bulkJob.status !== 'running') return;
+    const interval = setInterval(async () => {
+      try {
+        const res = await axios.get(`${BACKEND_URL}/api/surfer/bulk-optimize/status/${bulkJob.bulk_job_id}`);
+        setBulkJob(res.data);
+        if (res.data.status !== 'running') {
+          clearInterval(interval);
+          const done = res.data.completed || 0;
+          const failed = res.data.failed || 0;
+          toast.success(`Optymalizacja zakończona: ${done} gotowe, ${failed} błędów`);
+          fetchStats(); // refresh stats
+        }
+      } catch {
+        // continue polling
+      }
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [bulkJob, fetchStats]);
+
+  const startBulkOptimize = async () => {
+    setBulkStarting(true);
+    try {
+      const res = await axios.post(`${BACKEND_URL}/api/surfer/bulk-optimize?threshold=60&max_iterations=1`);
+      toast.success(`Rozpoczęto optymalizację ${res.data.total_articles} artykułów`);
+      // Fetch full status immediately
+      const status = await axios.get(`${BACKEND_URL}/api/surfer/bulk-optimize/status/${res.data.bulk_job_id}`);
+      setBulkJob(status.data);
+      setShowBulkModal(true);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Błąd uruchamiania bulk optymalizacji');
+    } finally {
+      setBulkStarting(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -81,14 +123,33 @@ const ROIDashboard = () => {
   const total = data.total_articles || 0;
   const publishRate = total > 0 ? Math.round(((data.status_counts?.published || 0) / total) * 100) : 0;
   const maxMonthCount = Math.max(1, ...(data.monthly_trend || []).map(t => t.count));
+  const weakCount = (data.score_buckets?.poor || 0) + (data.score_buckets?.medium || 0);
 
   return (
     <div className="page-container" data-testid="roi-dashboard">
-      <div className="page-header">
-        <h1>ROI Dashboard</h1>
-        <p style={{ color: 'hsl(215, 16%, 55%)', marginTop: 4, fontSize: 14 }}>
-          Szczegółowe statystyki wydajności treści i jakości SEO
-        </p>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 20, flexWrap: 'wrap' }}>
+        <div>
+          <h1>ROI Dashboard</h1>
+          <p style={{ color: 'hsl(215, 16%, 55%)', marginTop: 4, fontSize: 14 }}>
+            Szczegółowe statystyki wydajności treści i jakości SEO
+          </p>
+        </div>
+        {weakCount > 0 && (
+          <Button
+            onClick={() => setShowBulkModal(true)}
+            disabled={bulkStarting || bulkJob?.status === 'running'}
+            className="gap-2"
+            data-testid="bulk-optimize-trigger"
+            style={{
+              background: 'linear-gradient(135deg, #f59e0b 0%, #ea580c 100%)',
+              color: 'white', fontWeight: 600, padding: '10px 16px',
+              border: 'none', borderRadius: 10
+            }}
+          >
+            <Zap size={16} />
+            Optymalizuj słabe ({weakCount})
+          </Button>
+        )}
       </div>
 
       {/* Top stats */}
@@ -183,8 +244,7 @@ const ROIDashboard = () => {
 
       {/* Top and bottom performers */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: 20 }}>
-        <div style={{ background: 'white', borderRadius: 12, padding: 20, border: '1px solid hsl(214, 18%, 88%)' }} data-testid="roi-top-performers">
-          <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8, color: '#16a34a' }}>
+        <div style={{ background: 'white', borderRadius: 12, padding: 20, border: '1px solid hsl(214, 18%, 88%)' }} data-testid="roi-top-performers">          <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8, color: '#16a34a' }}>
             <Award size={16} />
             Top 5 artykułów
           </h3>
@@ -243,6 +303,146 @@ const ROIDashboard = () => {
           )}
         </div>
       </div>
+
+      {/* Bulk Optimization Modal */}
+      {showBulkModal && (
+        <div
+          data-testid="bulk-optimize-modal"
+          onClick={(e) => { if (e.target === e.currentTarget && bulkJob?.status !== 'running') setShowBulkModal(false); }}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20
+          }}
+        >
+          <div style={{
+            background: 'white', borderRadius: 14, padding: 28, maxWidth: 720, width: '100%',
+            maxHeight: '85vh', overflowY: 'auto', boxShadow: '0 25px 50px rgba(0,0,0,0.25)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+              <div>
+                <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 6, fontFamily: "'Instrument Serif', Georgia, serif" }}>
+                  Optymalizacja słabych artykułów
+                </h2>
+                <p style={{ color: 'hsl(215, 16%, 55%)', fontSize: 13 }}>
+                  AI zoptymalizuje wszystkie artykuły ze score {'< 60%'}. Jeden artykuł na raz, ~2-3 min na artykuł.
+                </p>
+              </div>
+              {bulkJob?.status !== 'running' && (
+                <button onClick={() => setShowBulkModal(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'hsl(215, 16%, 55%)' }}>
+                  <X size={20} />
+                </button>
+              )}
+            </div>
+
+            {!bulkJob && (
+              <div>
+                <div style={{
+                  background: 'hsl(38, 90%, 95%)', border: '1px solid hsl(38, 90%, 85%)',
+                  borderRadius: 10, padding: 16, marginBottom: 20, fontSize: 13, color: 'hsl(38, 80%, 30%)'
+                }}>
+                  <strong>⚠️ Uwaga:</strong> Zostanie zoptymalizowanych <strong>{weakCount} artykułów</strong>. Każdy artykuł zapisze automatycznie wersję przed optymalizacją (możesz cofnąć w historii). Całkowity czas: ~{Math.ceil(weakCount * 2.5)} minut.
+                </div>
+                <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                  <Button variant="outline" onClick={() => setShowBulkModal(false)} data-testid="bulk-cancel-btn">Anuluj</Button>
+                  <Button
+                    onClick={startBulkOptimize}
+                    disabled={bulkStarting}
+                    className="gap-2"
+                    data-testid="bulk-confirm-btn"
+                    style={{ background: 'linear-gradient(135deg, #f59e0b, #ea580c)', color: 'white' }}
+                  >
+                    {bulkStarting ? <Loader2 size={16} className="animate-spin" /> : <Zap size={16} />}
+                    Start optymalizacji
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {bulkJob && (
+              <div data-testid="bulk-optimize-progress">
+                <div style={{
+                  display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20
+                }}>
+                  <div style={{ background: 'hsl(220, 95%, 97%)', padding: 12, borderRadius: 8, textAlign: 'center' }}>
+                    <div style={{ fontSize: 11, color: '#04389E', fontWeight: 600 }}>WSZYSTKIE</div>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: '#04389E' }}>{bulkJob.total}</div>
+                  </div>
+                  <div style={{ background: 'hsl(142, 50%, 97%)', padding: 12, borderRadius: 8, textAlign: 'center' }}>
+                    <div style={{ fontSize: 11, color: '#16a34a', fontWeight: 600 }}>GOTOWE</div>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: '#16a34a' }}>{bulkJob.completed}</div>
+                  </div>
+                  <div style={{ background: 'hsl(0, 70%, 98%)', padding: 12, borderRadius: 8, textAlign: 'center' }}>
+                    <div style={{ fontSize: 11, color: '#ef4444', fontWeight: 600 }}>BŁĘDY</div>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: '#ef4444' }}>{bulkJob.failed}</div>
+                  </div>
+                  <div style={{ background: 'hsl(215, 16%, 97%)', padding: 12, borderRadius: 8, textAlign: 'center' }}>
+                    <div style={{ fontSize: 11, color: 'hsl(215, 16%, 55%)', fontWeight: 600 }}>POZOSTAŁO</div>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: 'hsl(215, 16%, 30%)' }}>
+                      {bulkJob.total - bulkJob.completed - bulkJob.failed}
+                    </div>
+                  </div>
+                </div>
+
+                {bulkJob.status === 'running' && bulkJob.current_article && (
+                  <div style={{
+                    background: 'hsl(220, 95%, 97%)', borderRadius: 10, padding: 12, marginBottom: 16,
+                    display: 'flex', alignItems: 'center', gap: 10
+                  }}>
+                    <Loader2 size={18} className="animate-spin" style={{ color: '#04389E' }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 11, color: '#04389E', fontWeight: 600 }}>AKTUALNIE OPTYMALIZUJE</div>
+                      <div style={{ fontSize: 13, color: 'hsl(215, 16%, 20%)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {bulkJob.current_article.title}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ maxHeight: 340, overflowY: 'auto', border: '1px solid hsl(214, 18%, 90%)', borderRadius: 10 }}>
+                  {(bulkJob.articles || []).map((a, i) => (
+                    <div key={i} data-testid="bulk-article-row" style={{
+                      display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
+                      borderBottom: i < bulkJob.articles.length - 1 ? '1px solid hsl(214, 18%, 94%)' : 'none',
+                      background: a.status === 'optimizing' ? 'hsl(220, 95%, 98%)' : 'transparent'
+                    }}>
+                      <div style={{ width: 22, display: 'flex', justifyContent: 'center' }}>
+                        {a.status === 'done' && <CheckCircle2 size={18} style={{ color: '#16a34a' }} />}
+                        {a.status === 'failed' && <XCircle size={18} style={{ color: '#ef4444' }} />}
+                        {a.status === 'optimizing' && <Loader2 size={16} className="animate-spin" style={{ color: '#04389E' }} />}
+                        {a.status === 'pending' && <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'hsl(215, 16%, 80%)' }} />}
+                        {a.status === 'skipped' && <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'hsl(0, 50%, 75%)' }} />}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0, fontSize: 13, color: 'hsl(215, 16%, 20%)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {a.title}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, flexShrink: 0 }}>
+                        <span style={{ color: 'hsl(215, 16%, 55%)' }}>{a.score_before ?? '?'}%</span>
+                        <ArrowRight size={12} style={{ color: 'hsl(215, 16%, 55%)' }} />
+                        <span style={{
+                          fontWeight: 700,
+                          color: a.score_after == null ? 'hsl(215, 16%, 55%)' :
+                                 a.score_after > (a.score_before ?? 0) ? '#16a34a' :
+                                 a.score_after < (a.score_before ?? 0) ? '#ef4444' : 'hsl(215, 16%, 40%)'
+                        }}>
+                          {a.score_after == null ? '—' : `${a.score_after}%`}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {bulkJob.status !== 'running' && (
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20, gap: 10 }}>
+                    <Button onClick={() => { setShowBulkModal(false); setBulkJob(null); }} data-testid="bulk-close-btn">
+                      Zamknij
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

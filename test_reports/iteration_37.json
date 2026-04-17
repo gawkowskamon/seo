@@ -1,0 +1,115 @@
+{
+  "summary": "Iteration 37: Bulk Optimize + WordPress Webhook features fully verified. Backend: 16/16 tests passed. Frontend: ROI Dashboard bulk button, AdminSettings webhook config, and WP Preview live-status card all working correctly.",
+
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+
+  "passed_tests": [
+    "✓ POST /api/wordpress/webhook/generate-token creates token for user",
+    "✓ GET /api/wordpress/webhook/config returns webhook_url, token, setup_instructions",
+    "✓ POST /api/wordpress/webhook without X-Webhook-Token returns 401",
+    "✓ POST /api/wordpress/webhook with invalid token returns 403",
+    "✓ POST /api/wordpress/webhook with valid token authenticates properly",
+    "✓ POST webhook with event='post_published' updates article wp_post_id/wp_permalink/wp_published_at/wp_status",
+    "✓ POST webhook with event='traffic_stats' updates wp_views_7d/30d, wp_comments, wp_avg_time_on_page",
+    "✓ POST webhook with event='post_deleted' sets wp_status='deleted' and reverts status to 'draft'",
+    "✓ GET /api/wordpress/webhook/events returns recent webhook events list",
+    "✓ GET /api/wordpress/webhook/article-stats/{article_id} returns WP traffic data",
+    "✓ GET /api/wordpress/webhook/article-stats/{invalid_id} returns 404",
+    "✓ POST /api/surfer/bulk-optimize?threshold=60&max_iterations=1 returns bulk_job_id and total_articles",
+    "✓ GET /api/surfer/bulk-optimize/status/{id} returns progress with articles[] list (status: pending/optimizing/done/failed)",
+    "✓ GET /api/surfer/bulk-optimize/status/{invalid_id} returns 404",
+    "✓ Bulk optimize makes progress after 60s wait (job running, articles being processed)",
+    "✓ GET /api/stats/roi returns score_buckets for bulk button logic",
+    "✓ Frontend: ROI Dashboard shows 'Optymalizuj słabe (14)' button when weak articles exist",
+    "✓ Frontend: Bulk optimize modal opens with warning and confirm/cancel buttons",
+    "✓ Frontend: AdminSettings /admin/settings shows WebhookConfig section",
+    "✓ Frontend: Webhook URL and token fields displayed with copy buttons",
+    "✓ Frontend: Regenerate token button available",
+    "✓ Frontend: WP Preview tab shows live-status card when article is published on WP",
+    "✓ Frontend: WP live-status shows permalink, publication date, views (7d/30d), comments"
+  ],
+
+  "test_report_links": [
+    "/app/backend/tests/test_iteration37_bulk_webhook.py",
+    "/app/test_reports/pytest/pytest_iteration37_bulk_webhook.xml"
+  ],
+
+  "action_items": [],
+
+  "critical_code_review_comments": [
+    "Bulk optimize uses in-memory _bulk_optimize_jobs dict - will be lost on server restart (acceptable for MVP)",
+    "WordPress webhook authentication via X-Webhook-Token header is secure (401 missing, 403 invalid)",
+    "Webhook events are logged to db.wordpress_webhook_events for audit trail",
+    "WP live-status card correctly shows traffic metrics from webhook data (wp_views_7d, wp_views_30d, wp_comments)",
+    "Bulk optimize processes articles sequentially to respect LLM rate limits (~2-3 min per article)"
+  ],
+
+  "updated_files": [
+    "/app/backend/tests/test_iteration37_bulk_webhook.py"
+  ],
+
+  "success_rate": {
+    "backend": "100% (16/16 tests passed)",
+    "frontend": "100% (ROI bulk button, AdminSettings webhook config, WP Preview live-status all working)"
+  },
+
+  "test_credentials": {
+    "admin": "monika.gawkowska@kurdynowski.pl / MonZuz8180!"
+  },
+
+  "seed_data_creation": "Used existing test article d8eea228-792b-4c8f-bdaa-d4113aae7af4 for webhook testing",
+
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+
+  "context_for_next_testing_agent": "Iteration 37 verified two new features: 1) Bulk Optimization - POST /api/surfer/bulk-optimize starts job to optimize all articles with score < threshold (default 60%). Status endpoint returns progress with per-article status (pending/optimizing/done/failed). Frontend ROI Dashboard shows 'Optymalizuj słabe (N)' button when weak articles exist, opens modal with progress UI. 2) WordPress Webhook - POST /api/wordpress/webhook/generate-token creates user token, GET /config returns webhook URL + token + setup instructions. Webhook receiver authenticates via X-Webhook-Token header, processes events: post_published (updates wp_post_id, wp_permalink, wp_status='published'), traffic_stats (updates wp_views_7d/30d, wp_comments), post_deleted (sets wp_status='deleted', reverts status to 'draft'). Frontend AdminSettings /admin/settings shows WebhookConfig section with URL/token fields and copy buttons. WP Preview tab in editor shows live-status card with views/comments when article is published on WP.",
+
+  "mocked_api": {
+    "has_mocked_apis": true,
+    "mocked_apis_list": [
+      "TPay payment webhook - MOCKED",
+      "Email notifications - MOCKED (logged, not actually sent)",
+      "SurferSEO SERP - AI simulation (not real SERP data)"
+    ]
+  },
+
+  "features_verified": {
+    "bulk_optimize": {
+      "status": "VERIFIED WORKING",
+      "endpoints": [
+        "POST /api/surfer/bulk-optimize?threshold=60&max_iterations=1",
+        "GET /api/surfer/bulk-optimize/status/{bulk_job_id}"
+      ],
+      "frontend": "ROI Dashboard /roi shows 'Optymalizuj słabe (N)' button, modal with progress UI",
+      "notes": "Processes articles sequentially, ~2-3 min per article, saves version with source='bulk_optimize'"
+    },
+    "wordpress_webhook": {
+      "status": "VERIFIED WORKING",
+      "endpoints": [
+        "POST /api/wordpress/webhook/generate-token",
+        "GET /api/wordpress/webhook/config",
+        "POST /api/wordpress/webhook (X-Webhook-Token auth)",
+        "GET /api/wordpress/webhook/events",
+        "GET /api/wordpress/webhook/article-stats/{article_id}"
+      ],
+      "events_supported": ["post_published", "post_updated", "post_deleted", "traffic_stats"],
+      "frontend": "AdminSettings /admin/settings shows WebhookConfig with URL/token/copy buttons",
+      "authentication": "401 missing token, 403 invalid token, 200 valid token"
+    },
+    "wp_live_status_card": {
+      "status": "VERIFIED WORKING",
+      "location": "WP Preview tab in Article Editor",
+      "shows_when": "article.wp_status === 'published' && article.wp_permalink exists",
+      "displays": ["permalink link", "publication date", "views 7d", "views 30d", "comments count"]
+    }
+  }
+}

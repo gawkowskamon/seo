@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Globe, Loader2, RefreshCw, ExternalLink, Search, FileText, Tag, CheckCircle2, AlertTriangle, Download } from 'lucide-react';
+import { Globe, Loader2, RefreshCw, ExternalLink, Search, FileText, Tag, CheckCircle2, AlertTriangle, Download, Eye, MessageCircle, Clock } from 'lucide-react';
 import { Button } from './ui/button';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -53,6 +53,16 @@ const WordPressPreviewPanel = ({ articleId, article }) => {
   const faqCount = (article?.faq || []).length;
   const sourcesCount = (article?.sources || []).length;
 
+  // Extract WP published state (populated by webhook receiver)
+  const wpPostId = article?.wp_post_id;
+  const wpPermalink = article?.wp_permalink;
+  const wpStatus = article?.wp_status;
+  const wpPublishedAt = article?.wp_published_at;
+  const wpViews7 = article?.wp_views_7d;
+  const wpViews30 = article?.wp_views_30d;
+  const wpComments = article?.wp_comments;
+  const isLiveOnWP = wpStatus === 'published' && wpPermalink;
+
   const checks = [
     { ok: metaTitle.length > 0 && metaTitle.length <= 60, label: 'Meta tytul (max 60 znakow)' },
     { ok: metaDesc.length >= 120 && metaDesc.length <= 160, label: 'Meta opis (120-160 znakow)' },
@@ -105,6 +115,49 @@ const WordPressPreviewPanel = ({ articleId, article }) => {
   if (!previewHtml && !loading) {
     return (
       <div style={{ padding: 20 }} data-testid="wp-preview-panel">
+        {/* WP Live Status (from webhook) */}
+        {isLiveOnWP && (
+          <div data-testid="wp-live-status" style={{
+            background: 'linear-gradient(135deg, hsl(142, 50%, 96%), hsl(142, 40%, 93%))',
+            border: '1px solid hsl(142, 45%, 80%)', borderRadius: 12, padding: 14, marginBottom: 16
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+              <CheckCircle2 size={16} style={{ color: '#16a34a' }} />
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#16a34a', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Opublikowany w WordPress</span>
+            </div>
+            <a href={wpPermalink} target="_blank" rel="noopener noreferrer" style={{
+              display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#04389E', textDecoration: 'none', fontWeight: 500, marginBottom: 10, wordBreak: 'break-all'
+            }} data-testid="wp-live-link">
+              <ExternalLink size={11} />
+              {wpPermalink}
+            </a>
+            {wpPublishedAt && (
+              <div style={{ fontSize: 11, color: 'hsl(142, 40%, 30%)', marginBottom: 8 }}>
+                Publikacja: {new Date(wpPublishedAt).toLocaleString('pl-PL')}
+              </div>
+            )}
+            {(wpViews7 !== undefined || wpViews30 !== undefined || wpComments !== undefined) && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginTop: 8 }}>
+                <div style={{ background: 'white', borderRadius: 8, padding: 8, textAlign: 'center' }}>
+                  <Eye size={13} style={{ color: '#04389E', margin: '0 auto 2px', display: 'block' }} />
+                  <div style={{ fontSize: 14, fontWeight: 700, color: 'hsl(215, 16%, 15%)' }}>{(wpViews7 || 0).toLocaleString('pl-PL')}</div>
+                  <div style={{ fontSize: 9, color: 'hsl(215, 16%, 55%)' }}>7 dni</div>
+                </div>
+                <div style={{ background: 'white', borderRadius: 8, padding: 8, textAlign: 'center' }}>
+                  <Eye size={13} style={{ color: '#04389E', margin: '0 auto 2px', display: 'block' }} />
+                  <div style={{ fontSize: 14, fontWeight: 700, color: 'hsl(215, 16%, 15%)' }}>{(wpViews30 || 0).toLocaleString('pl-PL')}</div>
+                  <div style={{ fontSize: 9, color: 'hsl(215, 16%, 55%)' }}>30 dni</div>
+                </div>
+                <div style={{ background: 'white', borderRadius: 8, padding: 8, textAlign: 'center' }}>
+                  <MessageCircle size={13} style={{ color: '#04389E', margin: '0 auto 2px', display: 'block' }} />
+                  <div style={{ fontSize: 14, fontWeight: 700, color: 'hsl(215, 16%, 15%)' }}>{wpComments || 0}</div>
+                  <div style={{ fontSize: 9, color: 'hsl(215, 16%, 55%)' }}>komentarze</div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         <div style={{ textAlign: 'center', marginBottom: 20 }}>
           <Globe size={28} style={{ color: 'hsl(215, 16%, 70%)', margin: '0 auto 10px', display: 'block' }} />
           <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Podglad WordPress</h3>

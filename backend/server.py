@@ -50,6 +50,7 @@ from routes.ai_features import router as ai_features_router
 from routes.social import router as social_router
 from routes.notifications import router as notifications_router
 from routes.competition_monitor import router as competition_router
+from routes.wordpress_webhook import router as wordpress_webhook_router
 
 # Include sub-routers - ORDER MATTERS: specific routes before parameterized ones
 # Routes with /articles/... static paths must be included BEFORE /articles/{article_id}
@@ -63,6 +64,7 @@ api_router.include_router(content_router)
 api_router.include_router(social_router)
 api_router.include_router(notifications_router)
 api_router.include_router(competition_router)
+api_router.include_router(wordpress_webhook_router)
 
 app.include_router(api_router)
 

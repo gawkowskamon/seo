@@ -238,6 +238,111 @@ export default function AdminSettings() {
           Pobierz wtyczke (kurdynowski-importer.php)
         </Button>
       </div>
+
+      <WebhookConfig />
+    </div>
+  );
+}
+
+function WebhookConfig() {
+  const [config, setConfig] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [regenerating, setRegenerating] = useState(false);
+
+  const fetchConfig = async () => {
+    try {
+      const res = await axios.get(`${BACKEND_URL}/api/wordpress/webhook/config`);
+      setConfig(res.data);
+    } catch {
+      // no config yet
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchConfig(); }, []);
+
+  const generateToken = async () => {
+    setRegenerating(true);
+    try {
+      await axios.post(`${BACKEND_URL}/api/wordpress/webhook/generate-token`);
+      await fetchConfig();
+      toast.success('Token wygenerowany');
+    } catch {
+      toast.error('Błąd generowania tokenu');
+    } finally {
+      setRegenerating(false);
+    }
+  };
+
+  const copyText = (text, label) => {
+    navigator.clipboard.writeText(text);
+    toast.success(`Skopiowano ${label}`);
+  };
+
+  return (
+    <div data-testid="wp-webhook-config" style={{
+      background: 'white', borderRadius: 14, padding: 24,
+      border: '1px solid hsl(214, 18%, 88%)', marginTop: 24
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+        <div style={{ width: 40, height: 40, borderRadius: 10, background: 'hsl(270, 80%, 95%)', color: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Key size={20} />
+        </div>
+        <div>
+          <h3 style={{ fontWeight: 700, fontSize: 16 }}>Webhook WordPress (opcjonalnie)</h3>
+          <p style={{ color: 'hsl(215, 16%, 55%)', fontSize: 12 }}>
+            Automatyczna synchronizacja statusu publikacji i statystyk z WP
+          </p>
+        </div>
+      </div>
+
+      {loading ? (
+        <Loader2 size={20} className="animate-spin" />
+      ) : !config?.has_token ? (
+        <div>
+          <p style={{ fontSize: 13, color: 'hsl(215, 16%, 35%)', marginBottom: 12 }}>
+            Po wygenerowaniu tokenu, WordPress może wysyłać do Ciebie zdarzenia: publikacja, aktualizacja, usunięcie posta, statystyki ruchu.
+          </p>
+          <Button onClick={generateToken} disabled={regenerating} className="gap-2" data-testid="wp-webhook-generate-btn" style={{ background: '#7c3aed', color: 'white' }}>
+            {regenerating ? <Loader2 size={14} className="animate-spin" /> : <Key size={14} />}
+            Wygeneruj token webhooka
+          </Button>
+        </div>
+      ) : (
+        <div>
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ fontSize: 11, fontWeight: 600, color: 'hsl(215, 16%, 55%)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>URL webhooka</label>
+            <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+              <Input value={config.webhook_url} readOnly style={{ fontFamily: 'monospace', fontSize: 12, background: 'hsl(215, 16%, 98%)' }} data-testid="wp-webhook-url" />
+              <Button variant="outline" size="sm" onClick={() => copyText(config.webhook_url, 'URL')} data-testid="wp-webhook-copy-url">Kopiuj</Button>
+            </div>
+          </div>
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ fontSize: 11, fontWeight: 600, color: 'hsl(215, 16%, 55%)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Token (nagłówek X-Webhook-Token)</label>
+            <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+              <Input value={config.token} readOnly style={{ fontFamily: 'monospace', fontSize: 12, background: 'hsl(215, 16%, 98%)' }} data-testid="wp-webhook-token" />
+              <Button variant="outline" size="sm" onClick={() => copyText(config.token, 'token')} data-testid="wp-webhook-copy-token">Kopiuj</Button>
+            </div>
+          </div>
+          <div style={{ background: 'hsl(270, 80%, 98%)', border: '1px solid hsl(270, 60%, 88%)', borderRadius: 10, padding: 14, fontSize: 12, color: 'hsl(270, 30%, 25%)', lineHeight: 1.6 }}>
+            <strong>Obsługiwane zdarzenia:</strong>
+            <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
+              <li><code>post_published</code> — gdy artykuł zostanie opublikowany w WP</li>
+              <li><code>post_updated</code> — aktualizacja wpisu</li>
+              <li><code>post_deleted</code> — usunięcie wpisu</li>
+              <li><code>traffic_stats</code> — okresowe statystyki ruchu (wyświetlenia, komentarze)</li>
+            </ul>
+            <p style={{ margin: '10px 0 0' }}>
+              Użyj wtyczki WordPress <strong>"WP Webhooks"</strong> lub custom PHP aby wysyłać POST z polem <code>article_id</code> zawierającym ID artykułu w Emergent.
+            </p>
+          </div>
+          <Button variant="outline" onClick={generateToken} disabled={regenerating} className="gap-2 mt-3" data-testid="wp-webhook-regenerate-btn" style={{ marginTop: 12 }}>
+            {regenerating ? <Loader2 size={14} className="animate-spin" /> : <Key size={14} />}
+            Wygeneruj nowy token (unieważnia stary)
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
