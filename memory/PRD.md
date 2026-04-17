@@ -30,12 +30,16 @@ FARM (FastAPI, React, MongoDB) with Emergent LLM Key for AI (Gemini + OpenAI)
 ## Key Credentials
 - Admin: monika.gawkowska@kurdynowski.pl / MonZuz8180!
 
-## Current Status (April 2, 2026)
+## Current Status (April 17, 2026)
 - All features functional
-- Iterative optimization: 55% → 85% in one iteration (target 80%+)
+- **FIX (2026-04-17):** SurferSEO auto-optimize & loop: naprawione prompty które zwracały placeholder text ("200+ slow", "100+ slow"); teraz LLM generuje pełną merytoryczną treść (1500-2000 znaków/sekcja)
+- **FIX (2026-04-17):** Galeria obrazów w edytorze teraz pokazuje miniatury (endpoint `/api/articles/{id}/images` zwraca pole `data`)
+- **FIX (2026-04-17):** Frontend polling artykułu wydłużony z 3 → 6 min (zgodnie z backendem)
+- **FIX (2026-04-17):** `onArticleUpdate` odświeża `htmlContent` + meta fields po zastosowaniu optymalizacji
 - Test iterations 32-35 all passing
 
 ## Backlog
 - [ ] A/B Testing for titles (P2)
 - [ ] Real email sending via SendGrid/Resend (P3)
 - [ ] Real social media API integration (P3)
+- [ ] High-ROI features: Auto-publish & Client Reporting, ROI Dashboard, Multi-language, Content Templates, Auto-schedule, Team Collaboration (see user conversation)

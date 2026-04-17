@@ -596,8 +596,16 @@ Podsekcje H3: {', '.join(subs) if subs else 'brak'}
 Istniejaca tresc (rozszerz): {existing_content[:400]}
 Brakujace terminy NLP do uzycia: {', '.join(issues[0].replace('Brakujace terminy NLP: ','').split(', ')[:5]) if issues and 'NLP' in issues[0] else 'brak'}
 
-Zwroc WYLACZNIE JSON:
-{{"heading":"{heading}","content":"<p>Tresc 150-250 slow z <strong>pogrubieniami</strong> i <ul><li>listami</li></ul></p>","subsections":[{{"heading":"H3","content":"<p>80-150 slow</p>"}}]}}"""
+WYMAGANIA:
+- Sekcja H2 musi miec 150-250 slow merytorycznej tresci
+- Kazda podsekcja H3 musi miec 80-150 slow merytorycznej tresci
+- Uzyj <strong> do pogrubien kluczowych pojec (minimum 2)
+- Uzyj <ul><li> do listy punktowanej (minimum 1 lista w sekcji H2)
+- Cytuj konkretne przepisy (art., ust., Dz.U.) jesli dotyczy ksiegowosci/podatkow
+- Podaj konkretne kwoty, stawki, terminy gdzie to mozliwe
+
+Zwroc WYLACZNIE JSON (bez markdown) o strukturze:
+{{"heading":"{heading}","content":"<p>Pelna merytoryczna tresc sekcji...</p>","subsections":[{{"heading":"Nazwa H3","content":"<p>Pelna tresc podsekcji...</p>"}}]}}"""
 
                 try:
                     sec_text = llm_chat_sync(prompt_sec, system_message="Odpowiadaj WYLACZNIE poprawnym JSON. Jedna sekcja artykulu.", session_id=f"opt-s{idx}-{jid[:6]}", timeout=90)
@@ -612,12 +620,18 @@ Zwroc WYLACZNIE JSON:
             final_faq = []
             if faq_plans:
                 faq_questions = jmod.dumps(faq_plans[:8], ensure_ascii=False)
-                prompt_faq = f"""Odpowiedz na pytania FAQ dla artykulu o "{keyword}".
+                prompt_faq = f"""Odpowiedz na pytania FAQ dla artykulu SEO o slowie kluczowym "{keyword}".
 
-Pytania: {faq_questions}
+Pytania do odpowiedzenia: {faq_questions}
 
-Zwroc WYLACZNIE JSON tablice:
-[{{"question":"Pytanie?","answer":"Odpowiedz 2-4 zdania."}}]"""
+WYMAGANIA:
+- Kazda odpowiedz: minimum 40 slow, maksimum 80 slow
+- Konkretne, merytoryczne odpowiedzi (kwoty, terminy, przepisy gdy dotyczy)
+- Naturalne uzycie slowa kluczowego w 1-2 odpowiedziach
+- Odpowiedzi gotowe pod Google Featured Snippets
+
+Zwroc WYLACZNIE tablice JSON o strukturze:
+[{{"question":"Pelne pytanie z listy powyzej","answer":"Pelna merytoryczna odpowiedz 40-80 slow."}}]"""
 
                 try:
                     faq_text = llm_chat_sync(prompt_faq, system_message="Odpowiadaj WYLACZNIE poprawnym JSON. Tablica FAQ.", session_id=f"opt-faq-{jid[:6]}", timeout=90)
@@ -905,10 +919,23 @@ WAZNE: min {max(len(sections), 5)} sekcji, min 5 FAQ. Skup sie na: {issues_text[
                             break
 
                     nlp_hint = ', '.join(issues[0].replace('Brakujace terminy NLP: ', '').split(', ')[:5]) if issues and 'NLP' in issues[0] else 'brak'
-                    sec_prompt = f"""Sekcja SEO: "{keyword}". H2: {heading}. H3: {', '.join(subs) if subs else 'brak'}.
-Istniejaca tresc: {existing[:300]}
-NLP: {nlp_hint}
-Zwroc JSON: {{"heading":"{heading}","content":"<p>200+ slow, <strong>bold</strong>, <ul><li>listy</li></ul></p>","subsections":[{{"heading":"H3","content":"<p>100+ slow</p>"}}]}}"""
+                    sec_prompt = f"""Napisz sekcje artykulu SEO. Slowo kluczowe: "{keyword}".
+
+Naglowek H2: {heading}
+Podsekcje H3: {', '.join(subs) if subs else 'brak'}
+Istniejaca tresc (rozszerz): {existing[:300]}
+Terminy NLP do naturalnego uzycia: {nlp_hint}
+
+WYMAGANIA:
+- Sekcja H2: 200-300 slow merytorycznej tresci (nie placeholder, tylko rzeczywista tresc)
+- Kazda podsekcja H3: 100-200 slow merytorycznej tresci
+- Uzyj <strong> do pogrubien kluczowych pojec (min. 3)
+- Uzyj <ul><li>...</li></ul> listy punktowanej (min. 1 w H2)
+- Cytuj konkretne przepisy (art., ust., Dz.U.) gdy dotyczy
+- Podaj konkretne kwoty, stawki, terminy
+
+Zwroc WYLACZNIE JSON (bez markdown) o strukturze:
+{{"heading":"{heading}","content":"<p>Pelna merytoryczna tresc H2 z pogrubieniami i lista...</p>","subsections":[{{"heading":"Nazwa H3","content":"<p>Pelna tresc H3...</p>"}}]}}"""
                     try:
                         sec = _try_parse_json(llm_chat_sync(sec_prompt, system_message="JSON.", session_id=f"loop-s{iteration}{idx}-{jid[:5]}", timeout=90))
                         final_sections.append(sec)
@@ -920,9 +947,22 @@ Zwroc JSON: {{"heading":"{heading}","content":"<p>200+ slow, <strong>bold</stron
                 faq_plans = plan.get("faq_plan", [])
                 if faq_plans and len(faq) < 5:
                     try:
+                        faq_prompt = f"""Odpowiedz na pytania FAQ dla artykulu SEO o "{keyword}".
+
+Pytania: {jmod.dumps(faq_plans[:8], ensure_ascii=False)}
+
+WYMAGANIA:
+- Kazda odpowiedz: 40-80 slow merytorycznej tresci
+- Konkretne kwoty, terminy, przepisy gdy dotyczy
+- Naturalne slowo kluczowe w 1-2 odpowiedziach
+
+Zwroc WYLACZNIE tablice JSON:
+[{{"question":"Pelne pytanie","answer":"Pelna merytoryczna odpowiedz 40-80 slow."}}]"""
                         faq_text = llm_chat_sync(
-                            f'FAQ o "{keyword}": {jmod.dumps(faq_plans[:8], ensure_ascii=False)}\nZwroc JSON: [{{"question":"?","answer":"2-4 zdania"}}]',
-                            system_message="JSON.", session_id=f"loop-faq{iteration}-{jid[:5]}", timeout=90)
+                            faq_prompt,
+                            system_message="Odpowiadaj WYLACZNIE poprawnym JSON (tablica FAQ).",
+                            session_id=f"loop-faq{iteration}-{jid[:5]}",
+                            timeout=90)
                         parsed_faq = _try_parse_json(faq_text)
                         if isinstance(parsed_faq, list):
                             final_faq = parsed_faq
