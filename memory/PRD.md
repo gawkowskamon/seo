@@ -1,45 +1,89 @@
-# SEO Article Writer - Kurdynowski
+# SEO Article Writer – Polish Accounting Blog Platform
 
-## Problem Statement
-Feature-rich application for writing and managing accounting-related blog articles with SEO optimization, WordPress integration, and AI-powered content tools.
+## Original Problem Statement
+Aplikacja do pisania artykułów blogowych związanych z księgowością, zoptymalizowana pod SEO AI. Wymagania: generowanie artykułów z wysokim scoringiem SEO, wizualny edytor, wielu klientów, JWT auth, integracja WordPress, eksport PDF/HTML, system subskrypcji (TPay), integracja SurferSEO, social media, email, monitoring konkurencji.
 
-## Stack
-FARM (FastAPI, React, MongoDB) with Emergent LLM Key for AI (Gemini + OpenAI)
+## User Persona
+Monika (admin) – Kurdynowski Accounting & Tax Solutions. Używa aplikacji do tworzenia artykułów SEO po polsku o księgowości/podatkach dla klientów biura.
 
-## Core Features (Implemented)
-- Article generation with AI (async, background jobs)
-- Visual editor with formatting toolbar + HTML view
-- SurferSEO scoring panel (SERP analysis, keyword metrics, NLP terms)
-- **Iterative auto-optimize** (AI loop targeting 80%+ SurferSEO score)
-- Single-step auto-optimize (one iteration)
-- Basic SEO scoring, AI topic suggestions, Meta regeneration
-- Image generation (gemini-3.1-flash-image-preview) — single + batch
-- PDF/HTML/WordPress export with styled inline CSS
-- SEO Report PDF export
-- WordPress Preview panel with SEO comparison
-- JWT auth, admin role, Content Calendar, AI Chat, AI Rewriter, Newsletter
-- Dark Mode, Keyword Analytics, Article import, Internal linking
-- Social Media Scheduling, Notifications, Competition Monitor
-- Subscription system (TPay - MOCKED)
-
-## Key Technical Notes
-- Auth token: `auth_token` in localStorage (AuthContext.js)
-- Iterative optimize uses synchronous pymongo in background thread (avoids Motor event loop issues)
-- Visual editor managed via editorContentRef (not state)
-
-## Key Credentials
-- Admin: monika.gawkowska@kurdynowski.pl / MonZuz8180!
+## Tech Stack
+- **Backend:** FastAPI, Python, MongoDB (async Motor + sync pymongo for threads)
+- **Frontend:** React 19, Tailwind, shadcn/ui, lucide-react icons
+- **AI:** Emergent LLM Key (gemini-2.0-flash, gemini-3.1-flash-image, gpt fallback)
+- **Libs:** fpdf2 (PDF), trafilatura (scraping), emergentintegrations
 
 ## Current Status (April 17, 2026)
-- All features functional
-- **FIX (2026-04-17):** SurferSEO auto-optimize & loop: naprawione prompty które zwracały placeholder text ("200+ slow", "100+ slow"); teraz LLM generuje pełną merytoryczną treść (1500-2000 znaków/sekcja)
-- **FIX (2026-04-17):** Galeria obrazów w edytorze teraz pokazuje miniatury (endpoint `/api/articles/{id}/images` zwraca pole `data`)
-- **FIX (2026-04-17):** Frontend polling artykułu wydłużony z 3 → 6 min (zgodnie z backendem)
-- **FIX (2026-04-17):** `onArticleUpdate` odświeża `htmlContent` + meta fields po zastosowaniu optymalizacji
-- Test iterations 32-35 all passing
+**All core features functional and tested (iteration 36: 16/16 passed 100%)**
 
-## Backlog
-- [ ] A/B Testing for titles (P2)
-- [ ] Real email sending via SendGrid/Resend (P3)
-- [ ] Real social media API integration (P3)
-- [ ] High-ROI features: Auto-publish & Client Reporting, ROI Dashboard, Multi-language, Content Templates, Auto-schedule, Team Collaboration (see user conversation)
+### Completed in this session
+- [x] **FIX:** SurferSEO auto-optimize & loop: naprawione prompty generujące placeholder ("200+ slow")
+- [x] **FIX:** Galeria obrazów w edytorze — zwraca pole `data` dla miniatur
+- [x] **FIX:** Timeout polling generatora 3→6 min
+- [x] **FIX:** `onArticleUpdate` + `onRestore` odświeżają htmlContent + meta fields
+- [x] **Content Versioning UI** — historia wersji z tagami źródła (ręczna/auto-optimize/loop/pre-restore), miniatura SEO score, przywracanie
+- [x] **Multi-language generation** — PL/EN/DE/UK (selector w generatorze, system prompts per-język)
+- [x] **ROI Dashboard** — nowa strona `/roi` z:
+  - Sumaryczne statystyki (total, avg SEO, publish rate, total words)
+  - Rozkład jakości SEO (excellent/good/medium/poor buckets)
+  - Status articles (published/scheduled/draft)
+  - Rozkład językowy
+  - Trend publikacji 6 miesięcy (bar chart)
+  - Top 5 performers i Bottom 5 (z linkami do edytora)
+
+### Previously completed
+- [x] Article generation (Gemini 2.0 Flash + GPT fallback, multi-step)
+- [x] SurferSEO SERP analysis + iterative optimization to 80%+
+- [x] Image generation (Gemini Nano Banana)
+- [x] WordPress Preview with SEO comparison
+- [x] A/B Title testing (ABTitleTestPanel + backend)
+- [x] Smart Schedule suggestions (SmartSchedulePanel)
+- [x] PDF SEO report export (fpdf2)
+- [x] 8 article templates (standard, poradnik, case study, porównanie, checklist, pillar, aktualizacja, kalkulator)
+- [x] WordPress publish integration
+- [x] Plagiarism checker
+- [x] URL audit
+- [x] Keyword research
+- [x] Admin panel, user management, workspaces
+- [x] Notifications
+- [x] Competition monitoring
+- [x] TPay subscription (MOCKED credentials)
+
+## Data Model
+- `articles`: id, user_id, workspace_id, title, html_content, sections[], faq[], sources[], toc[], meta_title, meta_description, surfer_data, surfer_score, seo_score, status, language, created_at, published_at
+- `article_versions`: id, article_id, user_id, version_data, **source** (manual_edit|auto_optimize|optimize_loop|pre_restore), created_at
+- `images`: id, article_id, user_id, prompt, style, mime_type, data (base64), variant_of, created_at
+- `generation_jobs`, `image_generation_jobs`: temp status tracking
+- `_optimize_jobs`, `_optimize_loops`: in-memory loop tracking
+
+## Key API Endpoints
+- `POST /api/articles/generate` (supports `language` param)
+- `GET /api/articles/{id}/versions` (includes source)
+- `POST /api/articles/{id}/versions/{vid}/restore`
+- `POST /api/surfer/auto-optimize/{id}` (1x)
+- `POST /api/surfer/optimize-loop/{id}` (Do 80%+)
+- `POST /api/articles/{id}/seo-report/pdf`
+- `GET /api/stats/roi` (NEW - ROI dashboard data)
+- `GET /api/articles/{id}/images` (NOW includes base64 data)
+
+## Backlog (P0/P1/P2)
+### P0 (next)
+- [ ] Auto-publish & Client Reporting — planowana publikacja do WordPress z auto-raportem tygodniowym/miesięcznym dla klientów (PDF z top artykułami, avg score, trend)
+
+### P1 (next-next)
+- [ ] ROI Dashboard extension — Google Analytics/Search Console integration (wymaga OAuth)
+- [ ] Real email sending via SendGrid/Resend
+- [ ] Real social media API integration (LinkedIn/Facebook/Twitter)
+
+### P2 (future)
+- [ ] Team collaboration — wielu użytkowników edytuje ten sam artykuł
+- [ ] Automatyczna rotacja A/B test wyników (obecnie tylko generuje warianty)
+- [ ] Content calendar view z drag-drop
+
+## Critical Info for New Agent
+- **Auth tokens:** always use `auth_token` key in localStorage (NOT `token`)
+- **Async vs Sync in threads:** background workers using `threading.Thread` MUST use sync `pymongo.MongoClient`, not async Motor `shared.db`
+- **LLM JSON truncation:** break large gens into multi-step (plan→body→FAQ). Use `_try_parse_json` repair helper
+- **LLM prompts: NEVER use placeholder content strings like "200+ slow" or "Treść 150-250 słów"** — LLM copies them verbatim. Always specify explicit requirements ("Pełna merytoryczna treść 200-300 słów...")
+- **MongoDB responses:** exclude `_id` always. For articles, include `data` in images for thumbnails
+- **Version sources:** tag every `article_versions` insert with `source` field
+- **Languages supported:** `pl` (default Polish accounting), `en`, `de`, `uk`
