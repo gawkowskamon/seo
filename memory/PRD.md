@@ -16,7 +16,8 @@ Monika (admin) – Kurdynowski Accounting & Tax Solutions. Używa aplikacji do t
 **All core features functional and tested (iteration 36: 16/16 passed 100%)**
 
 ### Completed in this session
-- [x] **FEATURE (2026-04-17 14:00):** Auto-optimize podczas generowania — każdy nowy artykuł przechodzi przez iteracyjną optymalizację SurferSEO po wygenerowaniu, aż osiągnie 80%+ lub wykryje stagnację. Nowy stage w UI generatora "Auto-optymalizacja do 80%+", panel z per-iteration score before→after. Fallback toast gdy nie osiągnie 80%. Max 10 iteracji + stagnation detection (2 iteracje bez poprawy). 15-min timeout dla fazy optymalizacji
+- [x] **FEATURE (2026-04-17 14:30):** Quality Preset w generatorze — 3 tryby: Szybki draft (bez SERP+optimize, 1-2min), Standard (max 3 iter, 3-5min), Premium 80%+ (max 10 iter, 5-10min). Karty wyboru w UI formularza. Draft pomija SurferSEO analysis całkowicie (dla szybkości), fallback na basic seo_score
+- [x] **FEATURE (2026-04-17 14:00):** Auto-optimize podczas generowania — pętla iteracyjna do 80%+ lub stagnation
 - [x] **FEATURE (2026-04-17 13:00):** Smart Scheduling Widget — 6 kart AI insights na Dashboard
 - [x] **FEATURE (2026-04-17):** Bulk Optimization — przycisk "Optymalizuj słabe (N)" na ROI Dashboard uruchamia iteracyjną optymalizację wszystkich artykułów score < 60%
 - [x] **FEATURE (2026-04-17):** WordPress Webhook Receiver — endpointy `/api/wordpress/webhook/generate-token`, `/config`, `/webhook` (public, auth via X-Webhook-Token), `/events`, `/article-stats/{id}`. Obsługuje eventy: post_published, post_updated, post_deleted, traffic_stats. Aktualizuje pola artykułu: wp_post_id, wp_permalink, wp_published_at, wp_views_7d/30d, wp_comments, wp_avg_time_on_page. Panel config w AdminSettings z URL+token+instrukcje. Żywy status "Opublikowany w WordPress" z metrykami w WP Preview
