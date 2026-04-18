@@ -34,6 +34,14 @@ const LANGUAGES = [
 
 const QUALITY_PRESETS = [
   {
+    value: 'auto',
+    label: 'Auto (AI decyduje)',
+    description: 'Dobiera na podstawie tematu i długości',
+    time: 'adaptacyjny',
+    color: '#059669',
+    bg: 'hsl(160, 60%, 96%)'
+  },
+  {
     value: 'draft',
     label: 'Szybki draft',
     description: 'Bez auto-optymalizacji',
@@ -99,10 +107,12 @@ const ArticleGenerator = () => {
   const [optimizationIterations, setOptimizationIterations] = useState([]);
   const [initialScore, setInitialScore] = useState(null);
   const [currentScore, setCurrentScore] = useState(null);
+  const [resolvedPreset, setResolvedPreset] = useState(null);
+  const [presetReason, setPresetReason] = useState(null);
   const [templates, setTemplates] = useState([]);
   const [selectedTemplate, setSelectedTemplate] = useState('standard');
   const [language, setLanguage] = useState('pl');
-  const [qualityPreset, setQualityPreset] = useState('premium');
+  const [qualityPreset, setQualityPreset] = useState('auto');
 
   useEffect(() => {
     if (location.state) {
@@ -183,7 +193,7 @@ const ArticleGenerator = () => {
         try {
           pollCount++;
           const statusRes = await axios.get(`${BACKEND_URL}/api/articles/generate/status/${jobId}`);
-          const { status, stage, article_id, error, optimization_iterations, initial_score, final_score } = statusRes.data;
+          const { status, stage, article_id, error, optimization_iterations, initial_score, final_score, resolved_preset, preset_reason } = statusRes.data;
           notFoundCount = 0; // reset on success
           
           // Map backend stage to UI stage:
@@ -207,6 +217,8 @@ const ArticleGenerator = () => {
           }
           if (initial_score !== undefined && initial_score !== null) setInitialScore(initial_score);
           if (final_score !== undefined && final_score !== null) setCurrentScore(final_score);
+          if (resolved_preset) setResolvedPreset(resolved_preset);
+          if (preset_reason) setPresetReason(preset_reason);
           
           if (status === 'completed' && article_id) {
             clearInterval(pollInterval);
@@ -275,6 +287,21 @@ const ArticleGenerator = () => {
           <p style={{ color: 'hsl(215, 16%, 45%)', marginBottom: 24 }}>
             {currentStage >= 4 ? 'Auto-optymalizacja do 80%+ — to może potrwać 2-5 minut...' : 'To może potrwać 1-2 minuty...'}
           </p>
+
+          {/* Auto-preset resolution notice */}
+          {resolvedPreset && qualityPreset === 'auto' && (
+            <div data-testid="generation-auto-preset-notice" style={{
+              marginBottom: 16, padding: '10px 14px',
+              background: 'hsl(160, 60%, 96%)', border: '1px solid hsl(160, 50%, 85%)',
+              borderRadius: 10, display: 'flex', alignItems: 'center', gap: 10
+            }}>
+              <Sparkles size={14} style={{ color: '#059669', flexShrink: 0 }} />
+              <div style={{ fontSize: 12, color: 'hsl(160, 50%, 25%)' }}>
+                <strong style={{ textTransform: 'capitalize' }}>AI wybrała: {resolvedPreset}</strong>
+                {presetReason && <span> — {presetReason}</span>}
+              </div>
+            </div>
+          )}
           
           <div className="generation-stages">
             {STAGES.map((stage, idx) => (

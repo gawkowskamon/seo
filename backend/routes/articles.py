@@ -247,11 +247,31 @@ def _sync_run_generation_job(job_id: str, request_data: dict, user: dict):
             request_data["secondary_keywords"]
         )
 
+        # Resolve "auto" preset early so SERP can be skipped for draft
+        quality_preset = request_data.get("quality_preset", "premium")
+        preset_reason = None
+        if quality_preset == "auto":
+            t_length = request_data.get("target_length", 1500)
+            template_id = request_data.get("template", "standard")
+            if template_id == "pillar_page" or t_length >= 2500:
+                quality_preset = "premium"
+                preset_reason = f"Pillar page lub {t_length} słów — wysoka jakość"
+            elif t_length <= 800:
+                quality_preset = "draft"
+                preset_reason = f"Krótki artykuł ({t_length} słów) — szybki draft"
+            else:
+                quality_preset = "standard"
+                preset_reason = f"Typowa długość ({t_length} słów) — standard"
+
+            sync_db.generation_jobs.update_one(
+                {"job_id": job_id},
+                {"$set": {"resolved_preset": quality_preset, "preset_reason": preset_reason}}
+            )
+
         # Run SurferSEO SERP analysis for the keyword (skipped in 'draft' preset for speed)
         surfer_data = None
         surfer_score = None
-        preset = request_data.get("quality_preset", "premium")
-        if preset != "draft":
+        if quality_preset != "draft":
             try:
                 loop2 = asyncio.new_event_loop()
                 try:
@@ -302,7 +322,6 @@ def _sync_run_generation_job(job_id: str, request_data: dict, user: dict):
         sync_db.articles.insert_one(article_doc)
 
         # Auto-optimize to 80%+ if we have surfer_data (skipped for "draft" preset)
-        quality_preset = request_data.get("quality_preset", "premium")
         preset_max_iter = {"draft": 0, "standard": 3, "premium": 10}.get(quality_preset, 10)
         should_auto_optimize = quality_preset != "draft" and surfer_data and (not surfer_score or surfer_score.get("percentage", 0) < 80)
 
@@ -431,6 +450,8 @@ async def get_generation_status(job_id: str, user: dict = Depends(get_current_us
         "initial_score": job.get("initial_score"),
         "final_score": job.get("final_score"),
         "target_reached": job.get("target_reached"),
+        "resolved_preset": job.get("resolved_preset"),
+        "preset_reason": job.get("preset_reason"),
     }
     
     if job["status"] == "completed":

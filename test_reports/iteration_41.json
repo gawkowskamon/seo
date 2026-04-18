@@ -1,0 +1,105 @@
+{
+  "summary": "Iteration 41: Auto Quality Preset feature fully verified. Backend: 6/6 tests passed. Frontend: All 4 preset cards displayed correctly, Auto is default selection with green border, auto preset notice shows resolved preset and reason during generation.",
+
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+
+  "passed_tests": [
+    "✓ POST /api/articles/generate with quality_preset='auto' and target_length=700 → resolved_preset='draft'",
+    "✓ POST with quality_preset='auto' and target_length=3000 → resolved_preset='premium'",
+    "✓ POST with quality_preset='auto' and target_length=1500 → resolved_preset='standard'",
+    "✓ POST with quality_preset='auto' and template='pillar_page' → resolved_preset='premium' regardless of length",
+    "✓ GET /api/articles/generate/status/{job_id} returns resolved_preset and preset_reason fields when completed",
+    "✓ POST /api/articles/generate with quality_preset='auto' is accepted",
+    "✓ Frontend: Quality preset container found (data-testid='generator-quality-preset')",
+    "✓ Frontend: AUTO preset card found (data-testid='quality-preset-auto') with 'Auto (AI decyduje)', 'Dobiera na podstawie tematu i długości', '⏱ adaptacyjny'",
+    "✓ Frontend: DRAFT preset card found (data-testid='quality-preset-draft') with 'Szybki draft', 'Bez auto-optymalizacji', '⏱ 1-2 min'",
+    "✓ Frontend: STANDARD preset card found (data-testid='quality-preset-standard') with 'Standard', '3 iteracje optymalizacji', '⏱ 3-5 min'",
+    "✓ Frontend: PREMIUM preset card found (data-testid='quality-preset-premium') with 'Premium 80%+', 'Iteracje aż do celu (max 10)', '⏱ 5-10 min'",
+    "✓ Frontend: AUTO preset is selected by default (green border #059669)",
+    "✓ Frontend: Clicking Auto card keeps it selected with green border",
+    "✓ Frontend: Auto preset notice (data-testid='generation-auto-preset-notice') shows 'AI wybrała: {preset} — {reason}' during generation"
+  ],
+
+  "test_report_links": [
+    "/app/backend/tests/test_auto_preset_iteration41.py",
+    "/app/test_reports/pytest/pytest_auto_preset_iteration41.xml"
+  ],
+
+  "action_items": [],
+
+  "critical_code_review_comments": [
+    "articles.py:251-268 auto resolution logic: pillar_page OR >=2500 → premium, <=800 → draft, else → standard",
+    "articles.py:266-269 updates generation_jobs with resolved_preset and preset_reason",
+    "articles.py:453-454 status endpoint returns resolved_preset and preset_reason fields",
+    "ArticleGenerator.js:35-68 QUALITY_PRESETS array with 'auto' as first item (value='auto', label='Auto (AI decyduje)')",
+    "ArticleGenerator.js:115 default qualityPreset='auto'",
+    "ArticleGenerator.js:293-304 UI notice when resolvedPreset set: 'AI wybrała: {resolvedPreset} — {presetReason}'"
+  ],
+
+  "updated_files": [
+    "/app/backend/tests/test_auto_preset_iteration41.py"
+  ],
+
+  "success_rate": {
+    "backend": "100% (6/6 tests passed)",
+    "frontend": "100% (All UI elements verified working)"
+  },
+
+  "test_credentials": {
+    "admin": "monika.gawkowska@kurdynowski.pl / MonZuz8180!"
+  },
+
+  "seed_data_creation": "Created test articles with TEST_ prefix during testing",
+
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+
+  "context_for_next_testing_agent": "Iteration 41 verified Auto Quality Preset feature. Four presets available: auto (AI resolves based on length/template), draft (0 iterations, skips SERP+optimization), standard (max 3 iterations), premium (max 10 iterations). Auto resolution rules: pillar_page template OR target_length>=2500 → premium, target_length<=800 → draft, else → standard. Frontend shows 4 preset cards with data-testid='quality-preset-{auto|draft|standard|premium}'. Auto is selected by default with green border (#059669). During generation, if qualityPreset=auto, UI shows notice 'AI wybrała: {preset} — {reason}' (data-testid='generation-auto-preset-notice'). Status endpoint returns resolved_preset and preset_reason fields when job completes.",
+
+  "mocked_api": {
+    "has_mocked_apis": false,
+    "mocked_apis_list": []
+  },
+
+  "features_verified": {
+    "auto_quality_preset": {
+      "status": "VERIFIED WORKING",
+      "endpoint": "POST /api/articles/generate",
+      "field": "quality_preset (string): 'auto' | 'draft' | 'standard' | 'premium'",
+      "default": "auto (changed from premium in iteration 40)",
+      "auto_resolution_rules": {
+        "pillar_page_template": "→ premium (regardless of length)",
+        "target_length_>=_2500": "→ premium",
+        "target_length_<=_800": "→ draft",
+        "default": "→ standard"
+      },
+      "status_endpoint_fields": {
+        "resolved_preset": "The preset that auto resolved to (draft|standard|premium)",
+        "preset_reason": "Human-readable reason for the resolution"
+      },
+      "frontend_ui": {
+        "container": "data-testid='generator-quality-preset'",
+        "auto_card": "data-testid='quality-preset-auto' (green #059669)",
+        "draft_card": "data-testid='quality-preset-draft' (gray #64748b)",
+        "standard_card": "data-testid='quality-preset-standard' (blue #04389E)",
+        "premium_card": "data-testid='quality-preset-premium' (purple #7c3aed)",
+        "default_selection": "auto (green border)",
+        "generation_notice": "data-testid='generation-auto-preset-notice' shows 'AI wybrała: {preset} — {reason}'"
+      },
+      "backend_code_locations": {
+        "auto_resolution": "/app/backend/routes/articles.py:251-268",
+        "db_update": "/app/backend/routes/articles.py:266-269",
+        "status_response": "/app/backend/routes/articles.py:453-454"
+      }
+    }
+  }
+}
