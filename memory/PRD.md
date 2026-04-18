@@ -16,7 +16,8 @@ Monika (admin) – Kurdynowski Accounting & Tax Solutions. Używa aplikacji do t
 **All core features functional and tested (iteration 36: 16/16 passed 100%)**
 
 ### Completed in this session
-- [x] **FEATURE (2026-04-17 14:30):** Quality Preset w generatorze — 3 tryby: Szybki draft (bez SERP+optimize, 1-2min), Standard (max 3 iter, 3-5min), Premium 80%+ (max 10 iter, 5-10min). Karty wyboru w UI formularza. Draft pomija SurferSEO analysis całkowicie (dla szybkości), fallback na basic seo_score
+- [x] **FEATURE (2026-04-17 15:00):** Auto Quality Preset — 4. opcja w generatorze (domyślna): AI na podstawie target_length + template_id wybiera draft/standard/premium. Reguły: pillar_page LUB ≥2500 słów → premium; ≤800 słów → draft; inne → standard. Notyfikacja "AI wybrała: {preset} — {reason}" podczas generowania
+- [x] **FEATURE (2026-04-17 14:30):** Quality Preset w generatorze — 3 tryby ręczne: Szybki draft, Standard, Premium 80%+
 - [x] **FEATURE (2026-04-17 14:00):** Auto-optimize podczas generowania — pętla iteracyjna do 80%+ lub stagnation
 - [x] **FEATURE (2026-04-17 13:00):** Smart Scheduling Widget — 6 kart AI insights na Dashboard
 - [x] **FEATURE (2026-04-17):** Bulk Optimization — przycisk "Optymalizuj słabe (N)" na ROI Dashboard uruchamia iteracyjną optymalizację wszystkich artykułów score < 60%
