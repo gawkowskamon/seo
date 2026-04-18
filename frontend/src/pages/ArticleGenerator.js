@@ -32,6 +32,33 @@ const LANGUAGES = [
   { value: 'uk', label: 'Українська', flag: 'UA' },
 ];
 
+const QUALITY_PRESETS = [
+  {
+    value: 'draft',
+    label: 'Szybki draft',
+    description: 'Bez auto-optymalizacji',
+    time: '1-2 min',
+    color: '#64748b',
+    bg: 'hsl(215, 16%, 95%)'
+  },
+  {
+    value: 'standard',
+    label: 'Standard',
+    description: '3 iteracje optymalizacji',
+    time: '3-5 min',
+    color: '#04389E',
+    bg: 'hsl(220, 95%, 97%)'
+  },
+  {
+    value: 'premium',
+    label: 'Premium 80%+',
+    description: 'Iteracje aż do celu (max 10)',
+    time: '5-10 min',
+    color: '#7c3aed',
+    bg: 'hsl(270, 80%, 97%)'
+  },
+];
+
 const STAGES = [
   { key: 'analyze', label: 'Analiza tematu i słów kluczowych', icon: Search },
   { key: 'outline', label: 'Tworzenie struktury artykułu', icon: BookOpen },
@@ -75,6 +102,7 @@ const ArticleGenerator = () => {
   const [templates, setTemplates] = useState([]);
   const [selectedTemplate, setSelectedTemplate] = useState('standard');
   const [language, setLanguage] = useState('pl');
+  const [qualityPreset, setQualityPreset] = useState('premium');
 
   useEffect(() => {
     if (location.state) {
@@ -141,7 +169,8 @@ const ArticleGenerator = () => {
         target_length: parseInt(targetLength),
         tone: tone,
         template: selectedTemplate,
-        language: language
+        language: language,
+        quality_preset: qualityPreset
       }, { timeout: 30000 });
 
       const jobId = startRes.data.job_id;
@@ -489,6 +518,39 @@ const ArticleGenerator = () => {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+        </div>
+
+        {/* Quality Preset Selector */}
+        <div className="form-group" style={{ marginTop: 20 }}>
+          <label className="form-label">Jakość generowania</label>
+          <div data-testid="generator-quality-preset" style={{
+            display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10, marginTop: 6
+          }}>
+            {QUALITY_PRESETS.map(preset => {
+              const selected = qualityPreset === preset.value;
+              return (
+                <button
+                  key={preset.value}
+                  type="button"
+                  onClick={() => setQualityPreset(preset.value)}
+                  data-testid={`quality-preset-${preset.value}`}
+                  style={{
+                    padding: 14, borderRadius: 10, textAlign: 'left', cursor: 'pointer',
+                    background: selected ? preset.bg : 'white',
+                    border: `2px solid ${selected ? preset.color : 'hsl(214, 18%, 88%)'}`,
+                    transition: 'all 0.15s'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <Sparkles size={16} style={{ color: preset.color }} />
+                    <span style={{ fontWeight: 700, color: selected ? preset.color : 'hsl(215, 16%, 20%)' }}>{preset.label}</span>
+                  </div>
+                  <div style={{ fontSize: 12, color: 'hsl(215, 16%, 55%)', marginBottom: 4 }}>{preset.description}</div>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: preset.color }}>⏱ {preset.time}</div>
+                </button>
+              );
+            })}
           </div>
         </div>
 

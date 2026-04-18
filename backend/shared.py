@@ -95,6 +95,7 @@ class ArticleGenerateRequest(BaseModel):
     tone: str = "profesjonalny"
     template: str = "standard"
     language: str = "pl"
+    quality_preset: str = "premium"  # "draft" | "standard" | "premium"
 
 class ArticleUpdateRequest(BaseModel):
     title: Optional[str] = None

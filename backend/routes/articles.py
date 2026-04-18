@@ -247,26 +247,28 @@ def _sync_run_generation_job(job_id: str, request_data: dict, user: dict):
             request_data["secondary_keywords"]
         )
 
-        # Run SurferSEO SERP analysis for the keyword
+        # Run SurferSEO SERP analysis for the keyword (skipped in 'draft' preset for speed)
         surfer_data = None
         surfer_score = None
-        try:
-            loop2 = asyncio.new_event_loop()
+        preset = request_data.get("quality_preset", "premium")
+        if preset != "draft":
             try:
-                surfer_data = loop2.run_until_complete(analyze_serp(request_data["primary_keyword"]))
-            finally:
-                loop2.close()
-            
-            if surfer_data:
-                surfer_score = compute_surfer_score(article_data, surfer_data)
-                seo_score = {
-                    "percentage": surfer_score["percentage"],
-                    "breakdown": surfer_score["metrics"],
-                    "total_score": surfer_score["total_score"],
-                    "total_max": surfer_score["total_max"]
-                }
-        except Exception as e:
-            logging.warning(f"Surfer SERP analysis failed, using basic scorer: {e}")
+                loop2 = asyncio.new_event_loop()
+                try:
+                    surfer_data = loop2.run_until_complete(analyze_serp(request_data["primary_keyword"]))
+                finally:
+                    loop2.close()
+
+                if surfer_data:
+                    surfer_score = compute_surfer_score(article_data, surfer_data)
+                    seo_score = {
+                        "percentage": surfer_score["percentage"],
+                        "breakdown": surfer_score["metrics"],
+                        "total_score": surfer_score["total_score"],
+                        "total_max": surfer_score["total_max"]
+                    }
+            except Exception as e:
+                logging.warning(f"Surfer SERP analysis failed, using basic scorer: {e}")
 
         article_id = str(uuid.uuid4())
         article_doc = {
@@ -299,8 +301,12 @@ def _sync_run_generation_job(job_id: str, request_data: dict, user: dict):
 
         sync_db.articles.insert_one(article_doc)
 
-        # Auto-optimize to 80%+ if we have surfer_data
-        if surfer_data and (not surfer_score or surfer_score.get("percentage", 0) < 80):
+        # Auto-optimize to 80%+ if we have surfer_data (skipped for "draft" preset)
+        quality_preset = request_data.get("quality_preset", "premium")
+        preset_max_iter = {"draft": 0, "standard": 3, "premium": 10}.get(quality_preset, 10)
+        should_auto_optimize = quality_preset != "draft" and surfer_data and (not surfer_score or surfer_score.get("percentage", 0) < 80)
+
+        if should_auto_optimize:
             try:
                 sync_db.generation_jobs.update_one(
                     {"job_id": job_id},
@@ -308,10 +314,12 @@ def _sync_run_generation_job(job_id: str, request_data: dict, user: dict):
                         "stage": 5,
                         "status": "optimizing",
                         "optimization_iterations": [],
-                        "initial_score": surfer_score.get("percentage", 0) if surfer_score else 0
+                        "initial_score": surfer_score.get("percentage", 0) if surfer_score else 0,
+                        "quality_preset": quality_preset
                     }}
                 )
-                _auto_optimize_to_target(job_id, article_id, surfer_data, user.get("id", ""), sync_db)
+                _auto_optimize_to_target(job_id, article_id, surfer_data, user.get("id", ""), sync_db,
+                                         target=80, max_iter_safety=preset_max_iter)
             except Exception as opt_err:
                 logging.warning(f"Auto-optimization failed (article saved as-is): {opt_err}")
                 sync_db.generation_jobs.update_one(
@@ -319,11 +327,13 @@ def _sync_run_generation_job(job_id: str, request_data: dict, user: dict):
                     {"$set": {"optimization_error": str(opt_err)[:300]}}
                 )
 
-        # Fetch final score before marking complete
-        final_article = sync_db.articles.find_one({"id": article_id}, {"_id": 0, "surfer_score": 1})
+        # Fetch final score before marking complete (surfer_score preferred, seo_score fallback for draft preset)
+        final_article = sync_db.articles.find_one({"id": article_id}, {"_id": 0, "surfer_score": 1, "seo_score": 1})
         final_score_pct = 0
-        if final_article and final_article.get("surfer_score"):
-            final_score_pct = final_article["surfer_score"].get("percentage", 0)
+        if final_article:
+            surfer = final_article.get("surfer_score") or {}
+            seo = final_article.get("seo_score") or {}
+            final_score_pct = surfer.get("percentage") or seo.get("percentage") or 0
 
         sync_db.generation_jobs.update_one(
             {"job_id": job_id},
@@ -378,7 +388,8 @@ async def generate_article_endpoint(request: ArticleGenerateRequest, user: dict 
         "target_length": request.target_length,
         "tone": request.tone,
         "template": request.template,
-        "language": request.language
+        "language": request.language,
+        "quality_preset": request.quality_preset
     }
     
     asyncio.get_event_loop().run_in_executor(
